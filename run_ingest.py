@@ -1,18 +1,20 @@
 """
 회의록 텍스트 파일들을 청킹하여 메타데이터와 함께 ChromaDB에 적재하는 CLI 스크립트
-(전체 예상 소요 시간 ETA, 실시간 처리 속도 표시 및 임베딩 모델/컬렉션 변경 지원)
+(전체 예상 소요 시간 ETA, 실시간 처리 속도 표시, 임베딩 모델/컬렉션 변경 및 LLM 정책 메타데이터 자동 병합 지원)
 """
 import argparse
 import glob
+import json
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any, Tuple
 from tqdm import tqdm
 
 from src.config import (
     DATA_DIR,
+    BASE_DIR,
     BATCH_SIZE,
     MIN_CHAR_LEN,
     CHUNK_SIZE,
@@ -39,6 +41,37 @@ def format_seconds(seconds: float) -> str:
         return f"{s}초"
 
 
+def load_llm_metadata_map(meta_path: Optional[Path]) -> Dict[Tuple[str, int], Dict[str, Any]]:
+    """
+    LLM 추출 메타데이터 파일(JSONL)을 읽어 (assembly, row_id) -> 메타데이터 딕셔너리로 매핑
+    """
+    meta_map = {}
+    if not meta_path or not meta_path.exists():
+        return meta_map
+
+    print(f">> [메타데이터 로드] LLM 정책 메타데이터 파일 발견: {meta_path.name}")
+    count = 0
+    with open(meta_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                row_id = int(data.get("row_id", 0))
+                assembly = data.get("assembly", "")
+                if row_id > 0:
+                    meta_map[(assembly, row_id)] = data
+                    # assembly가 일치하지 않아도 row_id로 폴백할 수 있도록 이중 등록
+                    meta_map[("", row_id)] = data
+                    count += 1
+            except Exception:
+                pass
+
+    print(f"   -> 총 {count:,}건의 정밀 정책 메타데이터(키워드/쟁점/분야)를 ChromaDB 색인용으로 매핑했습니다.\n")
+    return meta_map
+
+
 def ingest_data(
     data_dir: Path = DATA_DIR,
     sample_lines: int = 0,
@@ -48,11 +81,17 @@ def ingest_data(
     min_char_len: int = MIN_CHAR_LEN,
     model_name: Optional[str] = None,
     collection_name: Optional[str] = None,
+    meta_file: Optional[Path] = None,
     reset: bool = False,
 ):
     start_time = time.time()
     resolved_model = resolve_embedding_model(model_name)
     target_collection = collection_name or COLLECTION_NAME
+
+    # LLM 정책 메타데이터 파일 자동 감지 (지정되지 않은 경우 기본 경로 확인)
+    default_meta_path = BASE_DIR / "data" / "gangwon_policy_metadata.jsonl"
+    resolved_meta_path = meta_file or (default_meta_path if default_meta_path.exists() else None)
+    llm_meta_map = load_llm_metadata_map(resolved_meta_path)
 
     print("=" * 65)
     print(" [지방의회 회의록 ChromaDB 적재 파이프라인] ")
@@ -63,6 +102,7 @@ def ingest_data(
     print(f" * Chroma 배치 크기 : {batch_size}")
     print(f" * 청크 크기 / 중첩 : {chunk_size}자 / {chunk_overlap}자")
     print(f" * 최소 발언 필터링 : {min_char_len}자 미만 제외")
+    print(f" * LLM 메타데이터   : {'적용 중 (' + str(len(llm_meta_map)//2) + '건)' if llm_meta_map else '미적용 (일반 TSV 메타데이터만 사용)'}")
     if sample_lines > 0:
         print(f" * [테스트 모드]     : 파일당 최대 {sample_lines:,}행만 적재")
     print("=" * 65)
@@ -143,6 +183,20 @@ def ingest_data(
                         if record:
                             chunk_items = chunker.chunk_parsed_record(record)
                             for chunk_id, chunk_text, meta in chunk_items:
+                                # LLM 추출 정책 메타데이터가 있으면 1:1 병합
+                                assembly = str(meta.get("assembly", ""))
+                                llm_info = llm_meta_map.get((assembly, row_id)) or llm_meta_map.get(("", row_id))
+                                if llm_info and llm_info.get("is_substantive"):
+                                    meta["policy_category"] = str(llm_info.get("policy_category", "기타"))
+                                    meta["core_issue"] = str(llm_info.get("core_issue", ""))
+                                    meta["keywords"] = ", ".join(llm_info.get("keywords", []))
+                                    meta["summary"] = str(llm_info.get("summary", ""))
+                                else:
+                                    meta["policy_category"] = "기타"
+                                    meta["core_issue"] = ""
+                                    meta["keywords"] = ""
+                                    meta["summary"] = ""
+
                                 batch_ids.append(chunk_id)
                                 batch_docs.append(chunk_text)
                                 batch_metas.append(meta)
@@ -216,13 +270,19 @@ if __name__ == "__main__":
         "-m", "--model",
         type=str,
         default=EMBEDDING_MODEL_NAME,
-        help=f"임베딩 모델명 또는 프리셋 별칭. 지원 별칭: [{preset_help}] (기본: {EMBEDDING_MODEL_NAME})",
+        help=f"임베딩 모델명 또는 프리셋 별칭. (기본: {EMBEDDING_MODEL_NAME})",
     )
     parser.add_argument(
         "-c", "--collection",
         type=str,
         default=COLLECTION_NAME,
         help=f"ChromaDB 컬렉션 이름 (기본: {COLLECTION_NAME})",
+    )
+    parser.add_argument(
+        "--meta-file",
+        type=str,
+        default="",
+        help="LLM 정책 메타데이터(JSONL) 경로 (기본: data/gangwon_policy_metadata.jsonl 자동 감지)",
     )
     parser.add_argument(
         "--reset",
@@ -233,11 +293,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
 
+    meta_file_path = Path(args.meta_file) if args.meta_file else None
+
     ingest_data(
         sample_lines=args.sample_lines,
         batch_size=args.batch_size,
         min_char_len=args.min_len,
         model_name=args.model,
         collection_name=args.collection,
+        meta_file=meta_file_path,
         reset=args.reset,
     )

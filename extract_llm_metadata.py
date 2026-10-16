@@ -1,14 +1,17 @@
 """
-지방의회 회의록에서 로컬 LLM(Ollama)을 활용하여 구체적 정책 의제 및 복합 키워드(메타데이터용)를 추출하는 스크립트
+지방의회 회의록에서 로컬 LLM(Ollama gemma4:e4b)을 활용하여 구체적 정책 의제 및 복합 키워드(메타데이터용)를 추출하는 스크립트
+(체크포인트 이어하기, 멀티스레드 병렬 가속, 실시간 flush 지원)
 """
 import argparse
+import concurrent.futures
 import json
 import os
 import re
 import sys
+import threading
 import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 import requests
 from tqdm import tqdm
 
@@ -45,25 +48,21 @@ def clean_and_parse_json(raw_text: str) -> Optional[Dict[str, Any]]:
         return None
 
     text = raw_text.strip()
-    # 마크다운 백틱 제거 (```json ... ```)
     if "```" in text:
         text = re.sub(r'```(?:json)?\s*', '', text)
         text = text.replace('```', '').strip()
 
-    # JSON 본체 { ... } 추출
     match = re.search(r'(\{[\s\S]*\})', text)
     if match:
         json_candidate = match.group(1).strip()
     else:
         json_candidate = text
 
-    # 1차 파싱 시도
     try:
         return json.loads(json_candidate)
     except Exception:
         pass
 
-    # 2차: 제어문자 및 trailing comma 정규식 보정
     try:
         fixed = re.sub(r',\s*\}', '}', json_candidate)
         fixed = re.sub(r',\s*\]', ']', fixed)
@@ -124,66 +123,126 @@ def extract_metadata_with_llm(
         return None
 
 
+def load_processed_row_ids(output_file: str) -> Set[int]:
+    """이미 처리되어 저장된 row_id 집합을 로드 (체크포인트 이어하기용)"""
+    processed = set()
+    if os.path.exists(output_file):
+        with open(output_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        data = json.loads(line)
+                        if "row_id" in data:
+                            processed.add(int(data["row_id"]))
+                    except Exception:
+                        pass
+    return processed
+
+
+def process_single_record(
+    record: Dict[str, Any],
+    model_name: str,
+    base_url: str,
+) -> Dict[str, Any]:
+    """단일 레코드에 대해 LLM 호출 및 결과 딕셔너리 구성"""
+    speaker_info = f"{record['assembly']} {record['speaker_role']} {record['speaker_name']} ({record['speaker_type']}) - 안건: {record['agenda_title']}"
+    meta = extract_metadata_with_llm(
+        text=record["utterance"][:1200],
+        speaker_info=speaker_info,
+        model_name=model_name,
+        base_url=base_url,
+    )
+
+    if meta and isinstance(meta, dict):
+        cat = meta.get("policy_category", "기타")
+        if "|" in cat:
+            cat = cat.split("|")[0].strip()
+
+        return {
+            "row_id": record["row_id"],
+            "date": record["date"],
+            "assembly": record["assembly"],
+            "speaker": f"{record['speaker_role']} {record['speaker_name']}",
+            "agenda": record["agenda_title"],
+            "is_substantive": meta.get("is_substantive", True),
+            "policy_category": cat,
+            "core_issue": meta.get("core_issue", ""),
+            "keywords": meta.get("keywords", []),
+            "summary": meta.get("summary", ""),
+            "utterance_preview": record["utterance"][:100] + "...",
+        }
+    else:
+        return {
+            "row_id": record["row_id"],
+            "date": record["date"],
+            "assembly": record["assembly"],
+            "speaker": f"{record['speaker_role']} {record['speaker_name']}",
+            "agenda": record["agenda_title"],
+            "is_substantive": False,
+            "policy_category": "미상",
+            "core_issue": "추출 실패",
+            "keywords": [],
+            "summary": "",
+            "utterance_preview": record["utterance"][:100] + "...",
+        }
+
+
 def process_council_file(
     input_file: str,
     output_file: str,
     model_name: str = "gemma4:e4b",
     base_url: str = "http://localhost:11434",
-    sample_limit: int = 10,
+    sample_limit: int = 0,
     min_char_len: int = 80,
+    max_workers: int = 2,
 ):
     print("=" * 65)
     print(" [로컬 LLM 기반 의회 회의록 정책 키워드 & 메타데이터 추출기] ")
     print("=" * 65)
-    print(f" * 입력 데이터 : {input_file}")
-    print(f" * 출력 파일   : {output_file}")
-    print(f" * 요청 모델   : {model_name}")
-    print(f" * Ollama URL  : {base_url}")
-    print(f" * 처리 대상   : {'전체 처리' if sample_limit <= 0 else f'최대 {sample_limit}건 샘플'}")
-    print(f" * 최소 글자수 : {min_char_len}자 미만 제외")
+    print(f" * 입력 데이터   : {input_file}")
+    print(f" * 출력 파일     : {output_file}")
+    print(f" * 요청 모델     : {model_name}")
+    print(f" * 동시 워커 수   : {max_workers}개 스레드 (병렬 가속)")
+    print(f" * 처리 대상     : {'전체 처리' if sample_limit <= 0 else f'최대 {sample_limit}건 샘플'}")
+    print(f" * 최소 글자수   : {min_char_len}자 미만 제외")
     print("=" * 65)
 
-    # 1. 모델 가용성 확인 및 자동 폴백 안내
+    # 1. 모델 가용성 확인
     available_models = get_available_ollama_models(base_url)
     if not available_models:
-        print(f"[오류] Ollama 서버({base_url})에 연결할 수 없거나 실행 중이지 않습니다.")
-        print("▶ 해결: 'ollama serve' 또는 Ollama 데스크톱 앱을 실행해 주세요.")
+        print(f"[오류] Ollama 서버({base_url})에 연결할 수 없습니다. 'ollama serve'를 실행하세요.")
         return
 
     selected_model = model_name
     if not check_ollama_model(base_url, model_name):
-        print(f"[알림] 요청하신 모델 '{model_name}'이 로컬 Ollama에 설치되어 있지 않습니다.")
-        print(f"       현재 사용 가능한 로컬 모델: {available_models}")
-
-        # 로컬 모델 중 추천 폴백
-        fallback = None
+        print(f"[경고] 요청 모델 '{model_name}'이 로컬에 없습니다. 'ollama pull {model_name}'을 권장합니다.")
+        fallback = available_models[0]
         for m in available_models:
             if "gemma" in m.lower():
                 fallback = m
                 break
-        if not fallback:
-            # 7b 계열 우선 (품질 우수)
-            for m in available_models:
-                if "7b" in m.lower():
-                    fallback = m
-                    break
-        if not fallback:
-            fallback = available_models[0]
-
-        print(f"▶ 대체 모델로 '{fallback}'을(를) 자동 선택하여 진행합니다.")
-        print(f"  (원하시는 젬마 모델을 쓰시려면 터미널에서 'ollama pull {model_name}'을 실행하세요)\n")
+        print(f"▶ 로컬 대체 모델 '{fallback}'으로 진행합니다.\n")
         selected_model = fallback
 
-    # 2. 파일 읽기 및 유효 발언 필터링
-    records = []
+    # 2. 체크포인트 확인 (이미 처리된 행은 스킵)
+    processed_ids = load_processed_row_ids(output_file)
+    if processed_ids:
+        print(f"[체크포인트] 기존 결과 파일에서 이미 처리된 {len(processed_ids):,}건을 감지했습니다. (자동 이어서 진행)")
+
+    # 3. 대상 데이터 로드
+    records_to_process = []
     with open(input_file, "r", encoding="utf-8-sig") as f:
-        header = f.readline()
+        f.readline()  # 헤더
         for row_id, line in enumerate(f, start=1):
+            if row_id in processed_ids:
+                continue
+
             parts = line.rstrip("\r\n").split("\t")
             if len(parts) >= 7:
                 utterance = parts[6].strip()
                 if len(utterance) >= min_char_len:
-                    records.append({
+                    records_to_process.append({
                         "row_id": row_id,
                         "date": parts[0],
                         "assembly": parts[1],
@@ -193,83 +252,51 @@ def process_council_file(
                         "speaker_type": parts[5],
                         "utterance": utterance,
                     })
-                    if 0 < sample_limit <= len(records):
+                    if 0 < sample_limit <= len(records_to_process):
                         break
 
-    print(f">> 총 {len(records)}건의 유효 발언을 추출 대상으로 선정했습니다.\n")
+    if not records_to_process:
+        print("[알림] 모든 대상 발언이 이미 처리 완료되었습니다.")
+        return
 
-    # 3. LLM 메타데이터 추출 실행
+    print(f">> 신규 처리 대상: {len(records_to_process):,}건 (동시 {max_workers}개 병렬 워커 가동)\n")
+
+    # 4. 멀티스레드 병렬 실행 및 실시간 파일 기록
     os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
-    results = []
+    file_lock = threading.Lock()
     success_count = 0
 
-    with open(output_file, "w", encoding="utf-8") as out_f:
-        with tqdm(total=len(records), desc=f"[{selected_model}] 메타데이터 추출", unit="건") as pbar:
-            for r in records:
-                speaker_info = f"{r['assembly']} {r['speaker_role']} {r['speaker_name']} ({r['speaker_type']}) - 안건: {r['agenda_title']}"
-                meta = extract_metadata_with_llm(
-                    text=r["utterance"][:1200],  # 발언 핵심 전반부 1,200자 전달
-                    speaker_info=speaker_info,
-                    model_name=selected_model,
-                    base_url=base_url,
-                )
+    with open(output_file, "a", encoding="utf-8") as out_f:
+        with tqdm(total=len(records_to_process), desc=f"[{selected_model}] 메타데이터 추출", unit="건") as pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 작업 제출
+                future_to_rec = {
+                    executor.submit(process_single_record, rec, selected_model, base_url): rec
+                    for rec in records_to_process
+                }
 
-                if meta and isinstance(meta, dict):
-                    # 카테고리 정제
-                    cat = meta.get("policy_category", "기타")
-                    if "|" in cat:
-                        cat = cat.split("|")[0].strip()
+                for future in concurrent.futures.as_completed(future_to_rec):
+                    try:
+                        res = future.result()
+                        if res.get("is_substantive") and res.get("keywords"):
+                            success_count += 1
 
-                    combined = {
-                        "row_id": r["row_id"],
-                        "date": r["date"],
-                        "assembly": r["assembly"],
-                        "speaker": f"{r['speaker_role']} {r['speaker_name']}",
-                        "agenda": r["agenda_title"],
-                        "is_substantive": meta.get("is_substantive", True),
-                        "policy_category": cat,
-                        "core_issue": meta.get("core_issue", ""),
-                        "keywords": meta.get("keywords", []),
-                        "summary": meta.get("summary", ""),
-                        "utterance_preview": r["utterance"][:100] + "...",
-                    }
-                    success_count += 1
-                else:
-                    combined = {
-                        "row_id": r["row_id"],
-                        "date": r["date"],
-                        "assembly": r["assembly"],
-                        "speaker": f"{r['speaker_role']} {r['speaker_name']}",
-                        "agenda": r["agenda_title"],
-                        "is_substantive": False,
-                        "policy_category": "미상",
-                        "core_issue": "추출 실패",
-                        "keywords": [],
-                        "summary": "",
-                        "utterance_preview": r["utterance"][:100] + "...",
-                    }
-
-                out_f.write(json.dumps(combined, ensure_ascii=False) + "\n")
-                out_f.flush()  # 실시간 디스크 저장
-                results.append(combined)
-                pbar.update(1)
+                        with file_lock:
+                            out_f.write(json.dumps(res, ensure_ascii=False) + "\n")
+                            out_f.flush()
+                    except Exception as e:
+                        pass
+                    finally:
+                        pbar.update(1)
 
     print("\n" + "=" * 65)
     print(" [추출 완료 결과 보고서] ")
     print("=" * 65)
-    print(f" * 처리 성공 건수 : {success_count} / {len(records)} 건")
-    print(f" * 결과 저장 파일 : {output_file}")
+    print(f" * 신규 처리 완료 : {len(records_to_process):,}건")
+    print(f" * 유효 정책 발언 : {success_count:,}건")
+    print(f" * 총 누적 데이터 : {len(load_processed_row_ids(output_file)):,}건")
+    print(f" * 저장된 파일    : {output_file}")
     print("=" * 65)
-
-    # 4. 상위 추출 결과 샘플 출력
-    substantive_items = [item for item in results if item.get("is_substantive") and item.get("keywords")]
-    print(f"\n>> [추출된 주요 정책 의제 및 복합 키워드 샘플 (상위 {min(5, len(substantive_items))}건)]:\n")
-    for idx, item in enumerate(substantive_items[:5], 1):
-        print(f"[{idx}] {item['speaker']} ({item['date']}) | 정책분야: [{item['policy_category']}]")
-        print(f"    - 핵심 쟁점 : {item['core_issue']}")
-        print(f"    - 복합 키워드 : {', '.join(item['keywords'])}")
-        print(f"    - 발언 요약 : {item['summary']}")
-        print("-" * 65)
 
 
 if __name__ == "__main__":
@@ -295,14 +322,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sample",
         type=int,
-        default=5,
-        help="테스트할 발언 개수 (0이면 전체 처리, 기본: 5)",
+        default=0,
+        help="처리할 발언 개수 (0이면 전체 처리, 기본: 0)",
     )
     parser.add_argument(
         "--min-len",
         type=int,
         default=80,
         help="최소 발언 길이 필터링 (기본: 80자)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=2,
+        help="동시 병렬 요청 워커 수 (기본: 2)",
     )
     parser.add_argument(
         "--url",
@@ -321,4 +354,5 @@ if __name__ == "__main__":
         base_url=args.url,
         sample_limit=args.sample,
         min_char_len=args.min_len,
+        max_workers=args.workers,
     )
