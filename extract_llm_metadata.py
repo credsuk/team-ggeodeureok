@@ -127,7 +127,7 @@ def extract_metadata_with_llm(
 def process_council_file(
     input_file: str,
     output_file: str,
-    model_name: str = "gemma2:2b",
+    model_name: str = "gemma4:e4b",
     base_url: str = "http://localhost:11434",
     sample_limit: int = 10,
     min_char_len: int = 80,
@@ -289,8 +289,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m", "--model",
         type=str,
-        default="gemma2:2b",
-        help="사용할 Ollama 모델명 (기본: gemma2:2b, 설치된 qwen2.5-coder:7b 등 가능)",
+        default="gemma4:e4b",
+        help="사용할 Ollama 모델명 (기본: gemma4:e4b)",
     )
     parser.add_argument(
         "--sample",
