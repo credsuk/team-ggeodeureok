@@ -34,32 +34,39 @@ BATCH_SIZE = 500          # ChromaDB add 1회당 전송 문서 수
 # 추천 임베딩 모델 프리셋 (별칭 지원)
 # -------------------------------------------------------------
 EMBEDDING_PRESETS = {
-    # 1. 한국어 특화 SBERT (기본값, 768차원, 빠르고 안정적인 성능)
+    # 1. KURE-v1 (기본값, BAAI/bge-m3 기반, 긴 문서에서 최고 성능, 1024차원)
+    "kure": "nlpai-lab/KURE-v1",
+    "kure-v1": "nlpai-lab/KURE-v1",
+    # 2. Snowflake Arctic v2.0 한국어 (행정문서 훈련 활용, 1024차원)
+    "arctic-ko": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+    "snowflake-arctic-ko": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+    # 3. 한국어 특화 SBERT (768차원, 빠르고 안정적인 경량 모델)
     "ko-sbert": "jhgan/ko-sbert-nli",
-    # 2. 한국어 RoBERTa 기반 SimCSE (768차원, 문장 의미 유사도 우수)
+    # 4. 한국어 RoBERTa 기반 SimCSE (768차원, 문장 의미 유사도 우수)
     "kosimcse": "BM-K/KoSimCSE-roberta-multitask",
-    # 3. 고성능 다국어/한국어 SOTA 모델 (1024차원, 대용량 VRAM 권장)
+    # 5. 고성능 다국어/한국어 SOTA 모델 (1024차원, 대용량 VRAM 권장)
     "bge-m3": "BAAI/bge-m3",
-    # 4. BGE-M3 한국어 미세조정 버전 (1024차원)
+    # 6. BGE-M3 한국어 미세조정 버전 (1024차원)
     "bge-m3-ko": "dragonkyle/bge-m3-ko",
-    # 5. 다국어 E5 Base 모델 (768차원)
+    # 7. 다국어 E5 Base 모델 (768차원)
     "e5-base": "intfloat/multilingual-e5-base",
-    # 6. 서울대 한국어 SBERT (768차원)
+    # 8. 서울대 한국어 SBERT (768차원)
     "kr-sbert": "snunlp/KR-SBERT-V40K-klue-subword",
 }
 
-# 기본 임베딩 모델 (환경변수 EMBEDDING_MODEL_NAME이 지정되어 있으면 최우선 적용)
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["ko-sbert"])
+# 기본 임베딩 모델 (환경변수 EMBEDDING_MODEL_NAME이 지정되어 있으면 최우선 적용, 기본: KURE-v1)
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["kure"])
 
 
 def resolve_embedding_model(name_or_alias: Optional[str] = None) -> str:
     """
     임베딩 모델 식별자 또는 프리셋 별칭을 전체 HuggingFace 모델 경로로 변환합니다.
     예:
-      'ko-sbert' -> 'jhgan/ko-sbert-nli'
+      'kure' -> 'nlpai-lab/KURE-v1'
+      'arctic-ko' -> 'dragonkue/snowflake-arctic-embed-l-v2.0-ko'
       'kosimcse' -> 'BM-K/KoSimCSE-roberta-multitask'
       'BAAI/bge-m3' -> 'BAAI/bge-m3' (그대로 유지)
-      None -> EMBEDDING_MODEL_NAME
+      None -> EMBEDDING_MODEL_NAME (nlpai-lab/KURE-v1)
     """
     if not name_or_alias:
         name_or_alias = EMBEDDING_MODEL_NAME
