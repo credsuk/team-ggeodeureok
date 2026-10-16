@@ -5,7 +5,20 @@ import os
 import warnings
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-import torch
+try:
+    import torch
+except ImportError:
+    raise ImportError(
+        "\n" + "=" * 65 + "\n"
+        "[오류] 'torch' 패키지를 찾을 수 없습니다.\n"
+        "현재 Conda 가상환경('project01')이 활성화되지 않은 상태입니다.\n\n"
+        "▶ 해결 방법 (터미널에서 가상환경 활성화 후 재실행):\n"
+        "   conda activate project01\n"
+        "   python run_ingest.py --batch-size 500\n\n"
+        "▶ 만약 가상환경 활성화 후에도 동일하다면 PyTorch를 설치하세요:\n"
+        "   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121\n"
+        + "=" * 65
+    )
 
 # LangChain Community 모듈 import
 from langchain_community.vectorstores import Chroma
