@@ -30,9 +30,9 @@
 
 ### 2. 고성능 임베딩 모델 연동 및 기본 모델 설정
 - **기본(Default) 임베딩 모델 변경**:
-  - **`nlpai-lab/KURE-v1`** (별칭: `kure`, `kure-v1`): BAAI/bge-m3 기반의 최신 한국어 검색 특화 모델로, **긴 문서 및 복잡한 의회 회의록에서 최고의 검색 성능**을 보여 디폴트 모델로 채택.
-- **행정문서 특화 모델 추가**:
-  - **`dragonkue/snowflake-arctic-embed-l-v2.0-ko`** (별칭: `arctic-ko`, `snowflake-arctic-ko`): 행정문서가 훈련에 활용된 1024차원 모델로 프리셋 등록.
+  - **`dragonkue/snowflake-arctic-embed-l-v2.0-ko`** (별칭: `arctic-ko`, `snowflake-arctic-ko`): 행정문서가 훈련에 활용된 1024차원 고성능 모델로, **공공 행정 및 조례/회의록 데이터 검색에 최적화**되어 디폴트 모델로 채택.
+- **긴 문서 특화 프리셋 지원**:
+  - **`nlpai-lab/KURE-v1`** (별칭: `kure`, `kure-v1`): BAAI/bge-m3 기반의 최신 한국어 검색 특화 모델로, 긴 문서 및 복잡한 의회 회의록 검색용 프리셋 지원.
 - **다양한 프리셋 지원**:
   - `ko-sbert` (`jhgan/ko-sbert-nli` - 768차원, 경량/빠름)
   - `kosimcse` (`BM-K/KoSimCSE-roberta-multitask` - 768차원, 의미 유사도 특화)
@@ -42,7 +42,7 @@
   - `kr-sbert` (`snunlp/KR-SBERT-V40K-klue-subword` - 768차원)
 - **손쉬운 모델 교체 인터페이스 3가지 지원**:
   1. CLI 옵션: `-m / --model <별칭_또는_경로>`, `-c / --collection <컬렉션명>`
-  2. 환경 변수: `$env:EMBEDDING_MODEL_NAME = "bge-m3"`
+  2. 환경 변수: `$env:EMBEDDING_MODEL_NAME = "kure"`
   3. 설정 파일: `src/config.py`의 `EMBEDDING_MODEL_NAME` 기본값 변경
 
 ---

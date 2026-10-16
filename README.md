@@ -24,7 +24,7 @@
 - **대용량 지방의회 데이터 처리**: 지자체별로 상이한 회의록 HTML 구조를 로컬 LLM을 통해 지능적으로 분석·정제하여 표준 TSV 데이터셋으로 변환합니다.
 - **발언 단위(Utterance) 의미 보존 청킹**: 의회 회의록 특성에 맞춰 발언 흐름과 문맥을 보존하며, 장문 발언에 한해 오버랩을 적용한 재귀적 서브청킹(Recursive Sub-chunking)을 수행합니다.
 - **다차원 메타데이터 필터링**: 시간(연/월/일), 지역(의회/시도), 안건, 발언자(성명/직함/구분) 등 다차원 메타데이터를 벡터와 함께 보존하여 정밀한 하이브리드 필터 검색(`where`)을 지원합니다.
-- **최신 고성능 한국어 임베딩 지원 (`KURE-v1` 기본 탑재)**: 긴 문서 및 복잡한 의회 회의록 검색에 최적화된 `nlpai-lab/KURE-v1`을 기본 모델로 탑재하였으며, CUDA 가속을 기본 지원합니다.
+- **최신 고성능 한국어 임베딩 지원 (`Snowflake Arctic v2.0 한국어` 기본 탑재)**: 행정문서 훈련 데이터가 반영된 `dragonkue/snowflake-arctic-embed-l-v2.0-ko`를 기본 모델로 탑재하였으며, 긴 문서 특화 모델인 `nlpai-lab/KURE-v1` 등 다양한 고성능 프리셋을 지원합니다.
 
 ---
 
@@ -43,7 +43,7 @@ team-ggeodeureok/
 ├── chroma_db/                 # LangChain Community Chroma 로컬 영구 벡터 저장소
 ├── src/                       # 핵심 처리 모듈 패키지
 │   ├── __init__.py
-│   ├── config.py              # 경로, 청킹 파라미터, 임베딩 프리셋 및 모델 설정 (KURE-v1 기본)
+│   ├── config.py              # 경로, 청킹 파라미터, 임베딩 프리셋 및 모델 설정 (Snowflake Arctic v2.0 기본)
 │   ├── parser.py              # TSV 파싱, 화자 직함 분리, 날짜 분해, 정제
 │   ├── chunker.py             # 발언 단위 보존 및 장문 서브청킹 처리기
 │   └── indexer.py             # LangChain HuggingFaceEmbeddings & Chroma 관리자
@@ -190,7 +190,7 @@ ChromaDB의 빠른 `where` 연산(단일 및 `$and` 복합 조건)에 최적화�
 ### 1) 빠른 동작 검증 (테스트 샘플 모드)
 전체 적재 전, 파일당 100행만 추출하여 적재 파이프라인이 정상 동작하는지 테스트합니다:
 ```bash
-# 기본 KURE-v1 모델로 테스트 적재
+# 기본 Snowflake Arctic v2.0 모델로 테스트 적재
 python run_ingest.py --sample-lines 100 --reset
 ```
 - `--reset`: 대상 ChromaDB 컬렉션을 삭제하고 처음부터 새로 생성합니다.
@@ -204,11 +204,11 @@ python run_ingest.py --batch-size 500
 
 ### 3) 다른 임베딩 모델로 적재하기
 ```bash
-# 예 1: 기본 KURE-v1 모델 사용 (명시적 지정)
-python run_ingest.py -m kure -c council_kure --reset
-
-# 예 2: 행정문서 특화 Snowflake Arctic v2.0 모델 사용
+# 예 1: 기본 Arctic-ko 모델 사용 (명시적 지정)
 python run_ingest.py -m arctic-ko -c council_arctic --reset
+
+# 예 2: 긴 문서 특화 KURE-v1 모델 사용
+python run_ingest.py -m kure -c council_kure --reset
 
 # 예 3: 경량 Ko-SBERT 모델 사용
 python run_ingest.py -m ko-sbert -c council_ko_sbert --reset
@@ -217,7 +217,7 @@ python run_ingest.py -m ko-sbert -c council_ko_sbert --reset
 ### 4) 주요 옵션 플래그
 | 인자 | 기본값 | 설명 |
 | :--- | :--- | :--- |
-| `-m`, `--model` | `nlpai-lab/KURE-v1` | 사용할 임베딩 모델명 또는 별칭 (예: `kure`, `arctic-ko`, `ko-sbert`) |
+| `-m`, `--model` | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` | 사용할 임베딩 모델명 또는 별칭 (예: `arctic-ko`, `kure`, `ko-sbert`) |
 | `-c`, `--collection` | `local_council_minutes` | 적재 대상 Chroma 컬렉션 이름 |
 | `--batch-size` | `500` | ChromaDB 1회 add 호출 시 전송할 문서 배치 크기 |
 | `--sample-lines` | `0` (비활성) | 파일당 최대 읽을 행 수 (테스트용, 0이면 전체) |
@@ -259,7 +259,7 @@ python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council
 
 ### 5) CLI 파라미터 안내
 - `query` (필수): 검색할 자연어 질의어 (예: `"인공지능 산업 육성"`)
-- `-m`, `--model`: 임베딩 모델명 또는 별칭 (기본값: `nlpai-lab/KURE-v1`)
+- `-m`, `--model`: 임베딩 모델명 또는 별칭 (기본값: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`)
 - `-c`, `--collection`: 검색 대상 컬렉션명 (기본값: `local_council_minutes`)
 - `--assembly`: 의회명 필터 (예: `"경기도의회"`, `"충청북도의회"`, `"강원특별자치도의회"`)
 - `--year`: 연도 필터 (정수, 예: `2024`, `2025`)
@@ -276,8 +276,8 @@ python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council
 
 | 별칭 (Alias) | 전체 Hugging Face 모델 식별자 | 벡터 차원 | 모델 특징 및 추천 용도 |
 | :--- | :--- | :---: | :--- |
-| **`kure` / `kure-v1`** *(기본값)* | `nlpai-lab/KURE-v1` | 1024 | **기본 모델.** BAAI/bge-m3 기반으로 **긴 문서 및 복잡한 의회 회의록에서 최고의 검색 성능** 발휘. |
-| **`arctic-ko`** | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` | 1024 | Snowflake's Arctic-embed-l-v2.0 기반. **행정문서가 훈련에 활용**되었으며, 단문 중심 행정 용어 검색에 적합. |
+| **`arctic-ko`** *(기본값)* | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` | 1024 | **기본 모델.** Snowflake's Arctic-embed-l-v2.0 기반. **행정문서가 훈련에 활용**되었으며, 단문 중심 행정 용어 및 지자체 정책 회의록 검색에 최적화. |
+| **`kure` / `kure-v1`** | `nlpai-lab/KURE-v1` | 1024 | BAAI/bge-m3 기반으로 **긴 문서 및 복잡한 의회 회의록에서 최고의 검색 성능** 발휘. |
 | **`ko-sbert`** | `jhgan/ko-sbert-nli` | 768 | 가볍고 빠른 한국어 문장 임베딩 모델 (저사양 환경 권장). |
 | **`kosimcse`** | `BM-K/KoSimCSE-roberta-multitask` | 768 | 한국어 RoBERTa 기반 SimCSE. 단어·문장의 의미적 유사도 검색에 탁월. |
 | **`bge-m3`** | `BAAI/bge-m3` | 1024 | 베이스 다국어/한국어 고성능 모델. |
@@ -294,35 +294,35 @@ python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council
 #### 방법 A. CLI 명령행 인자로 즉시 변경 (가장 권장)
 스크립트 실행 시 `-m` 또는 `--model` 옵션으로 간편하게 지정합니다:
 ```bash
-# 기본 KURE-v1 모델 사용
-python run_ingest.py -m kure -c council_kure --reset
-
-# Arctic-ko 모델 사용
+# 기본 Arctic-ko 모델 사용
 python run_ingest.py -m arctic-ko -c council_arctic --reset
 
+# KURE-v1 모델 사용
+python run_ingest.py -m kure -c council_kure --reset
+
 # 검색 시에도 동일한 모델 지정
-python query_search.py "청년 일자리" -m kure -c council_kure
+python query_search.py "청년 일자리" -m arctic-ko -c council_arctic
 ```
 
 #### 방법 B. 환경변수로 전역 변경
 터미널 세션 전체에서 기본 임베딩 모델을 변경합니다:
 ```powershell
 # Windows PowerShell 환경
-$env:EMBEDDING_MODEL_NAME = "arctic-ko"
+$env:EMBEDDING_MODEL_NAME = "kure"
 
-# 이후 옵션 없이 실행해도 arctic-ko가 기본 적용됨
+# 이후 옵션 없이 실행해도 kure가 기본 적용됨
 python query_search.py "미래 모빌리티 예산"
 ```
 ```bash
 # Linux/macOS 환경
-export EMBEDDING_MODEL_NAME="arctic-ko"
+export EMBEDDING_MODEL_NAME="kure"
 ```
 
 #### 방법 C. `src/config.py` 코드 한 줄 수정으로 영구 변경
 [`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py) 파일 상단의 기본값을 원하는 모델로 변경합니다:
 ```python
 # src/config.py 56번째 줄
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["kure"])
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arctic-ko"])
 ```
 
 ---
@@ -342,8 +342,8 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["kure
 
 - **[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py)**:
   - 경로 및 하이퍼파라미터 정의
-  - 기본 모델: `nlpai-lab/KURE-v1`
-  - `EMBEDDING_PRESETS` 딕셔너리 (`kure`, `arctic-ko` 등) 및 별칭 매핑 함수 `resolve_embedding_model()`
+  - 기본 모델: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`
+  - `EMBEDDING_PRESETS` 딕셔너리 (`arctic-ko`, `kure` 등) 및 별칭 매핑 함수 `resolve_embedding_model()`
 - **[`src/parser.py`](file:///c:/study/Projects/team-ggeodeureok/src/parser.py)**:
   - `clean_text()`: 비표준 공백(`\xa0` 등) 정규화
   - `parse_speaker()`: `위원장이상정` -> `('위원장', '이상정')` 직함/성명 자동 분리
@@ -379,4 +379,4 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["kure
 
 ## 11. 변경 및 작업 이력 (CHANGELOG)
 
-전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`KURE-v1`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
+전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
