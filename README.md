@@ -15,6 +15,7 @@
 8. [임베딩 모델 손쉬운 변경 가이드](#8-임베딩-모델-손쉬운-변경-가이드)
 9. [모듈별 상세 구성 (`src/`)](#9-모듈별-상세-구성-src)
 10. [자주 묻는 질문 및 트러블슈팅](#10-자주-묻는-질문-및-트러블슈팅)
+11. [변경 및 작업 이력 (CHANGELOG)](#11-변경-및-작업-이력-changelog)
 
 ---
 
@@ -57,6 +58,7 @@ team-ggeodeureok/
 ├── query_search.py            # Chroma 검색 및 메타데이터 필터링 테스트 CLI
 ├── requirements.txt           # 필수 Python 패키지 의존성 목록
 ├── forder.txt                 # 경진대회/제출물 디렉터리 규격 참조 문서
+├── CHANGELOG.md               # 프로젝트 개발 및 변경 상세 이력
 └── README.md                  # 프로젝트 사용법 및 상세 문서
 ```
 
@@ -372,3 +374,9 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["kure
 ### Q3. 임베딩 모델 변경 후 Dimension 오류가 발생합니다.
 - 모델 간 차원(예: 768 vs 1024)이 달라서 발생하는 오류입니다.
 - 새 모델로 적재 시 `-c <새_컬렉션명>`을 지정하거나, `--reset` 플래그로 기존 컬렉션을 초기화하세요.
+
+---
+
+## 11. 변경 및 작업 이력 (CHANGELOG)
+
+전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`KURE-v1`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
