@@ -21,8 +21,8 @@ text_dir = "./data/to_text2/" + target + "_광역 회의록"
 
 
 
-make_model_name="gemma4:e4b" 
-# make_model_name="qwen2.5-coder:7b" 
+make_model_name="gemma4:e2b"
+# make_model_name="gemma4:e4b" 
 
 # model_name="hf.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M:Q4_K_M"
 # model_name="richardyoung/qwen3-4b-instruct-2507-abliterated:latest" 

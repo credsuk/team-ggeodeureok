@@ -191,7 +191,7 @@ def process_single_record(
 def process_council_file(
     input_file: str,
     output_file: str,
-    model_name: str = "gemma4:e4b",
+    model_name: str = "gemma4:e2b",
     base_url: str = "http://localhost:11434",
     sample_limit: int = 0,
     min_char_len: int = 80,
@@ -316,8 +316,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m", "--model",
         type=str,
-        default="gemma4:e4b",
-        help="사용할 Ollama 모델명 (기본: gemma4:e4b)",
+        default="gemma4:e2b",
+        help="사용할 Ollama 모델명 (기본: gemma4:e2b, 고성능 모델 필요 시 gemma4:e4b 선택 가능)",
     )
     parser.add_argument(
         "--sample",
