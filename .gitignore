@@ -1,3 +1,10 @@
 .vscode/
+.idea/
 data/
-__pycache__
+text/
+chroma_db/
+*.zip
+*.tar.gz
+__pycache__/
+*.pyc
+.env
