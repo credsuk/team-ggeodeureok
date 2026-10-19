@@ -10,12 +10,13 @@
 3. [개발 및 실행 환경 설정](#3-개발-및-실행-환경-설정)
 4. [데이터 및 메타데이터 스키마](#4-데이터-및-메타데이터-스키마)
 5. [데이터 전처리 파이프라인 (`scripts/`)](#5-데이터-전처리-파이프라인-scripts)
-6. [ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)](#6-chromadb-벡터-적재-파이프라인-run_ingestpy)
-7. [시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)](#7-시맨틱-검색-및-메타데이터-필터링-query_searchpy)
-8. [임베딩 모델 손쉬운 변경 가이드](#8-임베딩-모델-손쉬운-변경-가이드)
-9. [모듈별 상세 구성 (`src/`)](#9-모듈별-상세-구성-src)
-10. [자주 묻는 질문 및 트러블슈팅](#10-자주-묻는-질문-및-트러블슈팅)
-11. [변경 및 작업 이력 (CHANGELOG)](#11-변경-및-작업-이력-changelog)
+6. [로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)](#6-로컬-llm-정책-메타데이터-추출기-extract_llm_metadatapy)
+7. [ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)](#7-chromadb-벡터-적재-파이프라인-run_ingestpy)
+8. [시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)](#8-시맨틱-검색-및-메타데이터-필터링-query_searchpy)
+9. [임베딩 모델 손쉬운 변경 가이드](#9-임베딩-모델-손쉬운-변경-가이드)
+10. [모듈별 상세 구성 (`src/`)](#10-모듈별-상세-구성-src)
+11. [자주 묻는 질문 및 트러블슈팅](#11-자주-묻는-질문-및-트러블슈팅)
+12. [변경 및 작업 이력 (CHANGELOG)](#12-변경-및-작업-이력-changelog)
 
 ---
 
@@ -40,6 +41,9 @@ team-ggeodeureok/
 │   ├── cleaned_2025_경기도의회.txt
 │   ├── cleaned_2025_충청남도의회.txt
 │   └── cleaned_2025_충청북도의회.txt
+├── data/                      # LLM 추출 정책 메타데이터(JSONL) 저장 디렉토리
+│   ├── cleaned_2024_강원특별자치도의회.jsonl
+│   └── ...
 ├── chroma_db/                 # LangChain Community Chroma 로컬 영구 벡터 저장소
 ├── src/                       # 핵심 처리 모듈 패키지
 │   ├── __init__.py
@@ -54,7 +58,8 @@ team-ggeodeureok/
 │   ├── 3_rules_summary.py     # 파싱 규칙 통일 및 엄격한 CSS 규칙 JSON 빌드
 │   ├── 4_to_csv.py / 4_to_csv_2.py # CSS 규칙 기반 텍스트 추출 및 정제 (TSV 생성)
 │   └── 5_create_master_csv.py # LLM 기반 정책분류/핵심이슈/키워드/요약 메타데이터 생성
-├── run_ingest.py              # 데이터 적재 실행 CLI (ETA 실시간 진행률, 모델 지정 지원)
+├── extract_llm_metadata.py    # 로컬 LLM 정책 키워드/쟁점 추출기 (체크포인트/파일명 기반 자동 저장)
+├── run_ingest.py              # 데이터 적재 실행 CLI (ETA 실시간 진행률, LLM 메타데이터 자동 병합)
 ├── query_search.py            # Chroma 검색 및 메타데이터 필터링 테스트 CLI
 ├── requirements.txt           # 필수 Python 패키지 의존성 목록
 ├── forder.txt                 # 경진대회/제출물 디렉터리 규격 참조 문서
@@ -183,9 +188,56 @@ ChromaDB의 빠른 `where` 연산(단일 및 `$and` 복합 조건)에 최적화�
 
 ---
 
-## 6. ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)
+## 6. 로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)
+
+지방의회 회의록 발언에서 로컬 LLM(Ollama `gemma4:e2b` / `gemma4:e4b` 등)을 활용하여 정책 분야(`policy_category`), 핵심 쟁점(`core_issue`), 2~4어절 복합 정책 키워드(`keywords`), 요약(`summary`)을 추출하여 구조화된 JSONL 데이터로 저장합니다.
+
+### 1) 주요 특징
+- **체크포인트(이어하기) & 실시간 Append**: 이미 처리된 `row_id`는 자동으로 건너뛰며, 중단 후 재실행 시 기존 JSONL 파일 뒤에 실시간으로 안전하게 이어서 덧붙입니다.
+- **원본 파일명 기반 자동 저장**: `--output`을 별도로 지정하지 않아도, 입력 파일명(확장자 제외)에 맞춰 `data/{파일명}.jsonl`로 파일별 자동 분리 저장됩니다.
+- **엄격한 금지 단어 필터링**: '사업', '예산', '지원', '조례' 등 모든 회의록에 흔히 나오는 1단어 명사를 배제하고 "농지제도 혁신", "미래 인구정책"과 같은 실질적 정책 의제 복합키워드만 추출합니다.
+- **멀티스레드 병렬 가속 (`--workers`)**: 여러 LLM 추론 요청을 병렬로 처리하여 속도를 대폭 단축합니다.
+
+### 2) 실행 방법 및 명령어 예시
+
+#### 기본 실행 (강원특별자치도의회, 기존 53건 자동 감지 후 이어서 진행)
+```bash
+# 100건만 테스트로 추가 추출
+python extract_llm_metadata.py --sample 100
+
+# 전체 발언 끝까지 이어서 추출
+python extract_llm_metadata.py --workers 2
+```
+
+#### 타 의회 파일별 추출 (`--input`만 지정하면 `data/{파일명}.jsonl`로 자동 저장)
+```bash
+# 경기도의회 2024 -> data/cleaned_2024_경기도의회.jsonl 로 자동 저장
+python extract_llm_metadata.py --input "text/cleaned_2024_경기도의회.txt" --sample 100 --workers 2
+
+# 충청남도의회 2024 -> data/cleaned_2024_충청남도의회.jsonl 로 자동 저장
+python extract_llm_metadata.py --input "text/cleaned_2024_충청남도의회.txt" --sample 100 --workers 2
+
+# 충청북도의회 2024 -> data/cleaned_2024_충청북도의회.jsonl 로 자동 저장
+python extract_llm_metadata.py --input "text/cleaned_2024_충청북도의회.txt" --sample 100 --workers 2
+```
+
+### 3) CLI 옵션 플래그
+| 인자 | 기본값 | 설명 |
+| :--- | :--- | :--- |
+| `--input` | `text/cleaned_2024_강원특별자치도의회.txt` | 입력 TSV 회의록 파일 경로 |
+| `--output` | `data/{입력파일명}.jsonl` | 출력 JSONL 파일 경로 (미지정 시 입력 파일명 기반 자동 생성) |
+| `-m`, `--model` | `gemma4:e2b` | 사용할 Ollama 로컬 LLM 모델명 (고성능 필요 시 `gemma4:e4b` 등) |
+| `--sample` | `0` (전체) | 처리할 발언 개수 (`0`이면 전체 처리) |
+| `--min-len` | `80` | 최소 발언 길이 (글자 수 미달 의전성 멘트 제외) |
+| `--workers` | `2` | 동시 병렬 요청 워커(스레드) 수 |
+| `--url` | `http://localhost:11434` | Ollama API 서버 엔드포인트 주소 |
+
+---
+
+## 7. ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)
 
 정제된 회의록 텍스트(`text/*.txt`)를 읽어 청킹 및 임베딩을 수행하고, 로컬 `chroma_db/`에 배치 스트리밍 방식으로 적재합니다.
+> 💡 **LLM 정책 메타데이터 자동 병합**: `data/*.jsonl`에 생성된 모든 의회별 정책 키워드/분야/쟁점 데이터가 있는 경우, 적재 시 자동으로 감지하여 ChromaDB 벡터 청크의 메타데이터로 함께 결합됩니다.
 
 ### 1) 빠른 동작 검증 (테스트 샘플 모드)
 전체 적재 전, 파일당 100행만 추출하여 적재 파이프라인이 정상 동작하는지 테스트합니다:
@@ -228,7 +280,7 @@ python run_ingest.py -m ko-sbert -c council_ko_sbert --reset
 
 ---
 
-## 7. 시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)
+## 8. 시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)
 
 적재된 ChromaDB 벡터스토어를 대상으로 자연어 질의와 메타데이터 필터를 조합하여 유사도 기반 검색을 수행합니다.
 
@@ -268,7 +320,7 @@ python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council
 
 ---
 
-## 8. 임베딩 모델 손쉬운 변경 가이드
+## 9. 임베딩 모델 손쉬운 변경 가이드
 
 본 프로젝트는 복잡한 코드 수정 없이 **프리셋 별칭**, **CLI 인자**, **환경변수**, **설정 파일**을 통해 임베딩 모델을 자유롭게 변경할 수 있도록 지원합니다.
 
@@ -338,7 +390,7 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 9. 모듈별 상세 구성 (`src/`)
+## 10. 모듈별 상세 구성 (`src/`)
 
 - **[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py)**:
   - 경로 및 하이퍼파라미터 정의
@@ -359,7 +411,7 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 10. 자주 묻는 질문 및 트러블슈팅
+## 11. 자주 묻는 질문 및 트러블슈팅
 
 ### Q1. `ModuleNotFoundError: No module named 'torch'` 오류가 발생합니다.
 - Conda 가상환경이 활성화되지 않았을 때 발생합니다. `conda activate project01`을 실행하세요.
@@ -377,6 +429,7 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 11. 변경 및 작업 이력 (CHANGELOG)
+## 12. 변경 및 작업 이력 (CHANGELOG)
 
 전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
+

@@ -9,7 +9,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from tqdm import tqdm
 
 from src.config import (
@@ -41,32 +41,35 @@ def format_seconds(seconds: float) -> str:
         return f"{s}초"
 
 
-def load_llm_metadata_map(meta_path: Optional[Path]) -> Dict[Tuple[str, int], Dict[str, Any]]:
+def load_llm_metadata_map(meta_paths: Optional[List[Path]]) -> Dict[Tuple[str, int], Dict[str, Any]]:
     """
-    LLM 추출 메타데이터 파일(JSONL)을 읽어 (assembly, row_id) -> 메타데이터 딕셔너리로 매핑
+    LLM 추출 메타데이터 파일들(JSONL)을 읽어 (assembly, row_id) -> 메타데이터 딕셔너리로 매핑
     """
     meta_map = {}
-    if not meta_path or not meta_path.exists():
+    valid_paths = [p for p in (meta_paths or []) if p and p.exists()]
+    if not valid_paths:
         return meta_map
 
-    print(f">> [메타데이터 로드] LLM 정책 메타데이터 파일 발견: {meta_path.name}")
+    file_names = ", ".join(p.name for p in valid_paths)
+    print(f">> [메타데이터 로드] LLM 정책 메타데이터 파일 감지 ({len(valid_paths)}개): {file_names}")
     count = 0
-    with open(meta_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                data = json.loads(line)
-                row_id = int(data.get("row_id", 0))
-                assembly = data.get("assembly", "")
-                if row_id > 0:
-                    meta_map[(assembly, row_id)] = data
-                    # assembly가 일치하지 않아도 row_id로 폴백할 수 있도록 이중 등록
-                    meta_map[("", row_id)] = data
-                    count += 1
-            except Exception:
-                pass
+    for meta_path in valid_paths:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    row_id = int(data.get("row_id", 0))
+                    assembly = data.get("assembly", "")
+                    if row_id > 0:
+                        meta_map[(assembly, row_id)] = data
+                        if ("", row_id) not in meta_map:
+                            meta_map[("", row_id)] = data
+                        count += 1
+                except Exception:
+                    pass
 
     print(f"   -> 총 {count:,}건의 정밀 정책 메타데이터(키워드/쟁점/분야)를 ChromaDB 색인용으로 매핑했습니다.\n")
     return meta_map
@@ -88,10 +91,15 @@ def ingest_data(
     resolved_model = resolve_embedding_model(model_name)
     target_collection = collection_name or COLLECTION_NAME
 
-    # LLM 정책 메타데이터 파일 자동 감지 (지정되지 않은 경우 기본 경로 확인)
-    default_meta_path = BASE_DIR / "data" / "gangwon_policy_metadata.jsonl"
-    resolved_meta_path = meta_file or (default_meta_path if default_meta_path.exists() else None)
-    llm_meta_map = load_llm_metadata_map(resolved_meta_path)
+    # LLM 정책 메타데이터 파일 자동 감지 (지정되지 않은 경우 data/*.jsonl 전체 로드)
+    if meta_file:
+        resolved_meta_paths = [meta_file]
+    else:
+        # data 폴더 내 모든 jsonl 파일 자동 감지 (중복 제외)
+        data_jsonls = sorted(list((BASE_DIR / "data").glob("*.jsonl")))
+        resolved_meta_paths = data_jsonls
+
+    llm_meta_map = load_llm_metadata_map(resolved_meta_paths)
 
     print("=" * 65)
     print(" [지방의회 회의록 ChromaDB 적재 파이프라인] ")

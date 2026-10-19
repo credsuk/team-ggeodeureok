@@ -310,8 +310,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         type=str,
-        default="data/gangwon_policy_metadata.jsonl",
-        help="출력 JSONL 파일 경로",
+        default="",
+        help="출력 JSONL 파일 경로 (미지정 시 data/{입력파일명}.jsonl 자동 생성)",
     )
     parser.add_argument(
         "-m", "--model",
@@ -347,12 +347,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
 
+    input_path = Path(args.input)
+    if not args.output:
+        # 입력 파일의 stem(파일명에서 확장자 제외)을 기본 jsonl 이름으로 사용
+        output_file = str(Path("data") / f"{input_path.stem}.jsonl")
+    else:
+        output_file = args.output
+
     process_council_file(
-        input_file=args.input,
-        output_file=args.output,
+        input_file=str(input_path),
+        output_file=output_file,
         model_name=args.model,
         base_url=args.url,
         sample_limit=args.sample,
         min_char_len=args.min_len,
         max_workers=args.workers,
     )
+
