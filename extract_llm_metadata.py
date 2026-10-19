@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input",
         type=str,
-        default="text/cleaned_2024_강원특별자치도의회.txt",
+        default="change_text/2024_광역 회의록/cleaned_2024_강원특별자치도의회.txt",
         help="입력 TSV 회의록 파일",
     )
     parser.add_argument(
