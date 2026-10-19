@@ -261,14 +261,19 @@ def process_council_file(
 
     print(f">> 신규 처리 대상: {len(records_to_process):,}건 (동시 {max_workers}개 병렬 워커 가동)\n")
 
-    # 4. 멀티스레드 병렬 실행 및 실시간 파일 기록
+    # 4. 멀티스레드 병렬 실행 및 실시간 파일 기록 (안전한 Ctrl+C 중단 지원)
     os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
     file_lock = threading.Lock()
     success_count = 0
+    processed_count = 0
+    interrupted = False
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    future_to_rec = {}
 
     with open(output_file, "a", encoding="utf-8") as out_f:
         with tqdm(total=len(records_to_process), desc=f"[{selected_model}] 메타데이터 추출", unit="건") as pbar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            try:
                 # 작업 제출
                 future_to_rec = {
                     executor.submit(process_single_record, rec, selected_model, base_url): rec
@@ -284,19 +289,38 @@ def process_council_file(
                         with file_lock:
                             out_f.write(json.dumps(res, ensure_ascii=False) + "\n")
                             out_f.flush()
-                    except Exception as e:
+                        processed_count += 1
+                    except Exception:
                         pass
                     finally:
                         pbar.update(1)
 
+            except (KeyboardInterrupt, SystemExit):
+                interrupted = True
+                print("\n\n[중단 알림] Ctrl + C 가 감지되었습니다.")
+                print(">> 대기 중인 작업을 취소하고 현재까지의 진행 상황을 안전하게 저장합니다...")
+                try:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                except TypeError:
+                    executor.shutdown(wait=False)
+                for f in future_to_rec:
+                    f.cancel()
+            finally:
+                if not interrupted:
+                    executor.shutdown(wait=True)
+
+    status_title = " [중단 처리 완료 결과 보고서] " if interrupted else " [추출 완료 결과 보고서] "
     print("\n" + "=" * 65)
-    print(" [추출 완료 결과 보고서] ")
+    print(status_title)
     print("=" * 65)
-    print(f" * 신규 처리 완료 : {len(records_to_process):,}건")
+    print(f" * 이번 세션 처리 : {processed_count:,}건{' (중단됨)' if interrupted else ''}")
     print(f" * 유효 정책 발언 : {success_count:,}건")
     print(f" * 총 누적 데이터 : {len(load_processed_row_ids(output_file)):,}건")
     print(f" * 저장된 파일    : {output_file}")
+    if interrupted:
+        print(" * 이어하기 안내  : 동일한 명령어를 다시 실행하시면 중단된 지점부터 이어서 진행됩니다.")
     print("=" * 65)
+
 
 
 if __name__ == "__main__":
