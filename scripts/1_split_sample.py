@@ -1,94 +1,152 @@
+"""지방의회 회의록 JSON에서 LLM 규칙 학습용 본문 HTML 샘플 생성.
+
+- MINTS_HTML 값에 실제 발언/안건 본문이 들어 있는지 확인하고 추출한다.
+- 원본의 첫 10,000자를 무작정 절단하지 않는다.
+- 기존 sample_*.txt 출력명 및 _constant 설정을 유지한다.
+"""
+import glob
+import html
 import json
 import os
-import glob
 import random
-from bs4 import BeautifulSoup
+import re
+import time
+import traceback
+from bs4 import BeautifulSoup, Comment
 import _constant as constant
+from pipeline_timing import start_step, record_file, finish_step
 
-def extract_samples_from_folder(input_dir="./input_data", output_dir="./sample_outputs", num_records=2):
-    """지정된 폴더의 모든 JSON 파일에서 LLM 분석용 HTML 샘플을 각각 랜덤 추출하여 저장"""
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+# 타 사이트에서도 공통으로 사용되는 구조적 힌트. 정확한 선택자는 2단계 LLM이 판단한다.
+TRANSCRIPT_HINT = re.compile(r"(?:sMan|speaker|speech|utterance|statement|minutes|record[-_]?content|record[-_]?body|transcript|view[-_]?content|con[-_]?view|an\d+)", re.I)
+SPEECH_HINT = re.compile(r"(?:○\s*[^\n]{2,30}|◯\s*[^\n]{2,30}|(?:위원장|의장|의원|국장|과장|교육감|부위원장)\s*[가-힣]{2,5}\s*(?:의원|위원|:|\s))")
+NOISE = re.compile(r"(?:sidebar|navbar|navigation|breadcrumb|footer|header|toolbar|menu|pagination|related|sns)", re.I)
 
-    json_files = glob.glob(os.path.join(input_dir, "*.json"))
-    
-    if not json_files:
-        print(f"오류: '{input_dir}' 폴더에서 JSON 파일을 찾을 수 없습니다.")
+
+def prepare_html(raw_html: str):
+    raw_html = html.unescape(raw_html) if '&lt;' in raw_html or '&gt;' in raw_html else raw_html
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    for node in soup.find_all(string=lambda s: isinstance(s, Comment)):
+        node.extract()
+    for node in soup(['script', 'style', 'noscript', 'meta', 'link', 'header', 'nav', 'footer']):
+        node.decompose()
+    # Aside 또는 form도 의회 사이트에 따라 본문을 담을 수 있어 조건부로 제거한다.
+    for tag in list(soup.find_all(['aside', 'form'])):
+        # 상위 aside/form 제거 시 내부 태그도 분해되므로 살아 있는 노드만 접근한다.
+        if tag.name is None or not isinstance(tag.attrs, dict):
+            continue
+        attrs = ' '.join(tag.get('class') or []) + ' ' + (tag.get('id') or '')
+        if NOISE.search(attrs) or (tag.name == 'aside' and not TRANSCRIPT_HINT.search(attrs)):
+            tag.decompose()
+    for tag in list(soup.find_all(True)):
+        # decompose()는 자식 태그까지 분해한다. 미리 수집한 자식은 attrs=None이 된다.
+        if tag.name is None or not isinstance(tag.attrs, dict):
+            continue
+        classes = tag.get('class') or []
+        element_id = tag.get('id') or ''
+        attrs = ' '.join(classes) + ' ' + element_id
+        if NOISE.search(attrs) and not TRANSCRIPT_HINT.search(attrs):
+            tag.decompose()
+    return soup
+
+
+def find_transcript_region(soup):
+    """증거가 있을 때만 본문 영역을 반환. 불확실하면 None."""
+    candidates = []
+    for tag in soup.find_all(['main', 'article', 'section', 'div', 'table']):
+        txt = tag.get_text(' ', strip=True)
+        if len(txt) < 120:
+            continue
+        attrs = ' '.join(tag.get('class') or []) + ' ' + (tag.get('id') or '')
+        marker_count = len(SPEECH_HINT.findall(txt))
+        structure = bool(TRANSCRIPT_HINT.search(attrs))
+        descendant_hint = len(tag.find_all(attrs={'class': TRANSCRIPT_HINT})) + len(tag.find_all(attrs={'id': TRANSCRIPT_HINT}))
+        # 구조적/언어적 증거가 없는 단순한 대형 div는 본문으로 선택하지 않는다.
+        if not (marker_count >= 2 or descendant_hint >= 2 or (structure and marker_count >= 1)):
+            continue
+        # 무조건 큰 부모 요소를 선택하지 않도록 내용과 밀도를 함께 평가
+        score = min(marker_count, 30) * 3 + min(descendant_hint, 30) * 2 + (8 if structure else 0)
+        score -= min(len(txt) // 12000, 10)
+        candidates.append((score, -len(str(tag)), tag))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: (item[0], item[1]))[2]
+
+
+def shorten_long_text(region, limit=300):
+    """문장 선두는 보존하고 길이만 제한한다. 원본 노드는 변경하지 않도록 copy 사용."""
+    copy = BeautifulSoup(str(region), 'html.parser')
+    for node in list(copy.find_all(string=True)):
+        value = str(node)
+        if len(value) > limit:
+            node.replace_with(value[:limit] + '…[발언 내용 일부 생략]')
+    return str(copy)
+
+
+def extract_samples_from_folder(input_dir='./input_data', output_dir='./sample_outputs', num_records=2):
+    run_id, step_started_at = start_step("1")
+    os.makedirs(output_dir, exist_ok=True)
+    files = sorted(glob.glob(os.path.join(input_dir, '*.json')))
+    if not files:
+        print(f"[오류] JSON 파일 없음: {input_dir}")
+        finish_step(run_id, "1", step_started_at)
         return
-
-    print(f"총 {len(json_files)}개의 파일에서 중간 영역 샘플 랜덤 추출을 시작합니다...\n")
-
-    for input_file in json_files:
-        base_name = os.path.basename(input_file)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_sample_file = os.path.join(output_dir, f"sample_{file_name_without_ext}.txt")
-        
+    for path in files:
+        file_started = time.perf_counter()
+        file_started_at = time.strftime('%Y-%m-%dT%H:%M:%S%z')
+        base = os.path.splitext(os.path.basename(path))[0]
+        status = "error"
+        item_count = 0
         try:
-            with open(input_file, 'r', encoding='utf-8') as f:
+            with open(path, encoding='utf-8') as f:
                 data = json.load(f)
-                
             records = data if isinstance(data, list) else [data]
-            
-            # -----------------------------------------------------------
-            # [변경점] 처음 5개와 마지막 5개를 제외하고 중간 영역에서 랜덤 추출
-            # -----------------------------------------------------------
-            if len(records) > 10:
-                # 앞 5개, 뒤 5개를 자른 중간 레코드들
-                middle_records = records[5:-5]
+            item_count = len(records)
+            middle = records[5:-5] if len(records) > 10 else records
+            # 랜덤 '추출'이 아니라, 랜덤 순서로 검토하여 본문이 확인되는 n개를 찾음
+            indices = list(range(len(middle)))
+            random.shuffle(indices)
+            samples = []
+            for idx in indices:
+                record = middle[idx]
+                if not isinstance(record, dict) or not isinstance(record.get('MINTS_HTML'), str):
+                    continue
+                try:
+                    soup = prepare_html(record['MINTS_HTML'])
+                    region = find_transcript_region(soup)
+                    if region is None:
+                        continue
+                    reduced = shorten_long_text(region)
+                except Exception as record_exc:
+                    print(f'[레코드 오류] {base} / index={idx}: {type(record_exc).__name__}: {record_exc}')
+                    traceback.print_exc()
+                    continue
+                # HTML 태그 중간에서 자르지 않는다. 긴 경우 먼저 노드 텍스트를 축약.
+                samples.append(reduced)
+                if len(samples) >= num_records:
+                    break
+            if samples:
+                out = os.path.join(output_dir, f'sample_{base}.txt')
+                with open(out, 'w', encoding='utf-8') as f:
+                    for i, sample in enumerate(samples, start=1):
+                        f.write(f'--- [Random Sample Record {i} from {os.path.basename(path)}] ---\n')
+                        f.write(sample + '\n\n')
+                print(f'[성공] {base}: {len(samples)}건 본문 후보 저장 -> {out}')
+                status = "success"
             else:
-                # 만약 전체 레코드가 10개 이하라면 자르지 않고 전체를 대상으로 함
-                middle_records = records
-                
-            # 지정된 수(num_records)만큼 겹치지 않게 랜덤 추출
-            sample_size = min(num_records, len(middle_records))
-            selected_records = random.sample(middle_records, sample_size)
-            # -----------------------------------------------------------
-            
-            sample_texts = []
-            for record in selected_records:
-                html_content = record.get("MINTS_HTML", "")
-                if html_content:
-                    # [변경] LLM에게 의미 없는 윗부분 껍데기 태그를 먼저 제거
-                    soup = BeautifulSoup(html_content, "html.parser")
-                    for tag in soup(["script", "style", "head", "noscript", "form"]):
-                        tag.decompose()
-                    
-                    # 정제된 HTML을 문자열로 변환 후 20000자까지 넉넉하게 자르기
-                    clean_html = str(soup)
-                    # 의미 없는 껍데기 태그 제거
-                    soup = BeautifulSoup(html_content, "html.parser")
-                    for tag in soup(["script", "style", "head", "noscript", "form"]):
-                        tag.decompose()
-                    
-                    # [핵심] 긴 발언 내용을 모두 15글자로 잘라서 "읽을거리"를 없앰
-                    for string_node in soup.find_all(string=True):
-                        text = string_node.strip()
-                        if len(text) > 15:
-                            # 텍스트를 강제로 자르고 생략 표시
-                            string_node.replace_with(text[:15] + "...[내용 생략됨]")
-                    
-                    clean_html = str(soup)
-                    sample_texts.append(clean_html[:10000])
-            
-            if sample_texts:
-                with open(output_sample_file, 'w', encoding='utf-8') as f:
-                    for idx, text in enumerate(sample_texts):
-                        f.write(f"--- [Random Sample Record {idx+1} from {base_name}] ---\n")
-                        f.write(text + "\n\n")
-                print(f"[성공] '{base_name}' -> '{os.path.basename(output_sample_file)}' 생성 완료")
-            else:
-                print(f"[알림] '{base_name}': 파싱할 HTML(MINTS_HTML) 데이터를 찾을 수 없음")
-                
-        except Exception as e:
-            print(f"[오류] '{base_name}' 처리 중 문제 발생: {e}")
+                print(f'[확인 필요] {base}: 발언 본문 후보를 찾지 못함. 원본 MINTS_HTML 구조 확인 필요')
+                status = "no_sample"
+        except Exception as exc:
+            print(f'[오류] {base}: {type(exc).__name__}: {exc}')
+            traceback.print_exc()
+        finally:
+            record_file(run_id, "1", path, time.perf_counter() - file_started,
+                        status, item_count, file_started_at)
+    finish_step(run_id, "1", step_started_at)
 
-    print(f"\n모든 파일의 샘플 추출이 완료되었습니다. 결과물은 '{output_dir}' 폴더를 확인하세요.")
 
-# 실행 파이프라인
-if __name__ == "__main__":
+if __name__ == '__main__':
     extract_samples_from_folder(
         input_dir=constant.org_dir,
         output_dir=constant.sample_dir,
-        num_records=constant.records_num
+        num_records=constant.records_num,
     )
