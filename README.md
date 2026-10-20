@@ -231,6 +231,7 @@ python extract_llm_metadata.py --input "text/cleaned_2024_충청북도의회.txt
 | `--min-len` | `80` | 최소 발언 길이 (글자 수 미달 의전성 멘트 제외) |
 | `--workers` | `2` | 동시 병렬 요청 워커(스레드) 수 |
 | `--url` | `http://localhost:11434` | Ollama API 서버 엔드포인트 주소 |
+| `--cleanup` | `False` | 기존 `data/*.jsonl` 파일들의 `utterance_preview` 필드를 일괄 제거하고 종료 |
 
 ---
 

@@ -124,20 +124,68 @@ def extract_metadata_with_llm(
 
 
 def load_processed_row_ids(output_file: str) -> Set[int]:
-    """이미 처리되어 저장된 row_id 집합을 로드 (체크포인트 이어하기용)"""
+    """
+    이미 처리되어 저장된 row_id 집합을 로드 (체크포인트 이어하기용).
+    동시에 기존 결과 파일에 남아있을 수 있는 불필요한 'utterance_preview' 필드를 자동으로 일괄 제거하여 정제합니다.
+    """
     processed = set()
-    if os.path.exists(output_file):
-        with open(output_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    try:
-                        data = json.loads(line)
-                        if "row_id" in data:
-                            processed.add(int(data["row_id"]))
-                    except Exception:
-                        pass
+    if not os.path.exists(output_file):
+        return processed
+
+    needs_rewrite = False
+    cleaned_lines = []
+    removed_count = 0
+
+    with open(output_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line_str = line.strip()
+            if not line_str:
+                continue
+            try:
+                data = json.loads(line_str)
+                if "row_id" in data:
+                    processed.add(int(data["row_id"]))
+
+                # 기존 레코드에 utterance_preview가 포함되어 있다면 제거
+                if "utterance_preview" in data:
+                    del data["utterance_preview"]
+                    needs_rewrite = True
+                    removed_count += 1
+                    cleaned_lines.append(json.dumps(data, ensure_ascii=False) + "\n")
+                else:
+                    cleaned_lines.append(line_str + "\n")
+            except Exception:
+                cleaned_lines.append(line_str + "\n")
+
+    # 불필요한 필드가 발견되어 수정된 경우 파일 자동 갱신
+    if needs_rewrite:
+        tmp_file = output_file + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            f.writelines(cleaned_lines)
+        os.replace(tmp_file, output_file)
+        print(f"[데이터 자동 정제] '{output_file}'의 기존 {removed_count:,}건에서 'utterance_preview' 필드를 제거했습니다.")
+
     return processed
+
+
+def cleanup_all_jsonl_files(data_dir: str = "data"):
+    """data 폴더 내 모든 jsonl 파일에서 utterance_preview 필드를 일괄 제거"""
+    target_path = Path(data_dir)
+    if not target_path.exists():
+        print(f"[알림] '{data_dir}' 폴더가 존재하지 않습니다.")
+        return
+
+    files = list(target_path.glob("*.jsonl"))
+    if not files:
+        print(f"[알림] '{data_dir}' 폴더 내에 JSONL 파일이 없습니다.")
+        return
+
+    print("=" * 65)
+    print(" [JSONL 메타데이터 파일 일괄 정제 (utterance_preview 제거)] ")
+    print("=" * 65)
+    for fpath in files:
+        load_processed_row_ids(str(fpath))
+    print("=" * 65 + "\n")
 
 
 def process_single_record(
@@ -365,9 +413,18 @@ if __name__ == "__main__":
         default="http://localhost:11434",
         help="Ollama API 서버 주소 (기본: http://localhost:11434)",
     )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="기존 data/*.jsonl 파일들에서 utterance_preview 필드를 일괄 제거하고 종료",
+    )
 
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
+
+    if args.cleanup:
+        cleanup_all_jsonl_files("data")
+        sys.exit(0)
 
     input_path = Path(args.input)
     if not args.output:
