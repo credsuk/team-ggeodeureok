@@ -170,7 +170,6 @@ def process_single_record(
             "core_issue": meta.get("core_issue", ""),
             "keywords": meta.get("keywords", []),
             "summary": meta.get("summary", ""),
-            "utterance_preview": record["utterance"][:100] + "...",
         }
     else:
         return {
@@ -184,7 +183,6 @@ def process_single_record(
             "core_issue": "추출 실패",
             "keywords": [],
             "summary": "",
-            "utterance_preview": record["utterance"][:100] + "...",
         }
 
 
