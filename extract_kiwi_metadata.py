@@ -364,25 +364,40 @@ def process_council_file_with_kiwi(
     # 2. 입력 데이터 수집
     records_to_process = []
     with open(input_file, "r", encoding="utf-8-sig") as f:
-        f.readline()  # 헤더
+        header_line = f.readline()  # 헤더
+        headers = [h.strip().lstrip("\ufeff") for h in header_line.rstrip("\r\n").split("\t")]
+        header_map = {name: idx for idx, name in enumerate(headers)}
+
+        is_new_9col = ("MTGNM" in header_map and "MINTS_NM" in header_map) or (len(headers) >= 9)
+
+        idx_date = header_map.get("MTG_DE", header_map.get("date", 0))
+        idx_assembly = header_map.get("RASMBLY_NM", header_map.get("assembly", 1))
+        idx_agenda = header_map.get("agenda_title", 4 if is_new_9col else 2)
+        idx_role = header_map.get("speaker_role", 5 if is_new_9col else 3)
+        idx_name = header_map.get("speaker_name", 6 if is_new_9col else 4)
+        idx_type = header_map.get("speaker_type", 7 if is_new_9col else 5)
+        idx_utterance = header_map.get("utterance", 8 if is_new_9col else 6)
+
+        min_cols = max(idx_date, idx_assembly, idx_agenda, idx_role, idx_name, idx_type, idx_utterance) + 1
+
         for row_id, line in enumerate(f, start=1):
             if row_id in processed_ids:
                 continue
 
             parts = line.rstrip("\r\n").split("\t")
-            if len(parts) >= 7:
-                utterance = parts[6].strip()
-                agenda = parts[2].replace("\xa0", " ").strip()
-                role = parts[3].strip()
-                name = parts[4].strip()
+            if len(parts) >= min_cols:
+                utterance = parts[idx_utterance].strip()
+                agenda = parts[idx_agenda].replace("\xa0", " ").strip()
+                role = parts[idx_role].strip()
+                name = parts[idx_name].strip()
                 records_to_process.append({
                     "row_id": row_id,
-                    "date": parts[0].strip(),
-                    "assembly": parts[1].strip(),
+                    "date": parts[idx_date].strip(),
+                    "assembly": parts[idx_assembly].strip(),
                     "agenda_title": agenda,
                     "speaker_role": role,
                     "speaker_name": name,
-                    "speaker_type": parts[5].strip(),
+                    "speaker_type": parts[idx_type].strip(),
                     "utterance": utterance,
                 })
                 if 0 < sample_limit <= len(records_to_process):
