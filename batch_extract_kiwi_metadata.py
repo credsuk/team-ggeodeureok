@@ -1,6 +1,6 @@
 """
 change_text 디렉토리 내의 모든 광역의회 회의록(.txt)을 Kiwi 형태소 분석기를 활용하여
-data2 디렉토리에 JSONL 메타데이터 파일로 일괄 변환(Batch Ingest)하는 스크립트.
+data 디렉토리에 JSONL 메타데이터 파일로 일괄 변환(Batch Ingest)하는 스크립트.
 """
 
 import argparse
@@ -66,7 +66,7 @@ def collect_target_files(
 
 def run_batch_extraction(
     input_dir: str = "change_text",
-    output_dir: str = "data2",
+    output_dir: str = "data",
     pattern: str = "*.txt",
     year_filter: str = "",
     sample_per_file: int = 0,
@@ -194,7 +194,7 @@ def run_batch_extraction(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="change_text 내의 모든 txt 회의록을 data2 폴더의 jsonl 파일로 일괄 변환하는 스크립트"
+        description="change_text 내의 모든 txt 회의록을 data 폴더의 jsonl 파일로 일괄 변환하는 스크립트"
     )
     parser.add_argument(
         "--input-dir",
@@ -205,8 +205,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="data2",
-        help="출력 JSONL 저장 루트 디렉토리 (기본: data2)",
+        default="data",
+        help="출력 JSONL 저장 루트 디렉토리 (기본: data)",
     )
     parser.add_argument(
         "--pattern",
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         "--flat",
         dest="preserve_structure",
         action="store_false",
-        help="하위 폴더를 만들지 않고 data2 바로 아래에 플랫하게 저장",
+        help="하위 폴더를 만들지 않고 data 바로 아래에 플랫하게 저장",
     )
 
     args = parser.parse_args()
