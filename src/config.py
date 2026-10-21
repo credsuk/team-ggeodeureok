@@ -8,8 +8,10 @@ from typing import Optional
 # 기본 디렉토리 경로
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 데이터 디렉토리 경로 (data/text 또는 text 자동 감지)
-if (BASE_DIR / "data" / "text").exists():
+# 데이터 디렉토리 경로 (우선순위에 따라 자동 감지)
+if (BASE_DIR / "change_text" / "2024_광역 회의록").exists():
+    DATA_DIR = BASE_DIR / "change_text" / "2024_광역 회의록"
+elif (BASE_DIR / "data" / "text").exists():
     DATA_DIR = BASE_DIR / "data" / "text"
 elif (BASE_DIR / "text").exists():
     DATA_DIR = BASE_DIR / "text"
@@ -18,9 +20,40 @@ else:
 
 CHROMA_DIR = BASE_DIR / "chroma_db"
 
+# 기본 벡터 DB 선택 ('chroma' 또는 'pgvector')
+DEFAULT_DB_TYPE = os.getenv("DB_TYPE", "chroma").lower()
+
 # ChromaDB 기본 컬렉션 설정
 COLLECTION_NAME = "local_council_minutes"
 DISTANCE_METRIC = "cosine"
+
+# PostgreSQL / pgvector 접속 설정
+PG_HOST = os.getenv("PG_HOST", "localhost")
+PG_PORT = int(os.getenv("PG_PORT", "5432"))
+PG_DATABASE = os.getenv("PG_DATABASE", "vectordb")
+PG_USER = os.getenv("PG_USER", "postgres")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
+PG_COLLECTION_NAME = os.getenv("PG_COLLECTION_NAME", "local_council_minutes")
+
+
+def get_pg_connection_string(
+    user: Optional[str] = None,
+    password: Optional[str] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    database: Optional[str] = None,
+) -> str:
+    """PostgreSQL pgvector용 SQLAlchemy 연결 문자열 생성"""
+    env_conn = os.getenv("PG_CONNECTION_STRING")
+    if env_conn and not (user or host or database):
+        return env_conn
+
+    u = user or PG_USER
+    pw = password or PG_PASSWORD
+    h = host or PG_HOST
+    p = port or PG_PORT
+    db = database or PG_DATABASE
+    return f"postgresql+psycopg2://{u}:{pw}@{h}:{p}/{db}"
 
 # 청킹(Chunking) 하이퍼파라미터
 CHUNK_SIZE = 800          # 장문 발언 서브청킹 기준 크기 (문자 수)

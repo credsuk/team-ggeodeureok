@@ -20,13 +20,16 @@ from src.config import (
     CHUNK_SIZE,
     CHUNK_OVERLAP,
     COLLECTION_NAME,
+    DEFAULT_DB_TYPE,
     EMBEDDING_MODEL_NAME,
     EMBEDDING_PRESETS,
+    get_pg_connection_string,
     resolve_embedding_model,
 )
 from src.parser import parse_tsv_row
 from src.chunker import CouncilMinuteChunker
 from src.indexer import ChromaIndexer
+from src.pg_indexer import PGVectorIndexer
 
 
 def format_seconds(seconds: float) -> str:
@@ -86,10 +89,13 @@ def ingest_data(
     collection_name: Optional[str] = None,
     meta_file: Optional[Path] = None,
     reset: bool = False,
+    db_type: str = "chroma",
+    pg_conn: Optional[str] = None,
 ):
     start_time = time.time()
     resolved_model = resolve_embedding_model(model_name)
     target_collection = collection_name or COLLECTION_NAME
+    selected_db = db_type.lower()
 
     # LLM 정책 메타데이터 파일 자동 감지 (지정되지 않은 경우 data/*.jsonl 전체 로드)
     if meta_file:
@@ -102,12 +108,13 @@ def ingest_data(
     llm_meta_map = load_llm_metadata_map(resolved_meta_paths)
 
     print("=" * 65)
-    print(" [지방의회 회의록 ChromaDB 적재 파이프라인] ")
+    print(f" [지방의회 회의록 {selected_db.upper()} 적재 파이프라인] ")
     print("=" * 65)
+    print(f" * 벡터 데이터베이스: {selected_db.upper()}")
     print(f" * 데이터 경로      : {data_dir}")
     print(f" * 임베딩 모델      : {resolved_model}")
     print(f" * 대상 컬렉션      : {target_collection}")
-    print(f" * Chroma 배치 크기 : {batch_size}")
+    print(f" * 배치 크기        : {batch_size}")
     print(f" * 청크 크기 / 중첩 : {chunk_size}자 / {chunk_overlap}자")
     print(f" * 최소 발언 필터링 : {min_char_len}자 미만 제외")
     print(f" * LLM 메타데이터   : {'적용 중 (' + str(len(llm_meta_map)//2) + '건)' if llm_meta_map else '미적용 (일반 TSV 메타데이터만 사용)'}")
@@ -137,11 +144,19 @@ def ingest_data(
     print(f">> 총 {len(txt_files)}개 파일 | 처리 대상: 총 {grand_total_target_lines:,}행\n")
 
     # 2. 인덱서 및 청커 초기화
-    indexer = ChromaIndexer(
-        collection_name=target_collection,
-        embedding_model_name=resolved_model,
-        reset=reset,
-    )
+    if selected_db == "pgvector":
+        indexer = PGVectorIndexer(
+            connection_string=pg_conn or get_pg_connection_string(),
+            collection_name=target_collection,
+            embedding_model_name=resolved_model,
+            pre_delete_collection=reset,
+        )
+    else:
+        indexer = ChromaIndexer(
+            collection_name=target_collection,
+            embedding_model_name=resolved_model,
+            reset=reset,
+        )
     chunker = CouncilMinuteChunker(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -245,17 +260,31 @@ def ingest_data(
     elapsed_total = time.time() - start_time
     print("-" * 65)
     print(" [최종 적재 결과 보고서]")
+    print(f" * 벡터 데이터베이스: {selected_db.upper()}")
     print(f" * 총 소요 시간     : {format_seconds(elapsed_total)} ({elapsed_total:.1f}초)")
     print(f" * 처리된 원본 행   : {grand_total_target_lines:,}행")
     print(f" * 생성/적재된 청크 : {total_chunks_added:,}개")
     print(f" * 평균 처리 속도   : {grand_total_target_lines / elapsed_total:.1f}행/초")
-    print(f" * Chroma 전체 청크 : {indexer.count():,}개 (컬렉션: {target_collection})")
+    print(f" * {selected_db.upper()} 전체 청크 : {indexer.count():,}개 (컬렉션: {target_collection})")
     print("=" * 65)
 
 
 if __name__ == "__main__":
     preset_help = ", ".join([f"'{k}' ({v})" for k, v in EMBEDDING_PRESETS.items()])
-    parser = argparse.ArgumentParser(description="회의록 ChromaDB 적재 도구")
+    parser = argparse.ArgumentParser(description="회의록 벡터 데이터베이스(ChromaDB / pgvector) 적재 도구")
+    parser.add_argument(
+        "--db",
+        type=str,
+        choices=["chroma", "pgvector"],
+        default=DEFAULT_DB_TYPE,
+        help="사용할 벡터 DB ('chroma' 또는 'pgvector')",
+    )
+    parser.add_argument(
+        "--pg-conn",
+        type=str,
+        default=None,
+        help="PostgreSQL 연결 문자열 (미지정 시 환경변수 또는 config 기본값 사용)",
+    )
     parser.add_argument(
         "--sample-lines",
         type=int,
@@ -311,4 +340,6 @@ if __name__ == "__main__":
         collection_name=args.collection,
         meta_file=meta_file_path,
         reset=args.reset,
+        db_type=args.db,
+        pg_conn=args.pg_conn,
     )

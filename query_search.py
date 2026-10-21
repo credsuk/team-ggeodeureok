@@ -9,11 +9,14 @@ from typing import Optional
 
 from src.config import (
     COLLECTION_NAME,
+    DEFAULT_DB_TYPE,
     EMBEDDING_MODEL_NAME,
     EMBEDDING_PRESETS,
+    get_pg_connection_string,
     resolve_embedding_model,
 )
 from src.indexer import ChromaIndexer
+from src.pg_indexer import PGVectorIndexer
 
 # LangChain 경고 숨김
 warnings.filterwarnings("ignore")
@@ -28,13 +31,17 @@ def search(
     n_results: int = 5,
     model_name: Optional[str] = None,
     collection_name: Optional[str] = None,
+    db_type: str = "chroma",
+    pg_conn: Optional[str] = None,
 ):
     resolved_model = resolve_embedding_model(model_name)
     target_collection = collection_name or COLLECTION_NAME
+    selected_db = db_type.lower()
 
     print("=" * 65)
-    print(" [LangChain Community Chroma 회의록 시맨틱 검색] ")
+    print(f" [LangChain {selected_db.upper()} 회의록 시맨틱 검색] ")
     print("=" * 65)
+    print(f" 벡터 DB     : {selected_db.upper()}")
     print(f" 검색 질의어 : '{query_text}'")
     print(f" 임베딩 모델 : {resolved_model}")
     print(f" 대상 컬렉션 : {target_collection}")
@@ -62,10 +69,17 @@ def search(
 
     print("=" * 65)
 
-    indexer = ChromaIndexer(
-        collection_name=target_collection,
-        embedding_model_name=resolved_model,
-    )
+    if selected_db == "pgvector":
+        indexer = PGVectorIndexer(
+            connection_string=pg_conn or get_pg_connection_string(),
+            collection_name=target_collection,
+            embedding_model_name=resolved_model,
+        )
+    else:
+        indexer = ChromaIndexer(
+            collection_name=target_collection,
+            embedding_model_name=resolved_model,
+        )
     results = indexer.query(
         query_text=query_text,
         n_results=n_results,
@@ -101,8 +115,21 @@ def search(
 
 if __name__ == "__main__":
     preset_help = ", ".join([f"'{k}' ({v})" for k, v in EMBEDDING_PRESETS.items()])
-    parser = argparse.ArgumentParser(description="LangChain Chroma 회의록 검색 도구")
+    parser = argparse.ArgumentParser(description="지방의회 회의록 시맨틱 검색 도구 (ChromaDB / pgvector)")
     parser.add_argument("query", type=str, help="검색할 질의어 (예: '농지 소유 규제 완화')")
+    parser.add_argument(
+        "--db",
+        type=str,
+        choices=["chroma", "pgvector"],
+        default=DEFAULT_DB_TYPE,
+        help="사용할 벡터 DB ('chroma' 또는 'pgvector')",
+    )
+    parser.add_argument(
+        "--pg-conn",
+        type=str,
+        default=None,
+        help="PostgreSQL 연결 문자열 (미지정 시 환경변수 또는 config 기본값 사용)",
+    )
     parser.add_argument("--assembly", type=str, default="", help="특정 의회명 필터 (예: '강원특별자치도의회')")
     parser.add_argument("--year", type=int, default=0, help="연도 필터 (예: 2024)")
     parser.add_argument("--speaker", type=str, default="", help="발언자 이름 필터 (예: '최종수')")
@@ -133,4 +160,6 @@ if __name__ == "__main__":
         n_results=args.limit,
         model_name=args.model,
         collection_name=args.collection,
+        db_type=args.db,
+        pg_conn=args.pg_conn,
     )
