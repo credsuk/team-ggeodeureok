@@ -1,15 +1,3 @@
-"""Run sample splitting (step 1) and rule discovery (step 2) for selected JSONs.
-
-Usage:
-    python scripts/run_selected_rules.py
-    python scripts/run_selected_rules.py 2025_부산광역시의회
-    python scripts/run_selected_rules.py 2025_부산광역시의회 2025_울산광역시의회
-    python scripts/run_selected_rules.py --input-dir "C:\project\mini\data\org" 2025_부산광역시의회
-    python scripts/run_selected_rules.py data/org/2025_광역 회의록/2025_부산광역시의회.json
-
-With no arguments, the two default targets are attempted. Missing inputs are
-reported and skipped; any existing selected inputs continue through both steps.
-"""
 from __future__ import annotations
 
 import argparse
@@ -24,16 +12,17 @@ from pathlib import Path
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SCRIPT_DIR.parent
+PROJECT_DIR = SCRIPT_DIR.parent.parent
 os.chdir(PROJECT_DIR)
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
 
 import _constant as constant
 from pipeline_timing import start_step, record_file, finish_step
 
 
-DEFAULT_TARGETS = ["2025_부산광역시의회", "2025_울산광역시의회"]
+DEFAULT_TARGETS = ["2024_경기도의회"]
 DATA_DIR = PROJECT_DIR / "data"
 DEFAULT_INPUT_DIR = DATA_DIR / "org"
 

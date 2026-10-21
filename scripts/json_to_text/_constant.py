@@ -7,17 +7,17 @@ from bs4 import BeautifulSoup
 from openai import OpenAI
 
 
-target = "2025"
+target = "2024"
 
 org_dir="./data/org/" + target + "_광역 회의록"          # 원본 18개의 JSON 파일이 있는 폴더 경로
 sample_dir="./data/sample/" + target + "_광역 회의록"     # 샘플 TXT 파일들이 저장될 폴더 경로
 records_num=3                                  # 각 파일당 추출할 회의록 레코드 개수            
 
 rules_output_dir="./data/llm_rules_outputs/광역 회의록"
-all_rule_file="./data/llm_rules_outputs/consolidated_parsing_rules_" + target + ".json"
+all_rule_file="./data/to_text/llm_rules_outputs/consolidated_parsing_rules_" + target + ".json"
 
 
-text_dir = "./data/to_text3/" + target + "_광역 회의록"
+text_dir = "./data/to_text2/" + target + "_광역 회의록"
 
 
 

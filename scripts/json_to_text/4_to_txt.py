@@ -71,7 +71,10 @@ class DynamicCouncilPreprocessor:
                 parts.append(str(sibling))
         return self.clean_text(" ".join(part for part in parts if part))
 
-    def process_record(self, record: dict, rule: dict, filename_info: str) -> list:
+    def process_record(
+        self, record: dict, rule: dict, filename_info: str,
+        source_record_no: int,
+    ) -> list:
         results = []
         html_content = record.get("MINTS_HTML", "")
         if not html_content:
@@ -195,6 +198,7 @@ class DynamicCouncilPreprocessor:
 
             if len(utterance_cleaned) >= self.min_char_len:
                 results.append({
+                    "_source_record_no": source_record_no,
                     "date": record.get("MTG_DE", ""),
                     "assembly": record.get("RASMBLY_NM", ""),
                     "agenda_title": agenda_title,
@@ -283,7 +287,9 @@ if __name__ == "__main__":
             for record_index, record in enumerate(raw_data, start=1):
                 record_started = time.perf_counter()
                 print(f"  [회의록 {record_index}/{record_count}] 처리 중...", flush=True)
-                extracted = preprocessor.process_record(record, matched_rule, base_name)
+                extracted = preprocessor.process_record(
+                    record, matched_rule, base_name, record_index
+                )
                 all_utterances.extend(extracted)
                 elapsed = time.perf_counter() - file_started
                 estimated_remaining = (elapsed / record_index) * (record_count - record_index)
@@ -299,8 +305,10 @@ if __name__ == "__main__":
             
             if not df_clean.empty:
                 # 동일 화자(speaker_name, speaker_type 동일) 연속 발언 병합
-                condition = (df_clean['speaker_name'] != df_clean['speaker_name'].shift()) | \
-                            (df_clean['speaker_type'] != df_clean['speaker_type'].shift())
+                condition = (df_clean['_source_record_no'] != df_clean['_source_record_no'].shift()) | \
+                            (df_clean['speaker_name'] != df_clean['speaker_name'].shift()) | \
+                            (df_clean['speaker_type'] != df_clean['speaker_type'].shift()) | \
+                            (df_clean['agenda_title'] != df_clean['agenda_title'].shift())
                 df_clean['group_id'] = condition.cumsum()
 
                 df_merged = df_clean.groupby('group_id').agg({
@@ -312,6 +320,10 @@ if __name__ == "__main__":
                     'speaker_type': 'first',
                     'utterance': lambda x: ' '.join(x)
                 }).reset_index(drop=True)
+                df_merged = df_merged[[
+                    'date', 'assembly', 'agenda_title', 'speaker_role',
+                    'speaker_name', 'speaker_type', 'utterance',
+                ]]
 
                 output_path = os.path.join(output_dir, f"cleaned_{file_key}.txt")
                 df_merged.to_csv(output_path, sep="\t", index=False, encoding="utf-8-sig")

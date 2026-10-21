@@ -1,0 +1,30 @@
+Council-minutes RAG pipeline
+============================
+
+Configuration
+- Add each metadata/transcript pair to _constant.py DATASETS using a stable unique key.
+- CHUNK_SIZE/CHUNK_OVERLAP are measured in characters; initial conservative Korean settings are 500/50.
+
+Transcript preparation
+1. 4_to_txt.py emits exactly seven columns: date, assembly, agenda_title, speaker_role, speaker_name, speaker_type, utterance.
+2. Source record number is used internally only to prevent adjacent meetings from merging; it is not written to the TSV.
+3. Run split_council_tsv.py again after transcript regeneration so JSONL row_id values match the regenerated TSV row order.
+
+Indexing
+1. Index only the utterance text as Chroma document content; metadata is joined by row_id.
+2. Preflight all configured files and validate headers, row IDs, and date/council agreement before collection mutation.
+3. Dataset key is included in every Chroma ID and metadata to prevent row_id collisions across councils/years.
+4. Re-indexing replaces current IDs and deletes stale IDs for each dataset only after its upserts succeed.
+5. Metadata-missing transcript rows are skipped; this reflects the intentionally partial sample metadata.
+
+Analysis/output
+1. LLM extracts a search phrase and optional years only; it does not write facts or evidence.
+2. Matching is transparent metadata field matching across core_issue/summary/agenda/keywords, not semantic matching or utterance frequency.
+3. Duplicate matched turns are grouped by dataset, council, date, and agenda_title. Without a meeting_id, separate same-day meetings with the same agenda cannot be distinguished.
+4. Evidence is fetched from the exact indexed source row and output uses the five requested table concepts.
+5. First appearance means earliest event inside the configured dataset only. Forecast text remains bounded and states when evidence is insufficient.
+
+Limitations
+- A sample dataset cannot establish national coverage or a real first-ever appearance.
+- Meeting order is inferred from source file order where the original source has no official meeting ID.
+- Run syntax/static validation before use. Full Chroma indexing and local model calls require the configured packages/models and are intentionally separate operations.
