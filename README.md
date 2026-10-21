@@ -13,10 +13,11 @@
 6. [로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)](#6-로컬-llm-정책-메타데이터-추출기-extract_llm_metadatapy)
 7. [ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)](#7-chromadb-벡터-적재-파이프라인-run_ingestpy)
 8. [시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)](#8-시맨틱-검색-및-메타데이터-필터링-query_searchpy)
-9. [임베딩 모델 손쉬운 변경 가이드](#9-임베딩-모델-손쉬운-변경-가이드)
-10. [모듈별 상세 구성 (`src/`)](#10-모듈별-상세-구성-src)
-11. [자주 묻는 질문 및 트러블슈팅](#11-자주-묻는-질문-및-트러블슈팅)
-12. [변경 및 작업 이력 (CHANGELOG)](#12-변경-및-작업-이력-changelog)
+9. [로컬 LLM RAG 모델 파이프라인 (`rag_query.py` / `src/pipeline.py`)](#9-로컬-llm-rag-모델-파이프라인-rag_querypy--srcpipelinepy)
+10. [임베딩 모델 손쉬운 변경 가이드](#10-임베딩-모델-손쉬운-변경-가이드)
+11. [모듈별 상세 구성 (`src/`)](#11-모듈별-상세-구성-src)
+12. [자주 묻는 질문 및 트러블슈팅](#12-자주-묻는-질문-및-트러블슈팅)
+13. [변경 및 작업 이력 (CHANGELOG)](#13-변경-및-작업-이력-changelog)
 
 ---
 
@@ -321,7 +322,120 @@ python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council
 
 ---
 
-## 9. 임베딩 모델 손쉬운 변경 가이드
+## 9. 로컬 LLM RAG 모델 파이프라인 (`rag_query.py` / `src/pipeline.py`)
+
+팀 회의에서 결정된 **"사용자 쿼리 $\rightarrow$ 키워드 추출 $\rightarrow$ DB 검색 $\rightarrow$ Re-ranking $\rightarrow$ 최종 JSON 아웃풋"** 파이프라인 모델입니다.
+
+```mermaid
+flowchart LR
+    A["사용자 질의 (User Query)"] --> B["키워드 & 필터 추출 (로컬 LLM)"]
+    B --> C["ChromaDB 벡터 & 메타데이터 검색"]
+    C --> D["Re-ranking (재순위화)"]
+    D --> E["최종 JSON 아웃풋 (답변 + 근거)"]
+```
+
+### 1) 파이프라인 5단계 처리 흐름
+1. **사용자 질의 접수**: 자연어 질문 입력
+2. **키워드 및 메타데이터 필터 추출**: Ollama 로컬 LLM(기본: `gemma4:e2b`)을 통해 질의에서 의회명, 연도, 발언자, 정책 카테고리 필터와 검색 키워드 추출
+3. **DB 메타데이터 & 벡터 유사도 검색**: 추출된 필터 조건(`where`)과 검색어로 ChromaDB에서 1차 후보 문서(기본 15건) 검색
+4. **Re-ranking (재순위화)**: 질의와 가장 밀접한 문맥을 가진 상위 문서(기본 4건)를 재평가 선별 (로컬 LLM 기반 랭킹 또는 Cross-Encoder 지원)
+5. **최종 JSON 아웃풋 반환**: 재순위화된 상위 근거 문서를 바탕으로 로컬 LLM이 종합 답변을 작성하고 규격화된 표준 JSON으로 출력
+
+---
+
+### 2) CLI 실행 방법
+
+#### 기본 질의 실행
+```bash
+python rag_query.py "2024년 강원특별자치도의회에서 논의된 조례나 정책 내용 알려줘"
+```
+
+#### JSON 파일로 바로 저장
+```bash
+python rag_query.py "반도체 클러스터 지원 정책" -o result.json
+```
+
+#### API/파이프라인 연동용 순수 JSON 출력 (`--raw-json`)
+```bash
+python rag_query.py "농지 규제 완화 방안" --raw-json
+```
+
+#### 대화형 인터랙티브 모드 (질의어 생략 시 진입)
+```bash
+python rag_query.py
+```
+
+---
+
+### 3) Python 코드 내 모듈 직접 호출
+```python
+from src.pipeline import CouncilRAGPipeline
+
+# 파이프라인 초기화
+pipeline = CouncilRAGPipeline(
+    llm_model="gemma4:e2b",
+    reranker_type="llm",  # 'llm', 'cross-encoder', 'none'
+)
+
+# 질의 실행 (결과는 dict / JSON 직렬화 가능)
+result = pipeline.run("충청남도의회 2024년 청년 지원 정책 알려줘", top_k=15, top_n=3)
+
+print("답변:", result["answer"])
+print("근거 문서 수:", len(result["evidences"]))
+```
+
+---
+
+### 4) 최종 출력 JSON 스키마 구조
+```json
+{
+  "status": "success",
+  "query": "2024년 강원특별자치도의회에서 논의된 조례나 정책 내용 알려줘",
+  "pipeline_flow": "query -> keyword_extraction -> vector_db_search -> reranking -> json_output",
+  "extracted": {
+    "keywords": ["조례", "정책", "주요 의제"],
+    "filters": {
+      "assembly": "강원특별자치도의회",
+      "year": 2024,
+      "speaker_name": null,
+      "policy_category": null
+    },
+    "refined_query": "2024년 강원특별자치도의회 주요 조례 및 정책"
+  },
+  "answer": "제공된 회의록 근거에 따르면, 2024년 강원특별자치도의회에서는 ...",
+  "evidences": [
+    {
+      "rank": 1,
+      "score": 1.0,
+      "initial_distance": 0.32,
+      "reason": "직접적인 조례 개정안 발언",
+      "assembly": "강원특별자치도의회",
+      "date": "2024-03-15",
+      "agenda_title": "일반안건 심의의 건",
+      "speaker": "위원장 이상정",
+      "speaker_type": "의원",
+      "policy_category": "경제/산업",
+      "core_issue": "농지 규제 완화를 통한 농가 소득 증대 방안",
+      "keywords": ["농지제도 혁신", "농업 규제 완화"],
+      "chunk_info": "1/2",
+      "content": "..."
+    }
+  ],
+  "metadata": {
+    "total_retrieved": 15,
+    "total_reranked": 3,
+    "reranker_type": "llm",
+    "llm_model": "gemma4:e2b",
+    "embedding_model": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+    "collection_name": "local_council_minutes",
+    "elapsed_time_sec": 4.12
+  }
+}
+```
+
+---
+
+## 10. 임베딩 모델 손쉬운 변경 가이드
 
 본 프로젝트는 복잡한 코드 수정 없이 **프리셋 별칭**, **CLI 인자**, **환경변수**, **설정 파일**을 통해 임베딩 모델을 자유롭게 변경할 수 있도록 지원합니다.
 
@@ -391,8 +505,11 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 10. 모듈별 상세 구성 (`src/`)
+## 11. 모듈별 상세 구성 (`src/`)
 
+- **[`src/pipeline.py`](file:///c:/study/Projects/team-ggeodeureok/src/pipeline.py) (`CouncilRAGPipeline`)**:
+  - 사용자 질의 $\rightarrow$ 키워드 추출 $\rightarrow$ DB 검색 $\rightarrow$ 재순위화 $\rightarrow$ 답변 생성 $\rightarrow$ 최종 JSON 변환
+  - 로컬 LLM(Ollama `gemma4:e2b` 등) 및 CrossEncoder 지원
 - **[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py)**:
   - 경로 및 하이퍼파라미터 정의
   - 기본 모델: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`
@@ -412,7 +529,7 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 11. 자주 묻는 질문 및 트러블슈팅
+## 12. 자주 묻는 질문 및 트러블슈팅
 
 ### Q1. `ModuleNotFoundError: No module named 'torch'` 오류가 발생합니다.
 - Conda 가상환경이 활성화되지 않았을 때 발생합니다. `conda activate project01`을 실행하세요.
@@ -430,7 +547,7 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 12. 변경 및 작업 이력 (CHANGELOG)
+## 13. 변경 및 작업 이력 (CHANGELOG)
 
 전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
 

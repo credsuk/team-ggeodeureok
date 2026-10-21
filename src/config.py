@@ -8,8 +8,10 @@ from typing import Optional
 # 기본 디렉토리 경로
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 데이터 디렉토리 경로 (data/text 또는 text 자동 감지)
-if (BASE_DIR / "data" / "text").exists():
+# 데이터 디렉토리 경로 (우선순위에 따라 자동 감지)
+if (BASE_DIR / "change_text" / "2024_광역 회의록").exists():
+    DATA_DIR = BASE_DIR / "change_text" / "2024_광역 회의록"
+elif (BASE_DIR / "data" / "text").exists():
     DATA_DIR = BASE_DIR / "data" / "text"
 elif (BASE_DIR / "text").exists():
     DATA_DIR = BASE_DIR / "text"

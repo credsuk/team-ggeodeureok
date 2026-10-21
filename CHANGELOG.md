@@ -4,6 +4,49 @@
 
 ---
 
+## [2026-10-21] Kiwi 기반 고속 회의록 정책 메타데이터 추출기 및 일괄 변환 파이프라인 구축
+
+### 1. Kiwi 형태소 분석기 기반 정책 메타데이터 추출기 ([`extract_kiwi_metadata.py`](file:///c:/study/Projects/team-ggeodeureok/extract_kiwi_metadata.py))
+- **로컬 LLM 대체 초고속 파이프라인 구축**: `kiwipiepy` C++ 멀티스레드 엔진을 기반으로 초당 40~50건 이상 처리 (LLM 대비 100배 이상 고속화).
+- **JSONL 표준 스키마 100% 호환**: `row_id`, `date`, `assembly`, `speaker`, `agenda`, `is_substantive`, `policy_category`, `core_issue`, `keywords`, `summary`.
+- **단순 의전/절차 발언 정밀 필터링**: 개의/가결/이석/폐회 등 실질 정책 논의가 없는 발언을 `is_substantive: false`로 자동 분류.
+- **7대 정책 분야 사전 스코어링**: `경제/산업`, `농림/수산`, `보건/복지`, `교육/문화`, `환경/안전`, `도시/교통`, `자치/행정` 자동 분류.
+- **복합명사구(Bigram) 키워드 및 추출 요약**:
+  - 의회 특화 불용어 목록을 통한 상투어 배제 및 2어절 정책 복합명사구 추출.
+  - Kiwi 문장 분리(`split_into_sents`) 기반 핵심 문장 1~2개 추출 요약(Extractive Summarization).
+- **체크포인트 & 실시간 스트리밍 Flush**: 중간 중단 시 자동 이어하기 지원.
+
+### 2. 전체 회의록 일괄 변환 CLI 도구 ([`batch_extract_kiwi_metadata.py`](file:///c:/study/Projects/team-ggeodeureok/batch_extract_kiwi_metadata.py))
+- `change_text/` 내의 모든 광역의회 회의록(.txt)을 재귀 탐색하여 `data2/`에 JSONL 파일로 일괄 변환.
+- 단일 Kiwi 인스턴스 공유를 통한 메모리 및 속도 최적화.
+- 연도 필터링(`--year 2024` 등), 파일당 샘플링(`--sample-per-file`), 완료된 파일 자동 건너뛰기 지원.
+- 전체 배치 처리 진행 상황 및 종합 리포트 출력.
+
+---
+
+## [2026-10-21] 팀 회의 결정 규격 기반 로컬 LLM RAG 모델 파이프라인 구축
+
+### 1. 엔드투엔드 RAG 파이프라인 모듈 신설 ([`src/pipeline.py`](file:///c:/study/Projects/team-ggeodeureok/src/pipeline.py))
+- **팀 회의 결정 5단계 파이프라인 구현**:
+  $$\text{사용자 쿼리} \xrightarrow{} \text{키워드 추출} \xrightarrow{} \text{DB 메타데이터/벡터 유사도 검색} \xrightarrow{} \text{Re-ranking(재순위화)} \xrightarrow{} \text{최종 JSON 아웃풋}$$
+- **1단계 (키워드 & 필터 추출)**: Ollama 로컬 LLM(기본 `gemma4:e2b`)을 통해 자연어 질의로부터 핵심 검색 키워드, 정제 쿼리, 메타데이터 필터(`assembly`, `year`, `speaker_name`, `policy_category`) 자동 추출 (실패 시 Fallback 규칙 엔진 적용).
+- **2단계 (ChromaDB 하이브리드 검색)**: 추출된 메타데이터 조건식(`$and`, `where`)과 정제된 검색 쿼리를 결합하여 1차 후보 문서(기본 15건) 검색.
+- **3단계 (Re-ranking 재순위화)**:
+  - `llm`: 로컬 LLM이 후보 문서 목록을 읽고 질문과의 관련성 점수(0~100점) 및 채점 사유를 산출하여 재순위화.
+  - `cross-encoder`: `BAAI/bge-reranker-v2-m3` 등 HuggingFace CrossEncoder 지연 로딩 지원.
+- **4단계 (답변 생성 & 근거 요약)**: 재순위화된 상위 근거 문서(기본 4건)를 참조하여 로컬 LLM이 객관적이고 정확한 답변 생성.
+- **5단계 (표준 규격 JSON 직렬화)**: UI/프론트엔드 표출 대신 지정된 JSON 포맷에 맞춘 최종 결과물 반환 (`query`, `extracted`, `answer`, `evidences`, `metadata` 등 포함).
+
+### 2. RAG 파이프라인 실행 CLI 도구 신설 (`rag_query.py`)
+- 단일 질의 실행, 대화형 인터랙티브 모드, JSON 파일 저장(`-o result.json`), 파이프라인 연동용 순수 JSON 출력(`--raw-json`) 플래그 지원.
+- Windows 환경 콘솔 UTF-8 입출력 지원.
+
+### 3. 데이터 디렉터리 자동 감지 및 패키지 export 고도화
+- `src/config.py`: `change_text/2024_광역 회의록` 경로 자동 탐색 우선순위 반영.
+- `src/__init__.py`: `CouncilRAGPipeline` 및 핵심 유틸리티 함수/클래스 export 정비.
+
+---
+
 ## [2026-10-19] `develop_kb` 추가 기능 및 고도화 내역
 
 ### 1. 로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`) 신설

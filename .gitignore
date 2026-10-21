@@ -1,6 +1,7 @@
 .vscode/
 .idea/
 data/
+data2/
 text/
 chroma_db/
 *.zip
