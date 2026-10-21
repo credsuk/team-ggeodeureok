@@ -404,7 +404,15 @@ def process_council_file_with_kiwi(
     start_time = time.time()
 
     with open(output_file, "a", encoding="utf-8") as out_f:
-        with tqdm(total=len(records_to_process), desc="[Kiwi 메타데이터 추출]", unit="건") as pbar:
+        short_fname = Path(input_file).stem.replace("cleaned_", "")[:15]
+        with tqdm(
+            total=len(records_to_process),
+            desc=f" [{short_fname}]",
+            unit="건",
+            bar_format="{desc}: {percentage:3.0f}%|{bar:25}| {n_fmt}/{total_fmt}건 [{elapsed}<{remaining}, {rate_fmt}]",
+            dynamic_ncols=True,
+            leave=False,
+        ) as pbar:
             for rec in records_to_process:
                 res = analyzer.analyze_utterance(
                     text=rec["utterance"],

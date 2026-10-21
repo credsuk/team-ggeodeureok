@@ -19,6 +19,18 @@ from extract_kiwi_metadata import (
 )
 
 
+def format_time(seconds: float) -> str:
+    """초 단위를 보기 쉬운 시:분:초 형식 문자열로 변환"""
+    sec = int(seconds)
+    if sec < 60:
+        return f"{sec}초"
+    m, s = divmod(sec, 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h}시간 {m:02d}분 {s:02d}초"
+    return f"{m}분 {s:02d}초"
+
+
 def get_total_input_lines(file_path: Path) -> int:
     """헤더를 제외한 유효 데이터 행 수 계산"""
     count = 0
@@ -103,42 +115,64 @@ def run_batch_extraction(
     print(f" [일괄 변환 시작: 총 {total_files}개 파일]")
     print("-" * 70)
 
-    for file_idx, in_file in enumerate(txt_files, start=1):
-        # 출력 경로 계산
-        if preserve_structure:
-            rel_dir = in_file.parent.relative_to(Path(input_dir))
-            target_out_dir = out_base / rel_dir
-            target_out_dir.mkdir(parents=True, exist_ok=True)
-            out_file = target_out_dir / f"{in_file.stem}.jsonl"
-        else:
-            out_file = out_base / f"{in_file.stem}.jsonl"
+    with tqdm(
+        total=total_files,
+        desc="[Total Batch Progress]",
+        unit="file",
+        bar_format="{desc}: {percentage:3.0f}%|{bar:25}| {n_fmt}/{total_fmt} files [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
+        dynamic_ncols=True,
+    ) as total_pbar:
+        for file_idx, in_file in enumerate(txt_files, start=1):
+            # 출력 경로 계산
+            if preserve_structure:
+                rel_dir = in_file.parent.relative_to(Path(input_dir))
+                target_out_dir = out_base / rel_dir
+                target_out_dir.mkdir(parents=True, exist_ok=True)
+                out_file = target_out_dir / f"{in_file.stem}.jsonl"
+            else:
+                out_file = out_base / f"{in_file.stem}.jsonl"
 
-        print(f"\n▶ [{file_idx}/{total_files}] 파일 처리 중: {in_file.name}")
-        print(f"   - 경로: {in_file}")
-        print(f"   - 출력: {out_file}")
+            # 지금까지의 진행 시간 및 남은 시간 추정
+            current_elapsed = time.time() - start_batch_time
+            if file_idx > 1 and current_elapsed > 0:
+                avg_time_per_file = current_elapsed / (file_idx - 1)
+                remaining_files = total_files - (file_idx - 1)
+                est_remaining_sec = avg_time_per_file * remaining_files
+                eta_str = f"약 {format_time(est_remaining_sec)}"
+            else:
+                eta_str = "계산 중..."
 
-        # 기존 결과 파일 확인 (전체 완료 여부 확인)
-        if sample_per_file <= 0 and out_file.exists():
-            already_done_ids = load_processed_row_ids(str(out_file))
-            total_in_lines = get_total_input_lines(in_file)
-            if len(already_done_ids) >= total_in_lines and total_in_lines > 0:
-                print(f"   [스킵] 이미 전체 {len(already_done_ids):,}건이 변환 완료되어 있습니다.")
-                grand_processed += len(already_done_ids)
-                skipped_files += 1
-                continue
+            print(f"\n▶ [{file_idx}/{total_files}] 파일 처리 시작: {in_file.name}")
+            print(f"   - 경로: {in_file}")
+            print(f"   - 출력: {out_file}")
+            print(f"   - 전체 남은 예상 시간: {eta_str}")
 
-        # 단일 파일 변환 실행
-        proc_count, succ_count = process_council_file_with_kiwi(
-            input_file=str(in_file),
-            output_file=str(out_file),
-            sample_limit=sample_per_file,
-            min_char_len=min_char_len,
-            num_workers=num_workers,
-            analyzer=analyzer,
-        )
+            # 기존 결과 파일 확인 (전체 완료 여부 확인)
+            if sample_per_file <= 0 and out_file.exists():
+                already_done_ids = load_processed_row_ids(str(out_file))
+                total_in_lines = get_total_input_lines(in_file)
+                if len(already_done_ids) >= total_in_lines and total_in_lines > 0:
+                    print(f"   [스킵] 이미 전체 {len(already_done_ids):,}건이 변환 완료되어 있습니다.")
+                    grand_processed += len(already_done_ids)
+                    skipped_files += 1
+                    total_pbar.update(1)
+                    continue
 
-        grand_processed += proc_count
-        grand_success += succ_count
+            # 단일 파일 변환 실행
+            proc_count, succ_count = process_council_file_with_kiwi(
+                input_file=str(in_file),
+                output_file=str(out_file),
+                sample_limit=sample_per_file,
+                min_char_len=min_char_len,
+                num_workers=num_workers,
+                analyzer=analyzer,
+            )
+
+            grand_processed += proc_count
+            grand_success += succ_count
+
+            total_pbar.update(1)
+            total_pbar.set_postfix({"rows": f"{grand_processed:,}"})
 
     elapsed_total = time.time() - start_batch_time
     avg_speed = grand_processed / elapsed_total if elapsed_total > 0 else 0
