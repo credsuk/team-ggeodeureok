@@ -9,3 +9,4 @@ __pycache__/
 *.pyc
 .env
 /change_text/**
+/change_text(old)
