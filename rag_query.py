@@ -46,6 +46,19 @@ def main():
         help="사용자 질문/질의어 (옵션 플래그 형식)",
     )
     parser.add_argument(
+        "--db",
+        type=str,
+        choices=["chroma", "pgvector"],
+        default="chroma",
+        help="사용할 벡터 데이터베이스 ('chroma' 또는 'pgvector')",
+    )
+    parser.add_argument(
+        "--pg-conn",
+        type=str,
+        default=None,
+        help="PostgreSQL 접속 문자열 (예: postgresql+psycopg2://user:pass@host:5432/dbname)",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
@@ -108,6 +121,8 @@ def main():
         embedding_model_name=args.model,
         llm_model=args.llm_model,
         reranker_type=args.reranker,
+        db_type=args.db,
+        pg_connection_string=args.pg_conn,
     )
 
     def process_and_output(user_query: str):
@@ -116,6 +131,7 @@ def main():
             print(" [지방의회 회의록 RAG 모델 파이프라인 가동] ")
             print("=" * 65)
             print(f" ▶ 사용자 질문 : '{user_query}'")
+            print(f" ▶ 벡터 데이터베이스 : {pipeline.db_type.upper()}")
             print(f" ▶ 임베딩 모델 : {pipeline.embedding_model_name}")
             print(f" ▶ 로컬 LLM    : {pipeline.llm_model}")
             print(f" ▶ Re-ranker   : {pipeline.reranker_type}")

@@ -4,6 +4,24 @@
 
 ---
 
+## [2026-10-21] PostgreSQL (pgvector) 벡터 데이터베이스 통합 및 하이브리드 스위칭 지원
+
+### 1. PostgreSQL pgvector 전용 인덱서 모듈 신설 ([`src/pg_indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/pg_indexer.py))
+- `langchain_community.vectorstores.pgvector.PGVector` 기반 엔드포인트 관리자 구현.
+- `ChromaIndexer`와 100% 동일한 인터페이스(`add_batch`, `query`, `count`)를 제공하여 파이프라인에서 무중단 교체 가능.
+- 메타데이터 필터(`assembly`, `year`, `speaker_name`, `policy_category`) 조건 매핑 및 자동 확장 테이블 생성 지원.
+- 연결 실패 시 원인 및 PostgreSQL 설치/설정 가이드를 터미널에 친절히 출력.
+
+### 2. 파이프라인 및 CLI 스크립트 전면 `--db` 옵션 지원
+- [`src/pipeline.py`](file:///c:/study/Projects/team-ggeodeureok/src/pipeline.py) (`CouncilRAGPipeline`): `db_type="pgvector"` 또는 `"chroma"` 선택 가능. 결과 JSON 메타데이터에 `vector_db` 명시.
+- [`run_ingest.py`](file:///c:/study/Projects/team-ggeodeureok/run_ingest.py): `--db pgvector` 옵션으로 PostgreSQL에 텍스트 청크 및 메타데이터 적재 지원.
+- [`rag_query.py`](file:///c:/study/Projects/team-ggeodeureok/rag_query.py): `--db pgvector` 옵션으로 pgvector 기반 엔드투엔드 RAG 질의 지원.
+- [`query_search.py`](file:///c:/study/Projects/team-ggeodeureok/query_search.py): `--db pgvector` 옵션으로 pgvector 단독 시맨틱 검색 지원.
+- [`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py): PostgreSQL 환경변수(`PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_USER`, `PG_PASSWORD`, `PG_CONNECTION_STRING`) 지원.
+- [`requirements.txt`](file:///c:/study/Projects/team-ggeodeureok/requirements.txt): `psycopg2-binary>=2.9.9`, `pgvector>=0.2.5` 추가.
+
+---
+
 ## [2026-10-21] Kiwi 기반 고속 회의록 정책 메타데이터 추출기 및 일괄 변환 파이프라인 구축
 
 ### 1. Kiwi 형태소 분석기 기반 정책 메타데이터 추출기 ([`extract_kiwi_metadata.py`](file:///c:/study/Projects/team-ggeodeureok/extract_kiwi_metadata.py))

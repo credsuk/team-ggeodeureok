@@ -14,10 +14,11 @@
 7. [ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)](#7-chromadb-벡터-적재-파이프라인-run_ingestpy)
 8. [시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)](#8-시맨틱-검색-및-메타데이터-필터링-query_searchpy)
 9. [로컬 LLM RAG 모델 파이프라인 (`rag_query.py` / `src/pipeline.py`)](#9-로컬-llm-rag-모델-파이프라인-rag_querypy--srcpipelinepy)
-10. [임베딩 모델 손쉬운 변경 가이드](#10-임베딩-모델-손쉬운-변경-가이드)
-11. [모듈별 상세 구성 (`src/`)](#11-모듈별-상세-구성-src)
-12. [자주 묻는 질문 및 트러블슈팅](#12-자주-묻는-질문-및-트러블슈팅)
-13. [변경 및 작업 이력 (CHANGELOG)](#13-변경-및-작업-이력-changelog)
+10. [PostgreSQL (pgvector) 연동 및 벤치마크 가이드](#10-postgresql-pgvector-연동-및-벤치마크-가이드)
+11. [임베딩 모델 손쉬운 변경 가이드](#11-임베딩-모델-손쉬운-변경-가이드)
+12. [모듈별 상세 구성 (`src/`)](#12-모듈별-상세-구성-src)
+13. [자주 묻는 질문 및 트러블슈팅](#13-자주-묻는-질문-및-트러블슈팅)
+14. [변경 및 작업 이력 (CHANGELOG)](#14-변경-및-작업-이력-changelog)
 
 ---
 
@@ -435,7 +436,85 @@ print("근거 문서 수:", len(result["evidences"]))
 
 ---
 
-## 10. 임베딩 모델 손쉬운 변경 가이드
+## 10. PostgreSQL (pgvector) 연동 및 벤치마크 가이드
+
+팀 회의에서 결정된 **"ChromaDB vs PostgreSQL (pgvector) 성능(검색 속도 및 정확도) 비교"**를 위해 동일한 파이프라인에서 `--db pgvector` 옵션만으로 DB를 즉시 전환할 수 있도록 지원합니다.
+
+### 1) PostgreSQL 및 pgvector 준비
+
+#### Docker로 10초 만에 실행하는 경우 (가장 간편)
+```bash
+# pgvector가 사전 설치된 공식 이미지 실행
+docker run -d --name council-pgvector \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=council_db \
+  -p 5432:5432 \
+  pgvector/pgvector:pg16
+```
+
+#### 기존 로컬/원격 PostgreSQL 서버를 사용할 경우
+데이터베이스 접속 후 `vector` 확장을 1회 활성화합니다:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+---
+
+### 2) 접속 정보 환경변수 설정 (선택 사항)
+
+PowerShell 또는 `.env`에서 PostgreSQL 접속 정보를 설정할 수 있습니다 (미설정 시 기본값 `localhost:5432`, `council_db`, `postgres/postgres`):
+```powershell
+# Windows PowerShell
+$env:PG_HOST = "localhost"
+$env:PG_PORT = "5432"
+$env:PG_DATABASE = "council_db"
+$env:PG_USER = "postgres"
+$env:PG_PASSWORD = "your_password"
+
+# 또는 전체 접속 URL을 직접 지정
+$env:PG_CONNECTION_STRING = "postgresql+psycopg2://postgres:your_password@localhost:5432/council_db"
+```
+
+---
+
+### 3) PostgreSQL pgvector로 데이터 적재 (`run_ingest.py --db pgvector`)
+
+```bash
+# pgvector에 회의록 텍스트 및 LLM 메타데이터 적재
+python run_ingest.py --db pgvector --reset
+
+# 테스트 모드 (파일당 30행씩만 빠르게 적재)
+python run_ingest.py --db pgvector --sample-lines 30 --reset
+```
+
+---
+
+### 4) PostgreSQL pgvector 기반 RAG 파이프라인 질의 (`rag_query.py --db pgvector`)
+
+```bash
+# pgvector 기반 엔드투엔드 RAG 질의 실행
+python rag_query.py "2024년 충청남도의회에서 논의된 주요 정책은?" --db pgvector
+
+# 결과를 JSON 파일로 저장
+python rag_query.py "반도체 클러스터 지원 방안" --db pgvector -o result_pg.json
+```
+
+---
+
+### 5) ChromaDB vs pgvector 벤치마크 비교 요령
+동일한 질문을 두 DB에 질의하고 출력되는 `elapsed_time_sec` (소요 시간) 및 `score` / `reason` (관련도)을 엑셀 공유 시트에 기록합니다:
+```bash
+# 1. ChromaDB 질의
+python rag_query.py "청년 농업인 지원 정책" --db chroma
+
+# 2. PostgreSQL pgvector 질의
+python rag_query.py "청년 농업인 지원 정책" --db pgvector
+```
+
+---
+
+## 11. 임베딩 모델 손쉬운 변경 가이드
 
 본 프로젝트는 복잡한 코드 수정 없이 **프리셋 별칭**, **CLI 인자**, **환경변수**, **설정 파일**을 통해 임베딩 모델을 자유롭게 변경할 수 있도록 지원합니다.
 
@@ -505,13 +584,21 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 ---
 
-## 11. 모듈별 상세 구성 (`src/`)
+## 12. 모듈별 상세 구성 (`src/`)
 
 - **[`src/pipeline.py`](file:///c:/study/Projects/team-ggeodeureok/src/pipeline.py) (`CouncilRAGPipeline`)**:
   - 사용자 질의 $\rightarrow$ 키워드 추출 $\rightarrow$ DB 검색 $\rightarrow$ 재순위화 $\rightarrow$ 답변 생성 $\rightarrow$ 최종 JSON 변환
+  - ChromaDB 및 PostgreSQL pgvector 스위칭 지원
   - 로컬 LLM(Ollama `gemma4:e2b` 등) 및 CrossEncoder 지원
+- **[`src/pg_indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/pg_indexer.py) (`PGVectorIndexer`)**:
+  - PostgreSQL pgvector VectorStore 관리자
+  - ChromaIndexer와 100% 호환되는 `add_batch()`, `query()`, `count()` 인터페이스 제공
+- **[`src/indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/indexer.py) (`ChromaIndexer`)**:
+  - `HuggingFaceEmbeddings` 모델 로드 및 CUDA GPU 자동 감지
+  - 배치 단위 `add_batch()` 및 유사도 필터 검색 `query()`
+  - 차원 불일치 에러 시 친절한 원인/해결책 안내 예외 처리
 - **[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py)**:
-  - 경로 및 하이퍼파라미터 정의
+  - 경로 및 하이퍼파라미터 정의, PostgreSQL/pgvector 접속 설정 및 환경변수 지원
   - 기본 모델: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`
   - `EMBEDDING_PRESETS` 딕셔너리 (`arctic-ko`, `kure` 등) 및 별칭 매핑 함수 `resolve_embedding_model()`
 - **[`src/parser.py`](file:///c:/study/Projects/team-ggeodeureok/src/parser.py)**:
@@ -522,14 +609,10 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 - **[`src/chunker.py`](file:///c:/study/Projects/team-ggeodeureok/src/chunker.py) (`CouncilMinuteChunker`)**:
   - 발언 단위 기본 유지 + 800자 초과 시 문맥 유실 방지를 위한 재귀적 청킹
   - 40자 미만 단순 의전 멘트 필터링
-- **[`src/indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/indexer.py) (`ChromaIndexer`)**:
-  - `HuggingFaceEmbeddings` 모델 로드 및 CUDA GPU 자동 감지
-  - 배치 단위 `add_batch()` 및 유사도 필터 검색 `query()`
-  - 차원 불일치 에러 시 친절한 원인/해결책 안내 예외 처리
 
 ---
 
-## 12. 자주 묻는 질문 및 트러블슈팅
+## 13. 자주 묻는 질문 및 트러블슈팅
 
 ### Q1. `ModuleNotFoundError: No module named 'torch'` 오류가 발생합니다.
 - Conda 가상환경이 활성화되지 않았을 때 발생합니다. `conda activate project01`을 실행하세요.
@@ -545,9 +628,13 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 - 모델 간 차원(예: 768 vs 1024)이 달라서 발생하는 오류입니다.
 - 새 모델로 적재 시 `-c <새_컬렉션명>`을 지정하거나, `--reset` 플래그로 기존 컬렉션을 초기화하세요.
 
+### Q4. PostgreSQL pgvector 연결 오류가 발생합니다.
+- PostgreSQL 서버(포트 5432)가 실행 중인지 확인하고, 환경변수(`$env:PG_PASSWORD` 등) 또는 `--pg-conn` 인자를 확인하세요.
+- 데이터베이스에 `CREATE EXTENSION IF NOT EXISTS vector;` 확장이 활성화되어 있어야 합니다.
+
 ---
 
-## 13. 변경 및 작업 이력 (CHANGELOG)
+## 14. 변경 및 작업 이력 (CHANGELOG)
 
 전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
 

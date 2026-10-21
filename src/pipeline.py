@@ -20,10 +20,13 @@ import requests
 
 from src.config import (
     COLLECTION_NAME,
+    DEFAULT_DB_TYPE,
     EMBEDDING_MODEL_NAME,
+    get_pg_connection_string,
     resolve_embedding_model,
 )
 from src.indexer import ChromaIndexer
+from src.pg_indexer import PGVectorIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +90,8 @@ class CouncilRAGPipeline:
         reranker_type: str = "llm",  # 'llm', 'cross-encoder', 'none'
         cross_encoder_model: str = "BAAI/bge-reranker-v2-m3",
         timeout: int = 60,
+        db_type: Optional[str] = None,  # 'chroma' 또는 'pgvector'
+        pg_connection_string: Optional[str] = None,
     ):
         self.collection_name = collection_name or COLLECTION_NAME
         self.embedding_model_name = resolve_embedding_model(embedding_model_name or EMBEDDING_MODEL_NAME)
@@ -95,12 +100,22 @@ class CouncilRAGPipeline:
         self.reranker_type = reranker_type.lower()
         self.cross_encoder_model = cross_encoder_model
         self.timeout = timeout
+        self.db_type = (db_type or DEFAULT_DB_TYPE).lower()
+        self.pg_connection_string = pg_connection_string or get_pg_connection_string()
 
-        # 1. ChromaDB 인덱서 로드
-        self.indexer = ChromaIndexer(
-            collection_name=self.collection_name,
-            embedding_model_name=self.embedding_model_name,
-        )
+        # 1. 벡터 데이터베이스 인덱서 초기화 (ChromaDB 또는 PostgreSQL pgvector)
+        if self.db_type == "pgvector":
+            self.indexer = PGVectorIndexer(
+                connection_string=self.pg_connection_string,
+                collection_name=self.collection_name,
+                embedding_model_name=self.embedding_model_name,
+            )
+        else:
+            self.db_type = "chroma"
+            self.indexer = ChromaIndexer(
+                collection_name=self.collection_name,
+                embedding_model_name=self.embedding_model_name,
+            )
 
         # 2. Cross-Encoder 초기화 (선택적)
         self._cross_encoder = None
@@ -542,6 +557,7 @@ class CouncilRAGPipeline:
             "answer": answer_text,
             "evidences": evidences,
             "metadata": {
+                "vector_db": self.db_type,
                 "total_retrieved": len(candidate_docs),
                 "total_reranked": len(evidences),
                 "reranker_type": self.reranker_type,
