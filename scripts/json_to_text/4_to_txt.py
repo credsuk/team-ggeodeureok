@@ -199,8 +199,10 @@ class DynamicCouncilPreprocessor:
             if len(utterance_cleaned) >= self.min_char_len:
                 results.append({
                     "_source_record_no": source_record_no,
-                    "date": record.get("MTG_DE", ""),
-                    "assembly": record.get("RASMBLY_NM", ""),
+                    "MTG_DE": record.get("MTG_DE", ""),
+                    "RASMBLY_NM": record.get("RASMBLY_NM", ""),
+                    "MTGNM": record.get("MTGNM", ""),
+                    "MINTS_NM": record.get("MINTS_NM", ""),
                     "agenda_title": agenda_title,
                     "speaker_role": role,
                     "speaker_name": name,
@@ -312,8 +314,10 @@ if __name__ == "__main__":
                 df_clean['group_id'] = condition.cumsum()
 
                 df_merged = df_clean.groupby('group_id').agg({
-                    'date': 'first',
-                    'assembly': 'first',
+                    'MTG_DE': 'first',
+                    'RASMBLY_NM': 'first',
+                    'MTGNM': 'first',
+                    'MINTS_NM': 'first',
                     'agenda_title': 'first',
                     'speaker_role': 'first',
                     'speaker_name': 'first',
@@ -321,8 +325,8 @@ if __name__ == "__main__":
                     'utterance': lambda x: ' '.join(x)
                 }).reset_index(drop=True)
                 df_merged = df_merged[[
-                    'date', 'assembly', 'agenda_title', 'speaker_role',
-                    'speaker_name', 'speaker_type', 'utterance',
+                    'MTG_DE', 'RASMBLY_NM', 'MTGNM', 'MINTS_NM', 'agenda_title',
+                    'speaker_role', 'speaker_name', 'speaker_type', 'utterance',
                 ]]
 
                 output_path = os.path.join(output_dir, f"cleaned_{file_key}.txt")

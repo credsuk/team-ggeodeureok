@@ -11,7 +11,7 @@ DATASETS = [
         "transcript_path": PROJECT_ROOT / "data" / "to_text" / "2024_광역 회의록" / "cleaned_2024_강원특별자치도의회.txt",
     },
 ]
-CHROMA_PATH = PROJECT_ROOT / "data" / "vector_db" / "council_chroma"
+CHROMA_PATH = PROJECT_ROOT / "data" / "vector_db"
 COLLECTION_NAME = "council_minutes"
 
 EMBEDDING_MODEL = "dragonkue/snowflake-arctic-embed-l-v2.0-ko"
