@@ -506,8 +506,16 @@ if __name__ == "__main__":
 
     input_p = Path(args.input)
     if not args.output:
-        # data2 디렉토리에 입력 파일명 stem을 기준으로 자동 저장
-        output_p = str(Path("data2") / f"{input_p.stem}.jsonl")
+        # 입력 파일이 change_text 등의 하위 폴더에 있는 경우 동일한 폴더 구조 유지
+        try:
+            rel = input_p.resolve().relative_to(Path("change_text").resolve())
+            output_p = str(Path("data2") / rel.parent / f"{input_p.stem}.jsonl")
+        except Exception:
+            # 부모 폴더명이 유의미한 경우 (예: 2024_광역 회의록)
+            if input_p.parent.name and input_p.parent.name not in (".", "change_text"):
+                output_p = str(Path("data2") / input_p.parent.name / f"{input_p.stem}.jsonl")
+            else:
+                output_p = str(Path("data2") / f"{input_p.stem}.jsonl")
     else:
         output_p = args.output
 

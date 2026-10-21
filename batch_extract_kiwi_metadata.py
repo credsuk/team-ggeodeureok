@@ -72,7 +72,7 @@ def run_batch_extraction(
     sample_per_file: int = 0,
     min_char_len: int = 80,
     num_workers: int = 4,
-    preserve_structure: bool = False,
+    preserve_structure: bool = True,
 ):
     print("=" * 70)
     print(" [Kiwi 회의록 정책 메타데이터 대량 일괄 변환기 (Batch Ingest)] ")
@@ -85,7 +85,7 @@ def run_batch_extraction(
     print(f" * 파일당 처리 건수   : {'전체 처리' if sample_per_file <= 0 else f'최대 {sample_per_file}건 샘플'}")
     print(f" * 최소 발언 글자수   : {min_char_len}자 미만 제외")
     print(f" * Kiwi 워커 수       : {num_workers}개 스레드")
-    print(f" * 출력 폴더 구조     : {'하위 폴더 구조 유지' if preserve_structure else '단일 폴더(플랫) 저장'}")
+    print(f" * 출력 폴더 구조     : {'원본 하위 폴더 구조 유지 (기본)' if preserve_structure else '단일 폴더(플랫) 저장'}")
     print("=" * 70)
 
     # 1. 파일 목록 수집
@@ -240,8 +240,16 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--preserve-structure",
+        dest="preserve_structure",
         action="store_true",
-        help="하위 폴더(예: 2024_광역 회의록/) 구조를 그대로 유지하여 저장",
+        default=True,
+        help="하위 폴더(예: 2024_광역 회의록/) 구조를 그대로 유지하여 저장 (기본값: True)",
+    )
+    parser.add_argument(
+        "--flat",
+        dest="preserve_structure",
+        action="store_false",
+        help="하위 폴더를 만들지 않고 data2 바로 아래에 플랫하게 저장",
     )
 
     args = parser.parse_args()
