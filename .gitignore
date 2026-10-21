@@ -1,6 +1,6 @@
 .vscode/
 .idea/
-data/
+data/**
 data2/
 text/
 chroma_db/
@@ -12,3 +12,4 @@ __pycache__/
 /change_text/**
 /change_text_origin/**
 /origin/**
+/data2_backup
