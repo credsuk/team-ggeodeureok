@@ -184,6 +184,31 @@ class PGVectorIndexer:
             logger.debug(f"[PGVector] delete_by_file_stem 예외: {e}")
             return 0
 
+    def delete_chunks_after_row(self, file_stem: str, after_row_id: int) -> int:
+        """특정 파일 스템에서 after_row_id 초과인 청크 삭제 (이어하기 시 불완전 청크 정리)"""
+        try:
+            from sqlalchemy import create_engine, text
+            engine = create_engine(self.connection_string)
+            with engine.connect() as conn:
+                res = conn.execute(
+                    text("""
+                        DELETE FROM langchain_pg_embedding 
+                        WHERE collection_id = (SELECT uuid FROM langchain_pg_collection WHERE name = :name)
+                          AND cmetadata->>'file_stem' = :file_stem
+                          AND (cmetadata->>'row_id')::int > :after_row_id
+                    """),
+                    {
+                        "name": self.collection_name,
+                        "file_stem": file_stem,
+                        "after_row_id": after_row_id,
+                    }
+                )
+                conn.commit()
+                return res.rowcount if hasattr(res, 'rowcount') else 0
+        except Exception as e:
+            logger.debug(f"[PGVector] delete_chunks_after_row 예외: {e}")
+            return 0
+
     def count(self) -> int:
         """현재 컬렉션에 적재된 문서 수 확인"""
         try:

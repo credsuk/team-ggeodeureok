@@ -18,6 +18,13 @@ from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
@@ -68,32 +75,53 @@ def load_checkpoint(db_type: str, collection: str) -> Dict[str, Any]:
                     return data
         except Exception:
             pass
-    return {"completed_files": [], "total_chunks": 0}
+    return {
+        "completed_files": [],
+        "file_progress": {},
+        "total_chunks": 0,
+        "total_records": 0,
+    }
 
 
-def save_checkpoint(completed_files: List[str], total_chunks: int, db_type: str, collection: str):
-    """체크포인트 파일 저장 (실시간 이어하기 보장)"""
+def save_checkpoint(
+    completed_files: List[str],
+    file_progress: Dict[str, Dict[str, Any]],
+    total_chunks: int,
+    total_records: int,
+    db_type: str,
+    collection: str,
+):
+    """체크포인트 파일 저장 (행 단위 및 파일 단위 실시간 이어하기 보장)"""
     data = {
         "collection": collection,
         "db_type": db_type,
-        "completed_files": list(completed_files),
+        "completed_files": sorted(list(completed_files)),
+        "file_progress": file_progress,
         "total_chunks": total_chunks,
+        "total_records": total_records,
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+    tmp_file = CHECKPOINT_FILE.with_suffix(".tmp")
     try:
-        with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        tmp_file.replace(CHECKPOINT_FILE)
     except Exception:
-        pass
+        try:
+            with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
 
 def clear_checkpoint():
     """체크포인트 파일 삭제"""
-    if CHECKPOINT_FILE.exists():
-        try:
-            CHECKPOINT_FILE.unlink()
-        except Exception:
-            pass
+    for f in (CHECKPOINT_FILE, CHECKPOINT_FILE.with_suffix(".tmp")):
+        if f.exists():
+            try:
+                f.unlink()
+            except Exception:
+                pass
 
 
 def run_hybrid_ingest(
@@ -110,6 +138,7 @@ def run_hybrid_ingest(
     model_name: Optional[str] = None,
     collection_name: Optional[str] = None,
     reset: bool = False,
+    no_resume: bool = False,
     db_type: str = "chroma",
     pg_conn: Optional[str] = None,
 ):
@@ -119,12 +148,19 @@ def run_hybrid_ingest(
     selected_db = db_type.lower()
 
     # 0. 체크포인트 상태 로드 및 이어하기(Resume) 처리
-    if reset:
-        clear_checkpoint()
+    if reset or no_resume:
+        if reset:
+            clear_checkpoint()
         completed_files = set()
+        file_progress = {}
+        total_chunks_added = 0
+        total_processed_records = 0
     else:
         chk = load_checkpoint(selected_db, target_collection)
         completed_files = set(chk.get("completed_files", []))
+        file_progress = chk.get("file_progress", {})
+        total_chunks_added = chk.get("total_chunks", 0)
+        total_processed_records = chk.get("total_records", 0)
 
     # 하이브리드 로더 초기화
     loader = HybridCouncilLoader(
@@ -139,14 +175,22 @@ def run_hybrid_ingest(
         print(f"[오류] '{data_dir}'와 '{change_text_dir}' 간 매칭되는 데이터 쌍을 찾지 못했습니다.")
         return
 
+    # 현재 대상 파일 중 완료된 파일만 필터링
+    matched_stems = {jsonl_path.stem for jsonl_path, _ in matched_pairs}
+    completed_in_matched = completed_files.intersection(matched_stems)
+    active_in_progress = {s: p for s, p in file_progress.items() if s in matched_stems}
+
     print("=" * 70)
     print(f" 🚀 [지방의회 회의록 {selected_db.upper()} 하이브리드 고도화 적재 파이프라인] ")
     print("=" * 70)
     print(f" * 메타데이터 경로 (data)       : {data_dir}")
     print(f" * 원문 텍스트 경로 (change_text): {change_text_dir}")
     print(f" * 대상 파일 쌍                : 총 {len(matched_pairs)}개 파일 쌍 매칭 완료")
-    if completed_files:
-        print(f" * [이어하기 모드 감지]        : 기존 완료 {len(completed_files)}개 파일 제외 후 {len(matched_pairs) - len(completed_files)}개 진행")
+    if completed_in_matched or active_in_progress:
+        print(f" * [이어하기 모드 감지]        : 완료 파일 {len(completed_in_matched)}개 제외 (남은 파일: {len(matched_pairs) - len(completed_in_matched)}개)")
+        for f_stem, p_info in active_in_progress.items():
+            s_name = f_stem.replace("cleaned_", "")[:18]
+            print(f"   └ [행 단위 이어하기 예정]   : '{s_name}' -> {p_info.get('last_row_id', 0):,}행부터 재개")
     print(f" * 벡터 데이터베이스           : {selected_db.upper()}")
     print(f" * 임베딩 모델                 : {resolved_model}")
     print(f" * 대상 컬렉션                 : {target_collection}")
@@ -180,9 +224,6 @@ def run_hybrid_ingest(
         min_char_len=min_char_len,
     )
 
-    total_chunks_added = 0
-    total_processed_records = 0
-
     start_dt_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print("\n" + "-" * 70)
@@ -191,7 +232,7 @@ def run_hybrid_ingest(
 
     with tqdm(
         total=len(matched_pairs),
-        initial=len(completed_files),
+        initial=len(completed_in_matched),
         desc="[전체 파일 진행률]",
         unit="files",
         bar_format="{desc}: {percentage:3.0f}%|{bar:20}| {n_fmt}/{total_fmt} 파일 [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
@@ -208,9 +249,6 @@ def run_hybrid_ingest(
 
                 file_start_time = time.time()
 
-                # 이전 불완전 실행 시 남아있을 수 있는 청크 사전 정리 (중복 방지)
-                indexer.delete_by_file_stem(file_stem)
-
                 # 파일 전체 행 수 사전 집계 (행 단위 진행률 표시용)
                 try:
                     with open(jsonl_path, "r", encoding="utf-8") as f:
@@ -219,6 +257,37 @@ def run_hybrid_ingest(
                     file_total_lines = 0
 
                 target_lines = min(sample_lines, file_total_lines) if sample_lines > 0 else file_total_lines
+
+                # 행 단위 이어하기 확인
+                file_prog = file_progress.get(file_stem, {})
+                start_row = file_prog.get("last_row_id", 0)
+                file_chunks = file_prog.get("chunks", 0)
+                file_records = file_prog.get("records", 0)
+
+                # 만약 이전 테스트などで 이미 target_lines 이상 도달했으면 완료 처리
+                if target_lines > 0 and start_row >= target_lines:
+                    completed_files.add(file_stem)
+                    file_progress.pop(file_stem, None)
+                    save_checkpoint(
+                        completed_files=list(completed_files),
+                        file_progress=file_progress,
+                        total_chunks=total_chunks_added,
+                        total_records=total_processed_records,
+                        db_type=selected_db,
+                        collection=target_collection,
+                    )
+                    file_pbar.update(1)
+                    continue
+
+                if start_row > 0:
+                    tqdm.write(f" ℹ️  [{short_name}] 이어하기: {start_row:,}행까지 완료됨 -> {start_row + 1:,}행부터 재개 (기존 청크: {file_chunks:,}개)")
+                    # 이전 불완전 실행 시 start_row 초과 번호로 들어간 청크가 있다면 정리
+                    indexer.delete_chunks_after_row(file_stem, start_row)
+                else:
+                    # 새로운 파일 시작: 이전 불완전 실행 시 남아있을 수 있는 청크 사전 정리 (중복 방지)
+                    indexer.delete_by_file_stem(file_stem)
+                    file_chunks = 0
+                    file_records = 0
 
                 batch_ids: List[str] = []
                 batch_docs: List[str] = []
@@ -229,11 +298,15 @@ def run_hybrid_ingest(
                     jsonl_path=jsonl_path,
                     txt_path=txt_path,
                     max_rows=sample_lines,
+                    start_row=start_row,
                 )
 
-                file_chunks = 0
+                last_committed_row = start_row
+                current_record_row = start_row
+
                 with tqdm(
                     total=target_lines,
+                    initial=start_row,
                     desc=f" └ [{short_name}]",
                     unit="행",
                     leave=False,
@@ -241,8 +314,12 @@ def run_hybrid_ingest(
                     bar_format="{desc}: {percentage:3.0f}%|{bar:16}| {n_fmt}/{total_fmt}행 [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
                 ) as row_pbar:
                     for record in record_stream:
+                        current_record_row = record.row_id
                         total_processed_records += 1
-                        row_pbar.update(1)
+                        file_records += 1
+
+                        if current_record_row > row_pbar.n:
+                            row_pbar.update(current_record_row - row_pbar.n)
 
                         # 장문 서브청킹
                         sub_chunks = chunker.split_text(record.utterance)
@@ -282,33 +359,74 @@ def run_hybrid_ingest(
                             batch_docs.append(embedding_text)
                             batch_metas.append(meta)
 
-                            if len(batch_ids) >= batch_size:
-                                indexer.add_batch(batch_ids, batch_docs, batch_metas)
-                                count_b = len(batch_ids)
-                                file_chunks += count_b
-                                total_chunks_added += count_b
-                                batch_ids.clear()
-                                batch_docs.clear()
-                                batch_metas.clear()
+                        # 레코드 단위 완료 후 배치 크기 도달 시 적재 (레코드 분할 방지)
+                        if len(batch_ids) >= batch_size:
+                            count_b = len(batch_ids)
+                            indexer.add_batch(batch_ids, batch_docs, batch_metas)
+                            file_chunks += count_b
+                            total_chunks_added += count_b
+                            last_committed_row = current_record_row
 
-                                f_elapsed = max(0.1, time.time() - file_start_time)
-                                cps = file_chunks / f_elapsed
-                                row_pbar.set_postfix({
-                                    "적재청크": f"{file_chunks:,}",
-                                    "속도": f"{cps:.1f}c/s",
-                                })
+                            # 실시간 행 단위 체크포인트 저장
+                            file_progress[file_stem] = {
+                                "last_row_id": last_committed_row,
+                                "chunks": file_chunks,
+                                "records": file_records,
+                            }
+                            save_checkpoint(
+                                completed_files=list(completed_files),
+                                file_progress=file_progress,
+                                total_chunks=total_chunks_added,
+                                total_records=total_processed_records,
+                                db_type=selected_db,
+                                collection=target_collection,
+                            )
+
+                            batch_ids.clear()
+                            batch_docs.clear()
+                            batch_metas.clear()
+
+                            f_elapsed = max(0.1, time.time() - file_start_time)
+                            cps = file_chunks / f_elapsed
+                            row_pbar.set_postfix({
+                                "적재청크": f"{file_chunks:,}",
+                                "속도": f"{cps:.1f}c/s",
+                            })
 
                     # 파일 잔여 청크 적재
                     if batch_ids:
-                        indexer.add_batch(batch_ids, batch_docs, batch_metas)
                         count_b = len(batch_ids)
+                        indexer.add_batch(batch_ids, batch_docs, batch_metas)
                         file_chunks += count_b
                         total_chunks_added += count_b
+                        last_committed_row = current_record_row
+                        batch_ids.clear()
+                        batch_docs.clear()
+                        batch_metas.clear()
 
-                # 정상 전체 적재일 때 체크포인트 저장
-                if sample_lines == 0:
+                    # 행 진행률 바 마무리
+                    if row_pbar.n < target_lines:
+                        row_pbar.update(target_lines - row_pbar.n)
+
+                # 파일 완료 여부 판정
+                if sample_lines == 0 or current_record_row >= file_total_lines:
                     completed_files.add(file_stem)
-                    save_checkpoint(list(completed_files), total_chunks_added, selected_db, target_collection)
+                    file_progress.pop(file_stem, None)
+                else:
+                    file_progress[file_stem] = {
+                        "last_row_id": last_committed_row,
+                        "chunks": file_chunks,
+                        "records": file_records,
+                    }
+
+                save_checkpoint(
+                    completed_files=list(completed_files),
+                    file_progress=file_progress,
+                    total_chunks=total_chunks_added,
+                    total_records=total_processed_records,
+                    db_type=selected_db,
+                    collection=target_collection,
+                )
 
                 file_pbar.set_postfix({
                     "완료": short_name,
@@ -319,9 +437,37 @@ def run_hybrid_ingest(
         except KeyboardInterrupt:
             print("\n" + "=" * 70)
             print(" ⚠️  [일시 중단 안내] 사용자에 의해 적재 작업이 중단되었습니다 (Ctrl+C).")
-            if completed_files:
-                print(f" * 안전하게 저장된 완료 파일: {len(completed_files)}개")
-                print(" * 다시 'python run_ingest.py'를 실행하시면 완료된 파일은 건너뛰고 이어서 진행됩니다.")
+            if batch_ids:
+                try:
+                    print(f" * 메모리 대기 중인 {len(batch_ids)}개 청크를 데이터베이스에 안전하게 커밋 중...")
+                    count_b = len(batch_ids)
+                    indexer.add_batch(batch_ids, batch_docs, batch_metas)
+                    file_chunks += count_b
+                    total_chunks_added += count_b
+                    last_committed_row = current_record_row
+                    file_progress[file_stem] = {
+                        "last_row_id": last_committed_row,
+                        "chunks": file_chunks,
+                        "records": file_records,
+                    }
+                    save_checkpoint(
+                        completed_files=list(completed_files),
+                        file_progress=file_progress,
+                        total_chunks=total_chunks_added,
+                        total_records=total_processed_records,
+                        db_type=selected_db,
+                        collection=target_collection,
+                    )
+                    print(f" * [저장 완료] '{short_name}' 파일의 {last_committed_row:,}행까지 안전하게 커밋되었습니다.")
+                except Exception as e:
+                    print(f" * [경고] 잔여 배치 커밋 실패: {e}")
+
+            print(f" * 완전히 완료된 파일: {len(completed_files)}개")
+            if file_progress:
+                for f_stem, p_data in file_progress.items():
+                    s_name = f_stem.replace("cleaned_", "")[:18]
+                    print(f" * 진행 중이던 파일: '{s_name}' -> {p_data.get('last_row_id', 0):,}행까지 저장됨")
+            print(" * 다시 'python run_ingest.py'를 실행하시면 중단된 행에서부터 바로 이어서 진행됩니다.")
             print("=" * 70)
             sys.exit(0)
 
@@ -433,6 +579,11 @@ def main():
         action="store_true",
         help="적재 전 대상 컬렉션 초기화 여부",
     )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="저장된 체크포인트를 무시하고 처음부터 다시 적재",
+    )
 
     args = parser.parse_args()
     if sys.platform == "win32":
@@ -455,6 +606,7 @@ def main():
         model_name=args.model,
         collection_name=args.collection,
         reset=args.reset,
+        no_resume=args.no_resume,
         db_type=args.db,
         pg_conn=args.pg_conn,
     )

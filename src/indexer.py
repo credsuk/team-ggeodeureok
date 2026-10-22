@@ -137,6 +137,15 @@ class ChromaIndexer:
         except Exception:
             return 0
 
+    def delete_chunks_after_row(self, file_stem: str, after_row_id: int) -> int:
+        """특정 파일 스템에서 after_row_id 초과인 청크 삭제 (이어하기 시 불완전 청크 정리)"""
+        try:
+            col = self.vectorstore._collection
+            col.delete(where={"$and": [{"file_stem": file_stem}, {"row_id": {"$gt": after_row_id}}]})
+            return 1
+        except Exception:
+            return 0
+
     def query(
         self,
         query_text: str,

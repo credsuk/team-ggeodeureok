@@ -119,9 +119,12 @@ class HybridCouncilLoader:
         jsonl_path: Path,
         txt_path: Path,
         max_rows: int = 0,
+        start_row: int = 0,
     ) -> Generator[HybridCouncilRecord, None, None]:
         """
         단일 파일 쌍(JSONL + TXT)을 행 단위로 동시 순회하며 결합된 레코드 생성
+        - start_row: 이전에 완료된 마지막 행 번호 (1-based). 이 행 번호 이하의 행은 건너뜁니다.
+        - max_rows: 처리할 파일 최대 행 번호 (0이면 파일 끝까지)
         """
         file_stem = jsonl_path.stem
 
@@ -132,7 +135,18 @@ class HybridCouncilLoader:
             txt_header = f_txt.readline().strip().split("\t")
 
             row_count = 0
+            current_file_row = 0
             for line_j, line_t in zip(f_jsonl, f_txt):
+                current_file_row += 1
+
+                # 0. 중단 지점 이어하기: start_row 이하 행은 빠르게 건너뜀
+                if current_file_row <= start_row:
+                    continue
+
+                # max_rows 도달 시 조기 종료
+                if 0 < max_rows < current_file_row:
+                    break
+
                 line_j = line_j.strip()
                 line_t = line_t.strip()
                 if not line_j or not line_t:
@@ -148,35 +162,71 @@ class HybridCouncilLoader:
                     # 컬럼 부족 시 패딩
                     txt_cols.extend([""] * (9 - len(txt_cols)))
 
-                # 1. 실질 정책 논의 필터링 (substantive_only)
-                is_sub = bool(meta_obj.get("is_substantive", True))
-                if self.substantive_only and not is_sub:
-                    continue
-
-                # 2. 원문 추출 및 최소 길이 검증
+                # 1. 원문 추출 및 최소 길이 검증
                 utterance = txt_cols[8].strip()
                 if len(utterance) < self.min_char_len:
                     continue
+
+                # 2. 단순 투표 결과 집계 / 의원 명단 나열 발언 필터링
+                is_sub = bool(meta_obj.get("is_substantive", True))
+                is_vote_tally = bool(
+                    re.search(r"투표\s*의원\s*\(\s*\d+인|찬성\s*의원\s*\(\s*\d+인|반대\s*의원\s*\(\s*\d+인", utterance)
+                    or re.match(r"^[○\s]*(?:투표\s*의원|찬성\s*의원|반대\s*의원|재석\s*의원|투표\s*결과)", utterance)
+                )
+                if is_vote_tally:
+                    is_sub = False
+
+                if self.substantive_only and not is_sub:
+                    continue
+
+                # 3. 비정상 화자명(조례안/안건명 유입) 자동 감지 및 원문 기반 복원
+                raw_spk_name = txt_cols[6].strip() or meta_obj.get("speaker", "발언자")
+                raw_spk_role = txt_cols[5].strip() or "의원"
+
+                is_bad_speaker = (
+                    any(k in raw_spk_name for k in ["조례", "예산안", "동의안", "결의안", "규칙", "의 건", "승인안", "계획안", "개정안"])
+                    or len(raw_spk_name) > 15
+                    or bool(re.match(r"^\d+\.", raw_spk_name))
+                )
+
+                if is_bad_speaker:
+                    # 원문 시작 부분에서 실제 발언자 패턴 추출 시도 (예: ○ 부위원장이상원...)
+                    m = re.match(r"^[○\s]*([가-힣]+?(?:위원장|의장|부의장|부위원장|교육감|도지사|시장|군수|대표의원|의원|국장|과장|실장|관))\s*([가-힣]{2,4})?", utterance)
+                    if m:
+                        speaker_role = m.group(1).strip()
+                        speaker_name = (m.group(2) or "").strip() or speaker_role
+                        speaker_type = "의회" if any(k in speaker_role for k in ["위원", "의장", "의원"]) else "집행부"
+                    else:
+                        speaker_name = "미상"
+                        speaker_role = "의회"
+                        speaker_type = "일반"
+                else:
+                    speaker_name = raw_spk_name
+                    speaker_role = raw_spk_role
+                    speaker_type = txt_cols[7].strip() or "일반"
 
                 # 날짜 정규화
                 raw_date = meta_obj.get("date") or txt_cols[0]
                 iso_date, year_int = normalize_date(raw_date)
 
-                # 키워드 정규화
+                # 키워드 정규화 (투표/명단 관련 잡음 키워드 배제)
                 raw_kw = meta_obj.get("keywords", [])
-                keywords = [k.strip() for k in raw_kw if isinstance(k, str) and k.strip()] if isinstance(raw_kw, list) else []
+                keywords = [
+                    k.strip() for k in raw_kw 
+                    if isinstance(k, str) and k.strip() and not re.search(r"투표|찬성 의원|반대 의원", k)
+                ] if isinstance(raw_kw, list) else []
 
                 record = HybridCouncilRecord(
-                    row_id=int(meta_obj.get("row_id", row_count + 1)),
+                    row_id=int(meta_obj.get("row_id", current_file_row)),
                     date=iso_date,
                     year=year_int,
                     assembly=meta_obj.get("assembly") or txt_cols[1],
                     mints_nm=txt_cols[3].strip() or "회의록",
                     mtg_nm=txt_cols[2].strip() or "본회의",
                     agenda_title=txt_cols[4].strip() or meta_obj.get("agenda", "일반안건"),
-                    speaker_name=txt_cols[6].strip() or meta_obj.get("speaker", "발언자"),
-                    speaker_role=txt_cols[5].strip() or "의원",
-                    speaker_type=txt_cols[7].strip() or "일반",
+                    speaker_name=speaker_name,
+                    speaker_role=speaker_role,
+                    speaker_type=speaker_type,
                     utterance=utterance,
                     is_substantive=is_sub,
                     policy_category=meta_obj.get("policy_category", "기타"),
