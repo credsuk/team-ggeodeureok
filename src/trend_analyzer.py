@@ -6,7 +6,7 @@
 - 제공 데이터 범위 내 최초 관측 시점 (등장시점)
 - 타 지방의회에서의 후속 논의 흐름 (시계열 확산)
 - 로컬 LLM 기반 향후 예측 (서술형)
-- 근거 회의록명, 회의일자 및 판단에 사용한 원문 구간 매핑
+- 공식 회의록명(MINTS_NM), 회의일자 및 판단에 사용한 원문 구간 정밀 매핑
 - 최종 JSON 포맷 및 제출 양식 표(Markdown Table) 자동 생성
 """
 
@@ -76,6 +76,36 @@ def normalize_date_str(raw_date: Any) -> Tuple[str, str]:
         return f"{s}-01-01", f"{s}년"
 
     return str(raw_date), str(raw_date)
+
+
+def extract_context_window(text: str, keyword: str, max_chars: int = 180) -> str:
+    """
+    원문 텍스트에서 키워드가 등장하는 핵심 문맥 구간(Context Window)을 정밀 추출
+    """
+    if not text:
+        return ""
+
+    # 접두사([원문 발언], 메타 정보 등) 제거
+    clean = text
+    if "[원문 발언]" in clean:
+        clean = clean.split("[원문 발언]", 1)[-1].strip()
+
+    clean = re.sub(r"\[[^\]]*\]", "", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    idx = clean.find(keyword)
+    if idx != -1:
+        half = max_chars // 2
+        start = max(0, idx - half)
+        end = min(len(clean), idx + len(keyword) + half)
+        span = clean[start:end].strip()
+        prefix = "..." if start > 0 else ""
+        suffix = "..." if end < len(clean) else ""
+        return f"{prefix}{span}{suffix}"
+
+    if len(clean) > max_chars:
+        return clean[:max_chars].strip() + "..."
+    return clean
 
 
 class PolicyTrendAnalyzer:
@@ -192,19 +222,25 @@ class PolicyTrendAnalyzer:
                 continue
 
             content = doc.page_content.strip()
-            # 초단문 필터
-            if len(content) < 50:
+            if len(content) < 40:
                 continue
+
+            # 공식 회의록명 (mints_nm)
+            mints_nm = meta.get("mints_nm") or meta.get("agenda_title") or f"{meta.get('assembly', '')} 회의록"
+            agenda = meta.get("agenda_title", "회의 안건")
+            speaker = f"{meta.get('speaker_role', meta.get('speaker_position', ''))} {meta.get('speaker_name', '')}".strip()
 
             sorted_docs.append({
                 "iso_date": iso_date,
                 "kor_date": kor_date,
                 "assembly": meta.get("assembly", "지방의회"),
-                "agenda_title": meta.get("agenda_title", "회의 안건"),
-                "speaker": f"{meta.get('speaker_position', '')} {meta.get('speaker_name', '')}".strip(),
+                "mints_nm": mints_nm,
+                "agenda_title": agenda,
+                "speaker": speaker if speaker else "발언자 미상",
                 "policy_category": meta.get("policy_category", ""),
                 "core_issue": meta.get("core_issue", ""),
                 "keywords": meta.get("keywords", ""),
+                "summary": meta.get("summary", ""),
                 "content": content,
                 "score": float(score),
             })
@@ -221,18 +257,19 @@ class PolicyTrendAnalyzer:
 
         # 3. 최초 관측 시점 (등장시점) 도출
         first_doc = sorted_docs[0]
+        first_snippet = extract_context_window(first_doc["content"], issue_keyword, max_chars=180)
         first_observed = {
             "date": first_doc["kor_date"],
             "iso_date": first_doc["iso_date"],
             "assembly": first_doc["assembly"],
+            "mints_nm": first_doc["mints_nm"],
             "display": f"{first_doc['kor_date']}, {first_doc['assembly']}",
             "speaker": first_doc["speaker"],
             "agenda_title": first_doc["agenda_title"],
-            "snippet": first_doc["content"][:250].replace("\n", " ") + "...",
+            "used_text_span": first_snippet,
         }
 
         # 4. 타 지방의회로의 후속 논의 흐름 추출
-        # 최초 등장 의회를 제외하고, 이후 다른 의회들의 대표 논의 추출
         subsequent_docs = []
         seen_assemblies = {first_doc["assembly"]}
 
@@ -248,10 +285,11 @@ class PolicyTrendAnalyzer:
         # LLM에게 타임라인 요약 및 향후 예측 요청
         timeline_prompt_blocks = []
         for idx, doc in enumerate([first_doc] + subsequent_docs[:6], 1):
+            snippet = extract_context_window(doc["content"], issue_keyword, max_chars=160)
             timeline_prompt_blocks.append(
-                f"[{idx}] 일시: {doc['kor_date']} | 의회: {doc['assembly']} | 발언자: {doc['speaker']}\n"
-                f"안건: {doc['agenda_title']}\n"
-                f"발언 요약/내용: {doc['content'][:250].replace(chr(10), ' ')}"
+                f"[{idx}] 일시: {doc['kor_date']} | 의회: {doc['assembly']} | 회의록명: {doc['mints_nm']}\n"
+                f"발언자: {doc['speaker']} | 안건: {doc['agenda_title']}\n"
+                f"발언 요약/맥락: {doc['summary'] or snippet}"
             )
 
         llm_input = f"""[분석 이슈 키워드]
@@ -286,17 +324,18 @@ class PolicyTrendAnalyzer:
         else:
             future_prediction = f"향후 {issue_keyword} 관련 논의는 조례 제정 및 국비/지방비 확보를 중심으로 타 광역·기초 의회로 지속 확산될 것으로 예측됨."
 
-        # 7. 근거 회의록 목록 (회의록명, 일자, 사용 원문 구간)
+        # 7. 근거 회의록 목록 (공식 회의록명, 회의일자, 사용 원문 구간)
         evidences = []
         for doc in [first_doc] + subsequent_docs[:max_flow_items]:
+            span = extract_context_window(doc["content"], issue_keyword, max_chars=180)
             evidences.append({
                 "assembly": doc["assembly"],
                 "date": doc["kor_date"],
                 "iso_date": doc["iso_date"],
-                "doc_title": f"{doc['assembly']} {doc['agenda_title']}",
+                "mints_nm": doc["mints_nm"],
                 "agenda_title": doc["agenda_title"],
                 "speaker": doc["speaker"],
-                "used_text_span": doc["content"],
+                "used_text_span": span,
             })
 
         elapsed_sec = round(time.time() - start_time, 2)
@@ -304,7 +343,7 @@ class PolicyTrendAnalyzer:
         # 8. 제출 형식 텍스트 요약 (Markdown Table 호환)
         flow_formatted = "\n".join(trend_flow_list)
         evidence_summary_list = [
-            f"• [{ev['date']}, {ev['assembly']}] {ev['agenda_title']} ({ev['speaker']}): \"{ev['used_text_span'][:120]}...\""
+            f"• [{ev['date']}, {ev['assembly']}] {ev['mints_nm']} ({ev['speaker']}): \"{ev['used_text_span']}\""
             for ev in evidences[:3]
         ]
         evidence_formatted = "\n".join(evidence_summary_list)

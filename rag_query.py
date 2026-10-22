@@ -20,6 +20,7 @@ if sys.platform == "win32":
 
 from src.config import (
     COLLECTION_NAME,
+    DEFAULT_DB_TYPE,
     EMBEDDING_MODEL_NAME,
     EMBEDDING_PRESETS,
     resolve_embedding_model,
@@ -49,8 +50,8 @@ def main():
         "--db",
         type=str,
         choices=["chroma", "pgvector"],
-        default="chroma",
-        help="사용할 벡터 데이터베이스 ('chroma' 또는 'pgvector')",
+        default=DEFAULT_DB_TYPE,
+        help="사용할 벡터 데이터베이스 ('pgvector' 또는 'chroma')",
     )
     parser.add_argument(
         "--pg-conn",
