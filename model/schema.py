@@ -1,5 +1,5 @@
-"""Stable result shape for the requested five-column issue analysis table."""
-from typing import List
+"""Validated dashboard response with evidence provenance and forecast status."""
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -8,21 +8,45 @@ class StrictModel(BaseModel):
 
 
 class MeetingReference(StrictModel):
+    sourceId: str
     date: str
     council: str
     agendaTitle: str
     excerpt: str
+    chunkIds: List[str]
+    relevanceScore: Optional[float] = None
+
+
+class SupplementaryMetrics(StrictModel):
+    label: str
+    retrievedCouncilDays: int
+    councilsDiscussing: int
+    yearBreakdown: Dict[str, int]
+    topCouncil: Optional[str] = None
+    topCouncilSharePercent: Optional[float] = None
+
+
+class Forecast(StrictModel):
+    text: str
+    status: Literal["supported", "insufficient_evidence"]
+    confidence: Literal["low", "medium", "high"]
+    evidenceIds: List[str]
 
 
 class IssueResult(StrictModel):
     issueKeyword: str
-    # Multiple councils can share the earliest observed date; no intraday order is assumed.
-    appearance: List[MeetingReference]
-    regionalFlow: List[MeetingReference]
-    forecast: str
+    summary: str
+    summaryEvidenceIds: List[str]
+    firstObserved: List[MeetingReference]
+    subsequentDiscussions: List[MeetingReference]
+    supplementaryMetrics: SupplementaryMetrics
+    forecast: Forecast
     evidence: List[MeetingReference]
 
 
 class FinalOutput(StrictModel):
-    results: List[IssueResult]
+    dataPeriod: str
     dataScope: str
+    results: List[IssueResult]
+
+
