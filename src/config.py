@@ -4,9 +4,17 @@
 import os
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
 
 # 기본 디렉토리 경로
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 프로젝트 루트의 .env 파일 자동 로드
+env_path = BASE_DIR / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    load_dotenv(override=True)
 
 # 데이터 디렉토리 경로 (우선순위에 따라 자동 감지)
 if (BASE_DIR / "change_text" / "2024_광역 회의록").exists():
@@ -20,8 +28,8 @@ else:
 
 CHROMA_DIR = BASE_DIR / "chroma_db"
 
-# 기본 벡터 DB 선택 ('chroma' 또는 'pgvector')
-DEFAULT_DB_TYPE = os.getenv("DB_TYPE", "chroma").lower()
+# 기본 벡터 DB 선택 ('pgvector' 또는 'chroma') - 기본값: pgvector
+DEFAULT_DB_TYPE = os.getenv("DB_TYPE", "pgvector").lower()
 
 # ChromaDB 기본 컬렉션 설정
 COLLECTION_NAME = "local_council_minutes"
