@@ -128,6 +128,15 @@ class ChromaIndexer:
         except Exception:
             return 0
 
+    def delete_by_file_stem(self, file_stem: str) -> int:
+        """특정 파일 스템에 해당하는 기존 청크 삭제"""
+        try:
+            col = self.vectorstore._collection
+            col.delete(where={"file_stem": file_stem})
+            return 1
+        except Exception:
+            return 0
+
     def query(
         self,
         query_text: str,

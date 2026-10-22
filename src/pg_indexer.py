@@ -24,6 +24,8 @@ from src.config import (
 # LangChain 및 psycopg 경고 숨김
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
+warnings.filterwarnings("ignore", message=".*LangChainPendingDeprecationWarning.*")
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +62,14 @@ class PGVectorIndexer:
             encode_kwargs={"normalize_embeddings": False},
         )
 
-        # 2. PGVector 인스턴스 초기화
+        # 2. PGVector 인스턴스 초기화 (JSONB 메타데이터 활성화)
         try:
             self.vectorstore = PGVector(
                 connection_string=self.connection_string,
                 embedding_function=self.embeddings,
                 collection_name=self.collection_name,
                 pre_delete_collection=pre_delete_collection,
+                use_jsonb=True,
             )
         except Exception as e:
             self._handle_connection_error(e)
@@ -160,6 +163,26 @@ class PGVectorIndexer:
             if isinstance(condition, dict):
                 flattened.update(condition)
         return flattened if flattened else None
+
+    def delete_by_file_stem(self, file_stem: str) -> int:
+        """특정 파일 스템에 해당하는 기존 청크 삭제 (재적재 시 중복 방지)"""
+        try:
+            from sqlalchemy import create_engine, text
+            engine = create_engine(self.connection_string)
+            with engine.connect() as conn:
+                res = conn.execute(
+                    text("""
+                        DELETE FROM langchain_pg_embedding 
+                        WHERE collection_id = (SELECT uuid FROM langchain_pg_collection WHERE name = :name)
+                          AND cmetadata->>'file_stem' = :file_stem
+                    """),
+                    {"name": self.collection_name, "file_stem": file_stem}
+                )
+                conn.commit()
+                return res.rowcount if hasattr(res, 'rowcount') else 0
+        except Exception as e:
+            logger.debug(f"[PGVector] delete_by_file_stem 예외: {e}")
+            return 0
 
     def count(self) -> int:
         """현재 컬렉션에 적재된 문서 수 확인"""

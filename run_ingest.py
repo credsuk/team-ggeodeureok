@@ -12,10 +12,15 @@ import glob
 import json
 import os
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
 
 from tqdm import tqdm
 
@@ -50,6 +55,47 @@ def format_seconds(seconds: float) -> str:
     return f"{s}초"
 
 
+CHECKPOINT_FILE = BASE_DIR / ".ingest_checkpoint.json"
+
+
+def load_checkpoint(db_type: str, collection: str) -> Dict[str, Any]:
+    """저장된 체크포인트 파일 불러오기"""
+    if CHECKPOINT_FILE.exists():
+        try:
+            with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data.get("db_type") == db_type and data.get("collection") == collection:
+                    return data
+        except Exception:
+            pass
+    return {"completed_files": [], "total_chunks": 0}
+
+
+def save_checkpoint(completed_files: List[str], total_chunks: int, db_type: str, collection: str):
+    """체크포인트 파일 저장 (실시간 이어하기 보장)"""
+    data = {
+        "collection": collection,
+        "db_type": db_type,
+        "completed_files": list(completed_files),
+        "total_chunks": total_chunks,
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    try:
+        with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def clear_checkpoint():
+    """체크포인트 파일 삭제"""
+    if CHECKPOINT_FILE.exists():
+        try:
+            CHECKPOINT_FILE.unlink()
+        except Exception:
+            pass
+
+
 def run_hybrid_ingest(
     data_dir: Path,
     change_text_dir: Path,
@@ -72,6 +118,14 @@ def run_hybrid_ingest(
     target_collection = collection_name or COLLECTION_NAME
     selected_db = db_type.lower()
 
+    # 0. 체크포인트 상태 로드 및 이어하기(Resume) 처리
+    if reset:
+        clear_checkpoint()
+        completed_files = set()
+    else:
+        chk = load_checkpoint(selected_db, target_collection)
+        completed_files = set(chk.get("completed_files", []))
+
     # 하이브리드 로더 초기화
     loader = HybridCouncilLoader(
         data_dir=data_dir,
@@ -91,6 +145,8 @@ def run_hybrid_ingest(
     print(f" * 메타데이터 경로 (data)       : {data_dir}")
     print(f" * 원문 텍스트 경로 (change_text): {change_text_dir}")
     print(f" * 대상 파일 쌍                : 총 {len(matched_pairs)}개 파일 쌍 매칭 완료")
+    if completed_files:
+        print(f" * [이어하기 모드 감지]        : 기존 완료 {len(completed_files)}개 파일 제외 후 {len(matched_pairs) - len(completed_files)}개 진행")
     print(f" * 벡터 데이터베이스           : {selected_db.upper()}")
     print(f" * 임베딩 모델                 : {resolved_model}")
     print(f" * 대상 컬렉션                 : {target_collection}")
@@ -135,88 +191,139 @@ def run_hybrid_ingest(
 
     with tqdm(
         total=len(matched_pairs),
+        initial=len(completed_files),
         desc="[전체 파일 진행률]",
         unit="files",
-        bar_format="{desc}: {percentage:3.0f}%|{bar:22}| {n_fmt}/{total_fmt} 파일 [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
+        bar_format="{desc}: {percentage:3.0f}%|{bar:20}| {n_fmt}/{total_fmt} 파일 [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
         dynamic_ncols=True,
     ) as file_pbar:
+        try:
+            for jsonl_path, txt_path in matched_pairs:
+                file_stem = jsonl_path.stem
+                short_name = file_stem.replace("cleaned_", "")[:18]
 
-        for jsonl_path, txt_path in matched_pairs:
-            short_name = jsonl_path.stem.replace("cleaned_", "")[:18]
-            batch_ids: List[str] = []
-            batch_docs: List[str] = []
-            batch_metas: List[Dict[str, Any]] = []
+                # 이미 완료된 파일이면 건너뛰기
+                if file_stem in completed_files:
+                    continue
 
-            # 단일 파일 스트리밍 순회
-            record_stream = loader.stream_hybrid_records(
-                jsonl_path=jsonl_path,
-                txt_path=txt_path,
-                max_rows=sample_lines,
-            )
+                file_start_time = time.time()
 
-            file_chunks = 0
-            for record in record_stream:
-                total_processed_records += 1
+                # 이전 불완전 실행 시 남아있을 수 있는 청크 사전 정리 (중복 방지)
+                indexer.delete_by_file_stem(file_stem)
 
-                # 장문 서브청킹
-                sub_chunks = chunker.split_text(record.utterance)
-                total_c = len(sub_chunks)
+                # 파일 전체 행 수 사전 집계 (행 단위 진행률 표시용)
+                try:
+                    with open(jsonl_path, "r", encoding="utf-8") as f:
+                        file_total_lines = sum(1 for _ in f)
+                except Exception:
+                    file_total_lines = 0
 
-                for c_idx, raw_chunk in enumerate(sub_chunks):
-                    chunk_id = f"{record.file_stem}_r{record.row_id}_c{c_idx}"
+                target_lines = min(sample_lines, file_total_lines) if sample_lines > 0 else file_total_lines
 
-                    # 의미 보강 텍스트 생성 (메타 쟁점 + 키워드 결합)
-                    if augment_text:
-                        embedding_text = create_augmented_text(record, raw_chunk)
-                    else:
-                        embedding_text = raw_chunk
+                batch_ids: List[str] = []
+                batch_docs: List[str] = []
+                batch_metas: List[Dict[str, Any]] = []
 
-                    meta = {
-                        "row_id": record.row_id,
-                        "date": record.date,
-                        "year": record.year,
-                        "assembly": record.assembly,
-                        "mints_nm": record.mints_nm,
-                        "mtg_nm": record.mtg_nm,
-                        "agenda_title": record.agenda_title,
-                        "speaker_name": record.speaker_name,
-                        "speaker_role": record.speaker_role,
-                        "speaker_type": record.speaker_type,
-                        "policy_category": record.policy_category,
-                        "core_issue": record.core_issue,
-                        "keywords": ", ".join(record.keywords),
-                        "summary": record.summary,
-                        "is_substantive": record.is_substantive,
-                        "chunk_index": c_idx,
-                        "total_chunks": total_c,
-                        "file_stem": record.file_stem,
-                    }
+                # 단일 파일 스트리밍 순회
+                record_stream = loader.stream_hybrid_records(
+                    jsonl_path=jsonl_path,
+                    txt_path=txt_path,
+                    max_rows=sample_lines,
+                )
 
-                    batch_ids.append(chunk_id)
-                    batch_docs.append(embedding_text)
-                    batch_metas.append(meta)
+                file_chunks = 0
+                with tqdm(
+                    total=target_lines,
+                    desc=f" └ [{short_name}]",
+                    unit="행",
+                    leave=False,
+                    dynamic_ncols=True,
+                    bar_format="{desc}: {percentage:3.0f}%|{bar:16}| {n_fmt}/{total_fmt}행 [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
+                ) as row_pbar:
+                    for record in record_stream:
+                        total_processed_records += 1
+                        row_pbar.update(1)
 
-                    if len(batch_ids) >= batch_size:
+                        # 장문 서브청킹
+                        sub_chunks = chunker.split_text(record.utterance)
+                        total_c = len(sub_chunks)
+
+                        for c_idx, raw_chunk in enumerate(sub_chunks):
+                            chunk_id = f"{record.file_stem}_r{record.row_id}_c{c_idx}"
+
+                            # 의미 보강 텍스트 생성 (메타 쟁점 + 키워드 결합)
+                            if augment_text:
+                                embedding_text = create_augmented_text(record, raw_chunk)
+                            else:
+                                embedding_text = raw_chunk
+
+                            meta = {
+                                "row_id": record.row_id,
+                                "date": record.date,
+                                "year": record.year,
+                                "assembly": record.assembly,
+                                "mints_nm": record.mints_nm,
+                                "mtg_nm": record.mtg_nm,
+                                "agenda_title": record.agenda_title,
+                                "speaker_name": record.speaker_name,
+                                "speaker_role": record.speaker_role,
+                                "speaker_type": record.speaker_type,
+                                "policy_category": record.policy_category,
+                                "core_issue": record.core_issue,
+                                "keywords": ", ".join(record.keywords),
+                                "summary": record.summary,
+                                "is_substantive": record.is_substantive,
+                                "chunk_index": c_idx,
+                                "total_chunks": total_c,
+                                "file_stem": record.file_stem,
+                            }
+
+                            batch_ids.append(chunk_id)
+                            batch_docs.append(embedding_text)
+                            batch_metas.append(meta)
+
+                            if len(batch_ids) >= batch_size:
+                                indexer.add_batch(batch_ids, batch_docs, batch_metas)
+                                count_b = len(batch_ids)
+                                file_chunks += count_b
+                                total_chunks_added += count_b
+                                batch_ids.clear()
+                                batch_docs.clear()
+                                batch_metas.clear()
+
+                                f_elapsed = max(0.1, time.time() - file_start_time)
+                                cps = file_chunks / f_elapsed
+                                row_pbar.set_postfix({
+                                    "적재청크": f"{file_chunks:,}",
+                                    "속도": f"{cps:.1f}c/s",
+                                })
+
+                    # 파일 잔여 청크 적재
+                    if batch_ids:
                         indexer.add_batch(batch_ids, batch_docs, batch_metas)
                         count_b = len(batch_ids)
                         file_chunks += count_b
                         total_chunks_added += count_b
-                        batch_ids.clear()
-                        batch_docs.clear()
-                        batch_metas.clear()
 
-            # 파일 잔여 청크 적재
-            if batch_ids:
-                indexer.add_batch(batch_ids, batch_docs, batch_metas)
-                count_b = len(batch_ids)
-                file_chunks += count_b
-                total_chunks_added += count_b
+                # 정상 전체 적재일 때 체크포인트 저장
+                if sample_lines == 0:
+                    completed_files.add(file_stem)
+                    save_checkpoint(list(completed_files), total_chunks_added, selected_db, target_collection)
 
-            file_pbar.set_postfix({
-                "현재파일": short_name,
-                "누적청크": f"{total_chunks_added:,}",
-            })
-            file_pbar.update(1)
+                file_pbar.set_postfix({
+                    "완료": short_name,
+                    "누적청크": f"{total_chunks_added:,}",
+                })
+                file_pbar.update(1)
+
+        except KeyboardInterrupt:
+            print("\n" + "=" * 70)
+            print(" ⚠️  [일시 중단 안내] 사용자에 의해 적재 작업이 중단되었습니다 (Ctrl+C).")
+            if completed_files:
+                print(f" * 안전하게 저장된 완료 파일: {len(completed_files)}개")
+                print(" * 다시 'python run_ingest.py'를 실행하시면 완료된 파일은 건너뛰고 이어서 진행됩니다.")
+            print("=" * 70)
+            sys.exit(0)
 
     elapsed_total = time.time() - start_time
     end_dt_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

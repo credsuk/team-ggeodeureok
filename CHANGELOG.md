@@ -29,6 +29,11 @@
 - 불용어 사전(COUNCIL_STOPWORDS) 내 강원특별자치도 특정 인명(도지사, 교육감, 도의원 등 14명) 하드코딩 블록 삭제.
 - 특정 지자체 편향을 없애고 dynamic_stopwords를 통한 화자별 동적 불용어 처리 일원화.
 
+### 5. 인제스트 실시간 진행률(행 단위) 및 스마트 이어하기(Checkpoint) 구현, pgvector JSONB 지원
+- **실시간 이중 진행률 표시기(Dual-level tqdm)**: 전체 파일 진행률과 함께 현재 파일의 실시간 행 단위(Row-by-Row) 진행률, 처리 속도(행/초, chunks/초), 적재 청크 수, 파일별 남은 시간 표시.
+- **스마트 이어하기(Resume) 및 체크포인트**: .ingest_checkpoint.json을 통해 파일 단위 완료 상태를 실시간 기록하여 재실행 시 완료 파일 자동 건너뛰기 및 delete_by_file_stem을 통한 중복 방지.
+- **PGVector JSONB 메타데이터 활성화 (use_jsonb=True)**: PostgreSQL cmetadata 컬럼을 JSONB로 전환하고 바이너리 인덱싱 활성화, LangChain 경고문 소멸.
+
 ---
 
 ## [2026-10-21] PostgreSQL (pgvector) 벡터 데이터베이스 통합 및 하이브리드 스위칭 지원
