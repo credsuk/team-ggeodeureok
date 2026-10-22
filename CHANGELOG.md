@@ -25,6 +25,10 @@
 - **판단에 사용한 원문 구간 정밀 추출 (`extract_context_window`)**: 키워드가 등장하는 실제 발언 전후 180자 문맥 스팬을 정밀 추출.
 - 공식 회의록명(`mints_nm`) 및 회의일자를 정확히 매핑하여 주최 측 제출 양식 표(Markdown Table) 및 JSON 결과물 자동 생성.
 
+### 4. Kiwi 메타데이터 추출기 내 특정 지자체 편향 인명 하드코딩 제거 ([extract_kiwi_metadata.py](file:///c:/study/Projects/team-ggeodeureok/extract_kiwi_metadata.py))
+- 불용어 사전(COUNCIL_STOPWORDS) 내 강원특별자치도 특정 인명(도지사, 교육감, 도의원 등 14명) 하드코딩 블록 삭제.
+- 특정 지자체 편향을 없애고 dynamic_stopwords를 통한 화자별 동적 불용어 처리 일원화.
+
 ---
 
 ## [2026-10-21] PostgreSQL (pgvector) 벡터 데이터베이스 통합 및 하이브리드 스위칭 지원
