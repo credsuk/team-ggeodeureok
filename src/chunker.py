@@ -31,6 +31,14 @@ class CouncilMinuteChunker:
             separators=["\n\n", "\n", ". ", " ", ""],
         )
 
+    def split_text(self, text: str) -> List[str]:
+        """텍스트 길이가 chunk_size를 초과하면 분할하고, 아니면 단일 리스트 반환"""
+        if not text:
+            return []
+        if len(text) > self.chunk_size:
+            return self.splitter.split_text(text)
+        return [text]
+
     def chunk_parsed_record(
         self, record: Dict[str, Any]
     ) -> List[Tuple[str, str, Dict[str, Any]]]:
