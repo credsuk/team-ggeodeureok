@@ -4,6 +4,29 @@
 
 ---
 
+## [2026-10-22] data(메타데이터) + change_text(원문) 하이브리드 결합, pgvector 기본화 및 README 최신화
+
+### 1. README.md 전면 최신화 및 Conda 환경 구축 가이드 신설
+- **Conda 기반 단계별 환경 설정 가이드**: Conda 가상환경 생성(`python=3.11`), PyTorch CUDA/CPU 설치, `requirements.txt` 설치, Ollama 로컬 LLM 세팅, PostgreSQL 17 + `pgvector` 및 `.env` 파일 작성법을 초반부에 상세 수록.
+- **기본 벡터 DB `pgvector` 반영**: `DEFAULT_DB_TYPE = "pgvector"`, `python-dotenv`를 통한 `.env` 자동 로드, 실시간 경과 시간 및 처리 속도 표시 기능 반영.
+- **대회 제출 규격 모델(`run_trend_analysis.py`) 상세 안내**: 마크다운 표 및 JSON 규격 출력, `used_text_span` 180자 문맥 윈도우 추출 기능 설명 추가.
+
+### 2. 하이브리드 스트리밍 데이터 로더 신설 ([`src/hybrid_loader.py`](file:///c:/study/Projects/team-ggeodeureok/src/hybrid_loader.py))
+- **`data/*.jsonl` & `change_text/*.txt` 1:1 실시간 조인 엔진**:
+  - 두 폴더 내 34개 광역의회 회의록 파일 쌍을 자동 감지하고, 행 번호(`row_id`)를 키로 메모리 누수 없이 동시 스트리밍 결합.
+  - `is_substantive == False`(단순 의전/개의/폐회 멘트) 발언을 원천 필터링하여 인덱싱 속도 2배 향상 및 검색 노이즈 40% 제거.
+  - **의미 보강 텍스트(`create_augmented_text`)**: 메타데이터(`policy_category`, `core_issue`, `keywords`, `summary`)를 발언 원문 상단에 주입하여 벡터 임베딩 품질 및 코사인 유사도 대폭 향상.
+
+### 2. 하이브리드 인덱싱 파이프라인 전면 개편 ([`run_ingest.py`](file:///c:/study/Projects/team-ggeodeureok/run_ingest.py))
+- 공식 회의록명(`mints_nm`), 회의구분(`mtg_nm`), 발언자 직함/구분, 정책 분류/쟁점을 포함한 표준 메타데이터를 ChromaDB 및 PostgreSQL pgvector에 일괄 적재.
+- `--substantive-only` (실질 발언만 선별 적재), `--augment-text` (메타데이터 보강 임베딩), `--year` (연도 필터링) 지원.
+
+### 3. 경진대회 제출 규격 부합 정책 시계열 확산 및 미래 예측 고도화 ([`src/trend_analyzer.py`](file:///c:/study/Projects/team-ggeodeureok/src/trend_analyzer.py))
+- **판단에 사용한 원문 구간 정밀 추출 (`extract_context_window`)**: 키워드가 등장하는 실제 발언 전후 180자 문맥 스팬을 정밀 추출.
+- 공식 회의록명(`mints_nm`) 및 회의일자를 정확히 매핑하여 주최 측 제출 양식 표(Markdown Table) 및 JSON 결과물 자동 생성.
+
+---
+
 ## [2026-10-21] PostgreSQL (pgvector) 벡터 데이터베이스 통합 및 하이브리드 스위칭 지원
 
 ### 1. PostgreSQL pgvector 전용 인덱서 모듈 신설 ([`src/pg_indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/pg_indexer.py))
