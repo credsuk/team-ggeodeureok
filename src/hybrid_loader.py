@@ -122,23 +122,43 @@ class HybridCouncilLoader:
         start_row: int = 0,
     ) -> Generator[HybridCouncilRecord, None, None]:
         """
-        단일 파일 쌍(JSONL + TXT)을 행 단위로 동시 순회하며 결합된 레코드 생성
+        단일 파일 쌍(JSONL + TXT)을 row_id 기준으로 조인하여 결합된 레코드 생성
         - start_row: 이전에 완료된 마지막 행 번호 (1-based). 이 행 번호 이하의 행은 건너뜁니다.
         - max_rows: 처리할 파일 최대 행 번호 (0이면 파일 끝까지)
         """
         file_stem = jsonl_path.stem
 
-        with open(jsonl_path, "r", encoding="utf-8-sig") as f_jsonl, \
-             open(txt_path, "r", encoding="utf-8-sig") as f_txt:
+        # JSONL 메타데이터를 row_id 기준으로 인덱싱하여 메모리에 로드
+        metadata_by_row: Dict[int, Dict[str, Any]] = {}
+        with open(jsonl_path, "r", encoding="utf-8-sig") as f_jsonl:
+            for line_idx, line_j in enumerate(f_jsonl, 1):
+                line_j = line_j.strip()
+                if not line_j:
+                    continue
+                try:
+                    meta_obj = json.loads(line_j)
+                except Exception:
+                    continue
+                if not isinstance(meta_obj, dict):
+                    continue
 
+                r_id = meta_obj.get("row_id")
+                if r_id is not None:
+                    try:
+                        r_id = int(r_id)
+                    except (ValueError, TypeError):
+                        r_id = line_idx
+                else:
+                    r_id = line_idx
+
+                metadata_by_row[r_id] = meta_obj
+
+        row_count = 0
+        with open(txt_path, "r", encoding="utf-8-sig") as f_txt:
             # TXT 헤더 스킵
             txt_header = f_txt.readline().strip().split("\t")
 
-            row_count = 0
-            current_file_row = 0
-            for line_j, line_t in zip(f_jsonl, f_txt):
-                current_file_row += 1
-
+            for current_file_row, line_t in enumerate(f_txt, start=1):
                 # 0. 중단 지점 이어하기: start_row 이하 행은 빠르게 건너뜀
                 if current_file_row <= start_row:
                     continue
@@ -147,14 +167,13 @@ class HybridCouncilLoader:
                 if 0 < max_rows < current_file_row:
                     break
 
-                line_j = line_j.strip()
                 line_t = line_t.strip()
-                if not line_j or not line_t:
+                if not line_t:
                     continue
 
-                try:
-                    meta_obj = json.loads(line_j)
-                except Exception:
+                # row_id 기준으로 매칭되는 메타데이터 조회
+                meta_obj = metadata_by_row.get(current_file_row)
+                if meta_obj is None:
                     continue
 
                 txt_cols = line_t.split("\t")
@@ -191,7 +210,7 @@ class HybridCouncilLoader:
 
                 if is_bad_speaker:
                     # 원문 시작 부분에서 실제 발언자 패턴 추출 시도 (예: ○ 부위원장이상원...)
-                    m = re.match(r"^[○\s]*([가-힣]+?(?:위원장|의장|부의장|부위원장|교육감|도지사|시장|군수|대표의원|의원|국장|과장|실장|관))\s*([가-힣]{2,4})?", utterance)
+                    m = re.match(r"^[○\s]*([가-힣]*(?:위원장|의장|부의장|부위원장|교육감|도지사|시장|군수|대표의원|의원|국장|과장|실장|관))\s*([가-힣]{2,4})?", utterance)
                     if m:
                         speaker_role = m.group(1).strip()
                         speaker_name = (m.group(2) or "").strip() or speaker_role

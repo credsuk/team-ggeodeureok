@@ -56,69 +56,91 @@ def fix_file_metadata(jsonl_path: Path, txt_path: Path, dry_run: bool = False):
 
     temp_path = jsonl_path.with_suffix(".jsonl.tmp")
 
-    with open(jsonl_path, "r", encoding="utf-8-sig") as f_in, \
-         open(txt_path, "r", encoding="utf-8-sig") as f_txt, \
-         open(temp_path, "w", encoding="utf-8") as f_out:
+    # TXT에서 발언(utterance) 사전 구축 (1-based row_id 매핑)
+    utterances = {}
+    if txt_path.exists():
+        with open(txt_path, "r", encoding="utf-8-sig") as f_txt:
+            f_txt.readline()  # txt header skip
+            for r_idx, line_t in enumerate(f_txt, start=1):
+                txt_cols = line_t.strip().split("\t")
+                utterances[r_idx] = txt_cols[8].strip() if len(txt_cols) >= 9 else ""
 
-        # txt header skip
-        f_txt.readline()
+    try:
+        with open(jsonl_path, "r", encoding="utf-8-sig") as f_in, \
+             open(temp_path, "w", encoding="utf-8") as f_out:
 
-        for line_j, line_t in zip(f_in, f_txt):
-            line_j = line_j.strip()
-            line_t = line_t.strip()
-            if not line_j or not line_t:
-                continue
+            for line_idx, line_j in enumerate(f_in, start=1):
+                line_j = line_j.strip()
+                if not line_j:
+                    continue
 
-            total_lines += 1
-            try:
-                d = json.loads(line_j)
-            except Exception:
-                f_out.write(line_j + "\n")
-                continue
+                total_lines += 1
+                try:
+                    d = json.loads(line_j)
+                except Exception:
+                    f_out.write(line_j + "\n")
+                    continue
 
-            txt_cols = line_t.split("\t")
-            utterance = txt_cols[8].strip() if len(txt_cols) >= 9 else ""
+                if not isinstance(d, dict):
+                    f_out.write(line_j + "\n")
+                    continue
 
-            spk = d.get("speaker", "")
-
-            # 1. 투표 명단 판별
-            is_vote_tally = bool(
-                re.search(r"투표\s*의원\s*\(\s*\d+인|찬성\s*의원\s*\(\s*\d+인|반대\s*의원\s*\(\s*\d+인", utterance)
-                or re.match(r"^[○\s]*(?:투표\s*의원|찬성\s*의원|반대\s*의원|재석\s*의원|투표\s*결과)", utterance)
-            )
-
-            if is_vote_tally:
-                d["is_substantive"] = False
-                d["speaker"] = "의회"
-                d["keywords"] = []
-                d["core_issue"] = "의원 전자투표 및 표결 결과"
-                fixed_votes += 1
-
-            # 2. 비정상 화자명 판별 및 원문 복원
-            is_bad_speaker = (
-                any(k in spk for k in ["조례", "예산안", "동의안", "결의안", "규칙", "의 건", "승인안", "계획안", "개정안"])
-                or len(spk) > 15
-                or bool(re.match(r"^\d+\.", spk))
-            )
-
-            if is_bad_speaker and not is_vote_tally:
-                m = re.match(r"^[○\s]*([가-힣]+?(?:위원장|의장|부의장|부위원장|교육감|도지사|시장|군수|대표의원|의원|국장|과장|실장|관))\s*([가-힣]{2,4})?", utterance)
-                if m:
-                    role = m.group(1).strip()
-                    name = (m.group(2) or "").strip()
-                    d["speaker"] = f"{role} {name}".strip() if name else role
+                row_id = d.get("row_id")
+                if row_id is not None:
+                    try:
+                        row_id = int(row_id)
+                    except (ValueError, TypeError):
+                        row_id = line_idx
                 else:
-                    d["speaker"] = "미상"
-                fixed_speakers += 1
+                    row_id = line_idx
 
-            f_out.write(json.dumps(d, ensure_ascii=False) + "\n")
+                utterance = utterances.get(row_id, "")
+                spk = d.get("speaker", "")
 
-    if dry_run:
+                # 1. 투표 명단 판별
+                is_vote_tally = bool(
+                    re.search(r"투표\s*의원\s*\(\s*\d+인|찬성\s*의원\s*\(\s*\d+인|반대\s*의원\s*\(\s*\d+인", utterance)
+                    or re.match(r"^[○\s]*(?:투표\s*의원|찬성\s*의원|반대\s*의원|재석\s*의원|투표\s*결과)", utterance)
+                )
+
+                if is_vote_tally:
+                    d["is_substantive"] = False
+                    d["speaker"] = "의회"
+                    d["keywords"] = []
+                    d["core_issue"] = "의원 전자투표 및 표결 결과"
+                    fixed_votes += 1
+
+                # 2. 비정상 화자명 판별 및 원문 복원
+                is_bad_speaker = (
+                    any(k in spk for k in ["조례", "예산안", "동의안", "결의안", "규칙", "의 건", "승인안", "계획안", "개정안"])
+                    or len(spk) > 15
+                    or bool(re.match(r"^\d+\.", spk))
+                )
+
+                if is_bad_speaker and not is_vote_tally:
+                    m = re.match(r"^[○\s]*([가-힣]*(?:위원장|의장|부의장|부위원장|교육감|도지사|시장|군수|대표의원|의원|국장|과장|실장|관))\s*([가-힣]{2,4})?", utterance)
+                    if m:
+                        role = m.group(1).strip()
+                        name = (m.group(2) or "").strip()
+                        d["speaker"] = f"{role} {name}".strip() if name else role
+                    else:
+                        d["speaker"] = "미상"
+                    fixed_speakers += 1
+
+                f_out.write(json.dumps(d, ensure_ascii=False) + "\n")
+
+        if dry_run:
+            if temp_path.exists():
+                temp_path.unlink()
+        else:
+            # 원본 파일 교체
+            temp_path.replace(jsonl_path)
+    finally:
         if temp_path.exists():
-            temp_path.unlink()
-    else:
-        # 원본 파일 교체
-        temp_path.replace(jsonl_path)
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
 
     return total_lines, fixed_speakers, fixed_votes
 
