@@ -82,7 +82,7 @@ def extract_context_window(text: str, keyword: str, max_chars: int = 180) -> str
     """
     원문 텍스트에서 키워드가 등장하는 핵심 문맥 구간(Context Window)을 정밀 추출
     """
-    if not text:
+    if not text or max_chars <= 0:
         return ""
 
     # 접두사([원문 발언], 메타 정보 등) 제거
@@ -93,19 +93,33 @@ def extract_context_window(text: str, keyword: str, max_chars: int = 180) -> str
     clean = re.sub(r"\[[^\]]*\]", "", clean)
     clean = re.sub(r"\s+", " ", clean).strip()
 
-    idx = clean.find(keyword)
-    if idx != -1:
-        half = max_chars // 2
-        start = max(0, idx - half)
-        end = min(len(clean), idx + len(keyword) + half)
-        span = clean[start:end].strip()
-        prefix = "..." if start > 0 else ""
-        suffix = "..." if end < len(clean) else ""
-        return f"{prefix}{span}{suffix}"
+    if len(clean) <= max_chars:
+        return clean
 
-    if len(clean) > max_chars:
-        return clean[:max_chars].strip() + "..."
-    return clean
+    # Map casefolded, whitespace-free matches back to original characters.
+    positions = []
+    normalized = []
+    for pos, char in enumerate(clean):
+        if not char.isspace():
+            folded = char.casefold()
+            normalized.append(folded)
+            positions.extend([pos] * len(folded))
+    needle = re.sub(r"\s+", "", keyword).casefold()
+    idx = "".join(normalized).find(needle) if needle else -1
+    budget = max(1, max_chars - 6)  # both ellipses count toward the limit
+    start = 0
+    if idx >= 0:
+        match_start = positions[idx]
+        match_end = positions[idx + len(needle) - 1] + 1
+        start = max(0, match_start - max(0, budget - (match_end - match_start)) // 2)
+        start = min(start, len(clean) - budget)
+    end = min(len(clean), start + budget)
+    span = clean[start:end].strip()
+    remaining = max_chars - len(span)
+    prefix = "." * min(3, remaining) if start > 0 else ""
+    remaining -= len(prefix)
+    suffix = "." * min(3, remaining) if end < len(clean) else ""
+    return prefix + span + suffix
 
 
 class PolicyTrendAnalyzer:
@@ -195,6 +209,13 @@ class PolicyTrendAnalyzer:
         주요 이슈 키워드를 기반으로 최초 등장 시점, 타 의회 확산 흐름, 향후 예측 분석 수행
         """
         start_time = time.time()
+        normalized_keyword = re.sub(r"\s+", "", issue_keyword).casefold()
+        if not normalized_keyword:
+            return {
+                "status": "not_found",
+                "issue_keyword": issue_keyword,
+                "message": "분석할 이슈 키워드가 없습니다.",
+            }
 
         # 1. 이슈 키워드 기반 시맨틱 검색 수행
         search_query = f"{issue_keyword} 정책 조례 지원 추진 방안"
@@ -222,6 +243,10 @@ class PolicyTrendAnalyzer:
                 continue
 
             content = doc.page_content.strip()
+            # Augmented summaries/keywords are not original speech evidence.
+            content = content.split("[원문 발언]", 1)[-1].strip()
+            if normalized_keyword not in re.sub(r"\s+", "", content).casefold():
+                continue
             if len(content) < 40:
                 continue
 
@@ -263,7 +288,7 @@ class PolicyTrendAnalyzer:
             "iso_date": first_doc["iso_date"],
             "assembly": first_doc["assembly"],
             "mints_nm": first_doc["mints_nm"],
-            "display": f"{first_doc['kor_date']}, {first_doc['assembly']}",
+            "display": f"{first_doc['kor_date']}, {first_doc['assembly']} (검색 후보 내 최초 관측)",
             "speaker": first_doc["speaker"],
             "agenda_title": first_doc["agenda_title"],
             "used_text_span": first_snippet,
@@ -272,24 +297,25 @@ class PolicyTrendAnalyzer:
         # 4. 타 지방의회로의 후속 논의 흐름 추출
         subsequent_docs = []
         seen_assemblies = {first_doc["assembly"]}
+        max_flow_items = max(0, max_flow_items)
 
         for doc in sorted_docs[1:]:
+            if len(subsequent_docs) >= max_flow_items:
+                break
             assembly = doc["assembly"]
-            # 새로운 의회의 최초 논의거나, 기존 의회라도 날짜가 확연히 다른 주요 안건
-            if assembly not in seen_assemblies or len(seen_assemblies) < 3:
+            # One original evidence item per distinct subsequent council.
+            if assembly not in seen_assemblies:
                 subsequent_docs.append(doc)
                 seen_assemblies.add(assembly)
-            if len(subsequent_docs) >= 8:
-                break
 
         # LLM에게 타임라인 요약 및 향후 예측 요청
         timeline_prompt_blocks = []
-        for idx, doc in enumerate([first_doc] + subsequent_docs[:6], 1):
+        for idx, doc in enumerate([first_doc] + subsequent_docs, 1):
             snippet = extract_context_window(doc["content"], issue_keyword, max_chars=160)
             timeline_prompt_blocks.append(
                 f"[{idx}] 일시: {doc['kor_date']} | 의회: {doc['assembly']} | 회의록명: {doc['mints_nm']}\n"
                 f"발언자: {doc['speaker']} | 안건: {doc['agenda_title']}\n"
-                f"발언 요약/맥락: {doc['summary'] or snippet}"
+                f"원문 발언/맥락: {snippet}"
             )
 
         llm_input = f"""[분석 이슈 키워드]
@@ -302,6 +328,8 @@ class PolicyTrendAnalyzer:
 
         llm_response = self._call_ollama(llm_input, system_prompt=TREND_ANALYSIS_SYSTEM_PROMPT)
         parsed_llm = self._parse_json(llm_response)
+        if not isinstance(parsed_llm, dict):
+            parsed_llm = {}
 
         # 5. 후속 논의 흐름 목록 구성
         trend_flow_list = []
@@ -319,10 +347,13 @@ class PolicyTrendAnalyzer:
                 )
 
         # 6. 향후 예측 생성
-        if parsed_llm and parsed_llm.get("future_prediction"):
-            future_prediction = parsed_llm["future_prediction"]
+        prediction = parsed_llm.get("future_prediction")
+        if isinstance(prediction, str) and prediction.strip():
+            future_prediction = prediction.strip()
+            prediction_status = "available"
         else:
-            future_prediction = f"향후 {issue_keyword} 관련 논의는 조례 제정 및 국비/지방비 확보를 중심으로 타 광역·기초 의회로 지속 확산될 것으로 예측됨."
+            future_prediction = "예측 불가: LLM의 유효한 예측 응답을 확보하지 못했습니다."
+            prediction_status = "unavailable"
 
         # 7. 근거 회의록 목록 (공식 회의록명, 회의일자, 사용 원문 구간)
         evidences = []
@@ -363,6 +394,8 @@ class PolicyTrendAnalyzer:
                 "근거 회의록": evidence_formatted,
             },
             "metadata": {
+                "first_observed_scope": "retrieval_candidates",
+                "prediction_status": prediction_status,
                 "vector_db": self.db_type,
                 "collection_name": self.collection_name,
                 "embedding_model": self.embedding_model_name,

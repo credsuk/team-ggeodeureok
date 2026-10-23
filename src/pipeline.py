@@ -286,15 +286,6 @@ class CouncilRAGPipeline:
             where=where_clause,
         )
 
-        # 만약 엄격한 필터로 인해 결과가 너무 적을 경우 필터 완화 재검색
-        if len(results) == 0 and where_clause is not None:
-            logger.info("필터 적용 결과가 없어 필터 없이 재검색합니다.")
-            results = self.indexer.query(
-                query_text=query_text,
-                n_results=top_k,
-                where=None,
-            )
-
         return results
 
     # =================================================================
@@ -309,13 +300,13 @@ class CouncilRAGPipeline:
         """
         1차 검색된 후보 문서를 질의 관련성에 따라 재순위화
         """
-        if not candidate_docs:
+        if not candidate_docs or top_n <= 0:
             return []
 
-        if len(candidate_docs) <= top_n and self.reranker_type == "none":
+        if self.reranker_type == "none":
             # 단순 거리순 반환
             reranked = []
-            for rank, (doc, dist) in enumerate(candidate_docs, 1):
+            for rank, (doc, dist) in enumerate(candidate_docs[:top_n], 1):
                 # distance to score 변환 (cosine distance 기준)
                 sim_score = max(0.0, 1.0 - float(dist))
                 reranked.append({
