@@ -26,6 +26,8 @@ def _dataset_key_prefix(relative_path):
 
 def _discover_datasets(metadata_root, transcript_root):
     """Recursively pair unique same-name JSONL/TXT files under the two roots."""
+    if not metadata_root.is_dir() or not transcript_root.is_dir():
+        raise FileNotFoundError(f"설정된 데이터 경로가 없습니다: {metadata_root}, {transcript_root}")
     metadata_files = {}
     transcript_files = {}
     for path in metadata_root.rglob("*.jsonl"):
@@ -68,10 +70,12 @@ CHROMA_PATH = PROJECT_ROOT / "data" / "vector_db"
 COLLECTION_NAME = "council_minutes"
 
 EMBEDDING_MODEL = "dragonkue/snowflake-arctic-embed-l-v2.0-ko"
-RERANKER_MODEL = "BAAI/bge-reranker-large"
-LLM_BASE_URL = "http://localhost:8000/v1"
-LLM_API_KEY = "EMPTY"
-LLM_MODEL_NAME = "local-model"
+# Multilingual reranker; compare candidates on the labeled Korean evaluation set.
+RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
+LLM_BASE_URL = "http://localhost:11434/v1"
+LLM_API_KEY = "not-needed"
+LLM_MODEL_NAME = "gemma4:12b"
+
 
 # RecursiveCharacterTextSplitter measures characters, not model tokens.
 # Conservative character-based starting point for Korean embedding input limits.

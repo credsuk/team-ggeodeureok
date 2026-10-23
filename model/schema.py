@@ -9,8 +9,11 @@ class StrictModel(BaseModel):
 
 class MeetingReference(StrictModel):
     sourceId: str
+    datasetKey: str = ""
+    originalRowId: Optional[int] = None
     date: str
     council: str
+    meetingTitle: str = ""
     agendaTitle: str
     excerpt: str
     chunkIds: List[str]

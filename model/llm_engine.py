@@ -3,6 +3,7 @@ import json
 import re
 from openai import OpenAI
 from _constant import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_NAME
+from retrieval_utils import expand_topic_terms
 
 class LLMEngine:
     def __init__(self, base_url=LLM_BASE_URL, api_key=LLM_API_KEY, model_name=LLM_MODEL_NAME):
@@ -44,10 +45,7 @@ class LLMEngine:
         if not isinstance(terms, list):
             terms = []
         terms = [str(term).strip() for term in terms if str(term).strip()][:12]
-        normalized = re.sub(r"\s+", "", topic + search_query).lower()
-        if any(term.replace(" ", "").lower() in normalized for term in TOPIC_TERMS):
-            terms.extend(TOPIC_TERMS)
-        terms = list(dict.fromkeys(terms))
+        terms = expand_topic_terms(topic, search_query, terms)
         councils = data.get("councils", [])
         if not isinstance(councils, list):
             councils = []

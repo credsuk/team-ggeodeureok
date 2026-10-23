@@ -1,0 +1,13 @@
+{
+  "python": "3.14.7",
+  "packages": {
+    "chromadb": null,
+    "sentence-transformers": null,
+    "torch": null,
+    "langchain-text-splitters": null,
+    "openai": "2.24.0",
+    "pydantic": "2.13.4",
+    "numpy": null
+  },
+  "gpu": []
+}

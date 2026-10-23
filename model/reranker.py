@@ -2,12 +2,14 @@
 from sentence_transformers import CrossEncoder
 from _constant import RERANKER_MODEL
 
-RERANKER_MIN_SCORE = 0.0  # Initial cutoff; calibrate with reviewed query/evidence examples.
+# Initial cutoff for the multilingual reranker; calibrate with reviewed examples.
+RERANKER_MIN_SCORE = 0.0
 
 
 class DocumentReranker:
     def __init__(self, model_name=RERANKER_MODEL):
-        self.model = CrossEncoder(model_name)
+        self.model = CrossEncoder(model_name, max_length=512)
+        self.model_name = model_name
 
     def rank_and_filter(self, query, chunks, top_n=100, min_score=RERANKER_MIN_SCORE):
         if not chunks:

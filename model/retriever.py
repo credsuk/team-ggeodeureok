@@ -6,7 +6,9 @@ from collections import defaultdict
 import chromadb
 from chromadb.utils import embedding_functions
 
-from _constant import CHROMA_PATH, COLLECTION_NAME, EMBEDDING_MODEL
+from _constant import CHROMA_PATH, COLLECTION_NAME, EMBEDDING_MODEL, CHUNK_OVERLAP
+from analysis_scope import in_analysis_scope
+from retrieval_utils import first_day_and_limited_followups, merge_overlapping_chunks
 
 DENSE_TOP_K = 40
 LEXICAL_TOP_K = 40
@@ -56,18 +58,7 @@ class HybridRetriever:
             raise RuntimeError(f"Chroma 컬렉션 '{COLLECTION_NAME}'을 열 수 없습니다. 색인 완료 여부를 확인하세요.") from exc
 
     def _matches_filters(self, meta, params):
-        date_year = _year(_meta_value(meta, "date", "MTG_DE"))
-        start, end = params.get("start_year"), params.get("end_year")
-        if start and (not date_year or date_year < start):
-            return False
-        if end and (not date_year or date_year > end):
-            return False
-        councils = params.get("councils") or []
-        if councils:
-            assembly = _norm(_meta_value(meta, "assembly", "RASMBLY_NM"))
-            if assembly not in {_norm(item) for item in councils}:
-                return False
-        return True
+        return in_analysis_scope(meta, params)
 
     def _dense_candidates(self, queries, limit, params):
         found = {}
@@ -199,6 +190,48 @@ class HybridRetriever:
                     break
         return list(found.values())
 
+    def first_observed_and_followup_rows(self, params, reranker, followup_limit=100):
+        """Return earliest relevant rows and up to the follow-up limit in date order."""
+        terms = list(dict.fromkeys([params.get("topic", ""), *params.get("include_terms", [])]))
+        candidates_by_id = {}
+        for raw_term in terms:
+            term = str(raw_term).strip()
+            if len(_norm(term)) < 2:
+                continue
+            offset = 0
+            while True:
+                page = self.collection.get(
+                    where_document={"$contains": term}, limit=LEXICAL_PAGE_SIZE, offset=offset,
+                    include=["metadatas"],
+                )
+                ids = page.get("ids") or []
+                metadatas = page.get("metadatas") or []
+                if not ids:
+                    break
+                for doc_id, raw_meta in zip(ids, metadatas):
+                    meta = normalize_metadata(raw_meta)
+                    if self._matches_filters(meta, params):
+                        candidates_by_id.setdefault(doc_id, {
+                            "id": doc_id, "text": "", "metadata": meta,
+                            "rrf": 0.0, "retrieval_sources": ["exact_topic_scan"],
+                        })
+                offset += len(ids)
+                if len(ids) < LEXICAL_PAGE_SIZE:
+                    break
+
+        candidates = list(candidates_by_id.values())
+
+        def check_day(day_candidates):
+            expanded = self.expand_rows(day_candidates)
+            return reranker.rank_and_filter(
+                params["query"], expanded, top_n=None, min_score=0.0
+            )
+
+        first_date, first_rows, later_rows = first_day_and_limited_followups(
+            candidates, check_day, followup_limit=followup_limit
+        )
+        return first_date, first_rows, later_rows
+
     def expand_rows(self, candidates):
         """Rebuild each source utterance from all its Chroma chunks, in bounded DB reads."""
         source_rows = {}
@@ -240,7 +273,7 @@ class HybridRetriever:
             row["chunks"].sort(key=lambda item: item[0])
             if not row["chunks"]:
                 continue
-            row["text"] = "".join(item[2] for item in row["chunks"])
+            row["text"] = merge_overlapping_chunks(row["chunks"], CHUNK_OVERLAP)
             row["chunk_ids"] = [item[1] for item in row["chunks"]]
             row["retrieval_sources"] = sorted(row["retrieval_sources"])
             del row["chunks"]
