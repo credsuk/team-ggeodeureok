@@ -9,6 +9,7 @@ ChromaDB 또는 PostgreSQL pgvector에 고품질 벡터 및 메타데이터를 �
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import sys
@@ -36,6 +37,7 @@ from src.config import (
     BATCH_SIZE,
     CHUNK_OVERLAP,
     CHUNK_SIZE,
+    CHROMA_DIR,
     COLLECTION_NAME,
     DATA_DIR,
     DEFAULT_DB_TYPE,
@@ -65,14 +67,18 @@ def format_seconds(seconds: float) -> str:
 CHECKPOINT_FILE = BASE_DIR / ".ingest_checkpoint.json"
 
 
-def load_checkpoint(db_type: str, collection: str) -> Dict[str, Any]:
+def load_checkpoint(db_type: str, collection: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """저장된 체크포인트 파일 불러오기"""
     if CHECKPOINT_FILE.exists():
         try:
             with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if data.get("db_type") == db_type and data.get("collection") == collection:
+                    if context is not None and data.get("context") != context:
+                        raise ValueError("체크포인트의 대상/설정이 다르거나 구버전입니다. --no-resume 또는 --reset을 명시하세요.")
                     return data
+        except ValueError:
+            raise
         except Exception:
             pass
     return {
@@ -90,11 +96,13 @@ def save_checkpoint(
     total_records: int,
     db_type: str,
     collection: str,
+    context: Optional[Dict[str, Any]] = None,
 ):
     """체크포인트 파일 저장 (행 단위 및 파일 단위 실시간 이어하기 보장)"""
     data = {
         "collection": collection,
         "db_type": db_type,
+        "context": context,
         "completed_files": sorted(list(completed_files)),
         "file_progress": file_progress,
         "total_chunks": total_chunks,
@@ -146,6 +154,21 @@ def run_hybrid_ingest(
     resolved_model = resolve_embedding_model(model_name)
     target_collection = collection_name or COLLECTION_NAME
     selected_db = db_type.lower()
+    connection_string = (pg_conn or get_pg_connection_string()) if selected_db == "pgvector" else None
+    # 연결 정보는 체크포인트에 평문으로 저장하지 않습니다.
+    destination = connection_string if connection_string is not None else str(CHROMA_DIR.resolve())
+    checkpoint_context = {
+        "version": 2,
+        "destination_hash": hashlib.sha256(destination.encode("utf-8")).hexdigest(),
+        "data_dir": str(data_dir.resolve()),
+        "text_dir": str(change_text_dir.resolve()),
+        "model": resolved_model,
+        "chunk_size": chunk_size,
+        "chunk_overlap": chunk_overlap,
+        "min_char_len": min_char_len,
+        "substantive_only": substantive_only,
+        "augment_text": augment_text,
+    }
 
     # 0. 체크포인트 상태 로드 및 이어하기(Resume) 처리
     if reset or no_resume:
@@ -156,7 +179,7 @@ def run_hybrid_ingest(
         total_chunks_added = 0
         total_processed_records = 0
     else:
-        chk = load_checkpoint(selected_db, target_collection)
+        chk = load_checkpoint(selected_db, target_collection, checkpoint_context)
         completed_files = set(chk.get("completed_files", []))
         file_progress = chk.get("file_progress", {})
         total_chunks_added = chk.get("total_chunks", 0)
@@ -205,7 +228,7 @@ def run_hybrid_ingest(
     # 1. 인덱서 초기화
     if selected_db == "pgvector":
         indexer = PGVectorIndexer(
-            connection_string=pg_conn or get_pg_connection_string(),
+            connection_string=connection_string,
             collection_name=target_collection,
             embedding_model_name=resolved_model,
             pre_delete_collection=reset,
@@ -264,10 +287,11 @@ def run_hybrid_ingest(
                 file_chunks = file_prog.get("chunks", 0)
                 file_records = file_prog.get("records", 0)
 
-                # 만약 이전 테스트などで 이미 target_lines 이상 도달했으면 완료 처리
+                # 샘플 한도에 도달해도 파일 전체가 끝난 것은 아닙니다.
                 if target_lines > 0 and start_row >= target_lines:
-                    completed_files.add(file_stem)
-                    file_progress.pop(file_stem, None)
+                    if start_row >= file_total_lines:
+                        completed_files.add(file_stem)
+                        file_progress.pop(file_stem, None)
                     save_checkpoint(
                         completed_files=list(completed_files),
                         file_progress=file_progress,
@@ -275,6 +299,7 @@ def run_hybrid_ingest(
                         total_records=total_processed_records,
                         db_type=selected_db,
                         collection=target_collection,
+                        context=checkpoint_context,
                     )
                     file_pbar.update(1)
                     continue
@@ -380,6 +405,7 @@ def run_hybrid_ingest(
                                 total_records=total_processed_records,
                                 db_type=selected_db,
                                 collection=target_collection,
+                                context=checkpoint_context,
                             )
 
                             batch_ids.clear()
@@ -426,6 +452,7 @@ def run_hybrid_ingest(
                     total_records=total_processed_records,
                     db_type=selected_db,
                     collection=target_collection,
+                    context=checkpoint_context,
                 )
 
                 file_pbar.set_postfix({
@@ -437,30 +464,10 @@ def run_hybrid_ingest(
         except KeyboardInterrupt:
             print("\n" + "=" * 70)
             print(" ⚠️  [일시 중단 안내] 사용자에 의해 적재 작업이 중단되었습니다 (Ctrl+C).")
-            if batch_ids:
-                try:
-                    print(f" * 메모리 대기 중인 {len(batch_ids)}개 청크를 데이터베이스에 안전하게 커밋 중...")
-                    count_b = len(batch_ids)
-                    indexer.add_batch(batch_ids, batch_docs, batch_metas)
-                    file_chunks += count_b
-                    total_chunks_added += count_b
-                    last_committed_row = current_record_row
-                    file_progress[file_stem] = {
-                        "last_row_id": last_committed_row,
-                        "chunks": file_chunks,
-                        "records": file_records,
-                    }
-                    save_checkpoint(
-                        completed_files=list(completed_files),
-                        file_progress=file_progress,
-                        total_chunks=total_chunks_added,
-                        total_records=total_processed_records,
-                        db_type=selected_db,
-                        collection=target_collection,
-                    )
-                    print(f" * [저장 완료] '{short_name}' 파일의 {last_committed_row:,}행까지 안전하게 커밋되었습니다.")
-                except Exception as e:
-                    print(f" * [경고] 잔여 배치 커밋 실패: {e}")
+            # 중단은 청크 생성/DB 커밋 중 어느 지점에서도 발생할 수 있습니다.
+            # 부분 배치를 새로 커밋하지 않고 마지막 저장된 체크포인트부터 재처리합니다.
+            # 이미 DB에 들어간 미확정 청크는 다음 실행의 행 단위 정리에서 제거됩니다.
+            print(" * 미확정 배치는 저장하지 않습니다. 마지막 체크포인트 이후 행은 재처리됩니다.")
 
             print(f" * 완전히 완료된 파일: {len(completed_files)}개")
             if file_progress:
