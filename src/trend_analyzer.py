@@ -136,6 +136,7 @@ class PolicyTrendAnalyzer:
         ollama_base_url: str = "http://localhost:11434",
         pg_connection_string: Optional[str] = None,
         cutoff_date: Optional[str] = None,  # 분석 기준일 (YYYY-MM-DD, 이후 데이터 배제)
+        ollama_timeout: int = 300,  # 로컬 LLM 호출 타임아웃 (초 단위, 기본 300초)
     ):
         self.db_type = (db_type or DEFAULT_DB_TYPE).lower()
         self.collection_name = collection_name or COLLECTION_NAME
@@ -144,6 +145,7 @@ class PolicyTrendAnalyzer:
         self.ollama_base_url = ollama_base_url.rstrip("/")
         self.pg_connection_string = pg_connection_string or get_pg_connection_string()
         self.cutoff_date = cutoff_date  # 주최 측 지정 분석 기준일
+        self.ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", str(ollama_timeout)))
 
         # 벡터 데이터베이스 인덱서 연결
         if self.db_type == "pgvector":
@@ -173,7 +175,7 @@ class PolicyTrendAnalyzer:
         }
 
         try:
-            resp = requests.post(f"{self.ollama_base_url}/api/chat", json=payload, timeout=90)
+            resp = requests.post(f"{self.ollama_base_url}/api/chat", json=payload, timeout=self.ollama_timeout)
             if resp.status_code == 200:
                 return resp.json().get("message", {}).get("content", "").strip()
         except Exception as e:

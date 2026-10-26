@@ -88,6 +88,12 @@ def main():
         help="로컬 LLM 모델명 (Ollama 오픈 모델)",
     )
     parser.add_argument(
+        "--llm-timeout",
+        type=int,
+        default=300,
+        help="로컬 LLM (Ollama) 요청 타임아웃 초 단위",
+    )
+    parser.add_argument(
         "--cutoff-date",
         type=str,
         default=None,
@@ -121,6 +127,7 @@ def main():
         llm_model=args.llm_model,
         pg_connection_string=args.pg_conn,
         cutoff_date=args.cutoff_date,
+        ollama_timeout=args.llm_timeout,
     )
 
     def process_keyword(kw: str):
