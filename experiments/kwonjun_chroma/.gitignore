@@ -1,52 +1,29 @@
-# Credentials and local environments
-.env
-.env.*
-!.env.example
-*.pem
-*.key
 .venv/
-venv/
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
-
-# Competition data: never publish
-data/raw/
-data/processed/
-data/index/
-data/external/
-data/chroma/
-data/eval/
-data/retrieval_eval/
-
-# Local model caches and weights
-models/
-ollama/
-*.gguf
-*.safetensors
-*.bin
-*.pt
-*.pth
-
-# Generated vectors, indexes, fitted models and derived results
-*.npy
-*.npz
-*.faiss
-*.index
-*.joblib
-*.pkl
-*.parquet
-outputs/
-logs/
-runs/
-
-# Editors and OS
-.DS_Store
-Thumbs.db
-.vscode/
 .idea/
+.vscode/
+.DS_Store
 
-# Only synthetic public examples may be committed
-examples/private/
-examples/real_data/
+# 원문·정제 데이터와 벡터 DB는 Git에 올리지 않습니다.
+data/input/*
+data/canonical/*
+data/chroma/*
+data/postgres/*
+data/embeddings/*
+data/external/*
+outputs/*
+.env
+
+!data/input/.gitkeep
+!data/canonical/.gitkeep
+!data/embeddings/.gitkeep
+!data/external/.gitkeep
+!outputs/.gitkeep
+
+*.npy
+*.faiss
+*.sqlite3
+*.parquet
+*.log
 

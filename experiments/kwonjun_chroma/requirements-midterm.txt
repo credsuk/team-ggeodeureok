@@ -1,0 +1,4 @@
+-r requirements-app.txt
+
+# 로컬 Agent는 Python 표준 라이브러리로 Ollama HTTP API를 호출합니다.
+# Ollama 및 qwen3:8b 모델은 별도 설치합니다.
