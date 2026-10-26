@@ -15,3 +15,6 @@
 .venv/
 venv/
 __pycache__/
+
+# 원문 HTML 샘플 제외
+/mini_pj/data/html_samples/
