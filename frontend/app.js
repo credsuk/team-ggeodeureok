@@ -655,10 +655,117 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // 4) 동역학 지도 전체 지능형 클릭 바인딩 (지역 영토 클릭 시 의회 자동 감지 및 목록 연동)
+    const mapSvg = document.getElementById("koreaMapSvg");
+    if (mapSvg) {
+        mapSvg.addEventListener("click", handleMapCanvasClick);
+    }
+
+    // 5) 정책 발언 팝업(툴팁) 바깥 클릭 닫기 및 닫기 버튼/ESC 바인딩
+    const policyTooltip = document.getElementById("policyTooltip");
+    if (policyTooltip) {
+        policyTooltip.addEventListener("click", (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    const ttCloseBtn = document.getElementById("ttCloseBtn");
+    if (ttCloseBtn) {
+        ttCloseBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            hidePolicyTooltip();
+        });
+    }
+
+    document.addEventListener("click", (e) => {
+        const tooltip = document.getElementById("policyTooltip");
+        if (!tooltip || tooltip.classList.contains("hidden")) return;
+        // 팝업 내부 또는 지도 노드 클릭 시에는 닫지 않음
+        if (!tooltip.contains(e.target) && !e.target.closest(".map-node")) {
+            hidePolicyTooltip();
+        }
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            hidePolicyTooltip();
+        }
+    });
 });
 
-// 고령 공무원 및 관리자 타깃 글자 크기 조절 (작게 15px / 보통 17px / 크게 19.5px)
+// =========================================================================================
+// 4-1. 지도 지명 및 라벨 폰트 크기 반응형 스케일 설정
+// =========================================================================================
+let currentFontScale = "normal";
+
+const MAP_FONT_CONFIG = {
+    small: {
+        baseFontSize: 18,
+        baseStrokeWidth: 4,
+        islandFontSize: 13,
+        activeFontSize: 20,
+        activeBoxCharWidth: 24,
+        activeBoxPad: 20,
+        activeBoxHeight: 32,
+        activeBoxYOffset: -22,
+        activeTextYOffset: 1,
+        orderOriginSize: 18,
+        orderBaseSize: 14,
+        orderBonusRatio: 0.35,
+        predictFontSize: 19,
+        predictCharWidth: 21,
+        predictPad: 22,
+        predictHeight: 32,
+        predictTextYOffset: 5.5
+    },
+    normal: {
+        baseFontSize: 22,
+        baseStrokeWidth: 5,
+        islandFontSize: 16,
+        activeFontSize: 25,
+        activeBoxCharWidth: 30,
+        activeBoxPad: 24,
+        activeBoxHeight: 38,
+        activeBoxYOffset: -26,
+        activeTextYOffset: 1.5,
+        orderOriginSize: 22,
+        orderBaseSize: 17,
+        orderBonusRatio: 0.45,
+        predictFontSize: 24,
+        predictCharWidth: 26,
+        predictPad: 28,
+        predictHeight: 38,
+        predictTextYOffset: 6.5
+    },
+    large: {
+        baseFontSize: 27,
+        baseStrokeWidth: 6,
+        islandFontSize: 19,
+        activeFontSize: 30,
+        activeBoxCharWidth: 36,
+        activeBoxPad: 28,
+        activeBoxHeight: 46,
+        activeBoxYOffset: -31,
+        activeTextYOffset: 2,
+        orderOriginSize: 26,
+        orderBaseSize: 20,
+        orderBonusRatio: 0.5,
+        predictFontSize: 29,
+        predictCharWidth: 31,
+        predictPad: 32,
+        predictHeight: 46,
+        predictTextYOffset: 7.5
+    }
+};
+
+function getMapFontCfg() {
+    return MAP_FONT_CONFIG[currentFontScale] || MAP_FONT_CONFIG.normal;
+}
+
+// 고령 공무원 및 관리자 타깃 글자 크기 조절 (작게 16px / 보통 18px / 크게 20.5px + 동역학 지도 지명 연동)
 function setFontScale(scale) {
+    currentFontScale = scale;
     const html = document.documentElement;
     const btnSmall = document.getElementById("btnFont-small");
     const btnNormal = document.getElementById("btnFont-normal");
@@ -672,13 +779,13 @@ function setFontScale(scale) {
 
     let targetBtn = btnNormal;
     if (scale === "small") {
-        html.style.fontSize = "15px";
+        html.style.fontSize = "16px";
         targetBtn = btnSmall;
     } else if (scale === "large") {
-        html.style.fontSize = "19.5px"; // 시니어 공무원 가독성 극대화
+        html.style.fontSize = "20.5px"; // 시니어 공무원 가독성 극대화
         targetBtn = btnLarge;
     } else {
-        html.style.fontSize = "17px"; // 기본도 시원하게 17px
+        html.style.fontSize = "18px"; // 보통 기본 18px (시원하고 또렷한 가독성)
         targetBtn = btnNormal;
         scale = "normal";
     }
@@ -691,6 +798,13 @@ function setFontScale(scale) {
     try {
         localStorage.setItem("council_radar_font_scale", scale);
     } catch (e) {}
+
+    // [핵심 연동]: 동역학 지도의 배경 지명, 전파 알약 라벨, 예측 텍스트 크기 실시간 동기화
+    const baseLayer = document.getElementById("baseCouncilsLayer");
+    if (baseLayer && baseLayer.children.length > 0) {
+        initMapBaseVectors();
+        renderTimelineStep(currentTimelineStep);
+    }
 }
 
 function initMapBaseVectors() {
@@ -703,6 +817,9 @@ function initMapBaseVectors() {
     mainlandPoly.setAttribute("points", pts);
     mainlandPoly.setAttribute("fill", "#e2e8f0");
     mainlandPoly.setAttribute("stroke", "#94a3b8");
+    mainlandPoly.setAttribute("pointer-events", "all");
+    mainlandPoly.setAttribute("cursor", "pointer");
+    mainlandPoly.addEventListener("click", handleMapCanvasClick);
 
     // 2) 제주도 타원
     const jejuPt = geoToSvg(JEJU_PARAMS.lat, JEJU_PARAMS.lon);
@@ -713,6 +830,12 @@ function initMapBaseVectors() {
     jeju.setAttribute("ry", JEJU_PARAMS.ry * KY);
     jeju.setAttribute("fill", "#e2e8f0");
     jeju.setAttribute("stroke", "#94a3b8");
+    jeju.setAttribute("pointer-events", "all");
+    jeju.setAttribute("cursor", "pointer");
+    jeju.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onCouncilMapClick("제주특별자치도의회");
+    });
 
     // 3) 울릉도 타원
     const ulleungPt = geoToSvg(ULLEUNG_PARAMS.lat, ULLEUNG_PARAMS.lon);
@@ -723,6 +846,12 @@ function initMapBaseVectors() {
     ulleung.setAttribute("ry", ULLEUNG_PARAMS.ry * KY);
     ulleung.setAttribute("fill", "#e2e8f0");
     ulleung.setAttribute("stroke", "#94a3b8");
+    ulleung.setAttribute("pointer-events", "all");
+    ulleung.setAttribute("cursor", "pointer");
+    ulleung.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onCouncilMapClick("경상북도의회");
+    });
 
     // 4) 독도
     const dokdoPt = geoToSvg(DOKDO_PARAMS.lat, DOKDO_PARAMS.lon);
@@ -730,25 +859,50 @@ function initMapBaseVectors() {
     dokdo.setAttribute("cx", dokdoPt.x);
     dokdo.setAttribute("cy", dokdoPt.y);
     dokdo.setAttribute("fill", "#94a3b8");
+    dokdo.setAttribute("pointer-events", "all");
+    dokdo.setAttribute("cursor", "pointer");
+    dokdo.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onCouncilMapClick("경상북도의회");
+    });
 
     // 5) 17개 광역의회 기본 베이스 점 렌더링
+    const cfg = getMapFontCfg();
     const baseLayer = document.getElementById("baseCouncilsLayer");
     baseLayer.innerHTML = "";
     Object.keys(COUNCIL_COORDS).forEach(name => {
         const c = COUNCIL_COORDS[name];
         const pt = geoToSvg(c.lat, c.lon);
         
+        // 대형 투명 히트 영역 (미스 클릭 방지: 반경 34px 어디를 눌러도 클릭 100% 감지)
+        const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        hitArea.setAttribute("cx", pt.x);
+        hitArea.setAttribute("cy", pt.y);
+        hitArea.setAttribute("r", "34");
+        hitArea.setAttribute("fill", "transparent");
+        hitArea.setAttribute("pointer-events", "all");
+        hitArea.setAttribute("class", "cursor-pointer");
+        hitArea.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onCouncilMapClick(name);
+        });
+        baseLayer.appendChild(hitArea);
+
         // 베이스 의회 위치 점 (클릭 시 해당 의회 관측 순서 & 시차 상세 화면 호출)
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("cx", pt.x);
         circle.setAttribute("cy", pt.y);
-        circle.setAttribute("r", "5.5");
+        circle.setAttribute("r", cfg.baseFontSize > 22 ? "6.5" : "5.5");
         circle.setAttribute("fill", "#64748b");
         circle.setAttribute("stroke", "#ffffff");
         circle.setAttribute("stroke-width", "2");
+        circle.setAttribute("pointer-events", "all");
         circle.setAttribute("id", `baseDot-${name}`);
         circle.setAttribute("class", "transition-all duration-300 hover:fill-sky-600 cursor-pointer");
-        circle.addEventListener("click", () => onCouncilMapClick(name));
+        circle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onCouncilMapClick(name);
+        });
         
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
         title.textContent = `${name} (${c.short}) - 클릭하여 최초 관측 순서 및 시차 조회`;
@@ -760,23 +914,28 @@ function initMapBaseVectors() {
         const offset = getLabelOffset(name);
         passiveText.setAttribute("id", `baseLabel-${name}`);
         passiveText.setAttribute("class", "cursor-pointer");
-        passiveText.addEventListener("click", () => onCouncilMapClick(name));
+        passiveText.setAttribute("pointer-events", "all");
+        passiveText.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onCouncilMapClick(name);
+        });
         
         if (offset.align === "center") {
             passiveText.setAttribute("x", pt.x);
             passiveText.setAttribute("y", pt.y + offset.dy);
             passiveText.setAttribute("text-anchor", "middle");
         } else {
-            passiveText.setAttribute("x", pt.x + (offset.dx > 0 ? 16 : -16));
+            const sideDx = offset.dx > 0 ? (cfg.baseFontSize > 22 ? 20 : 16) : (cfg.baseFontSize > 22 ? -20 : -16);
+            passiveText.setAttribute("x", pt.x + sideDx);
             passiveText.setAttribute("y", pt.y + 6.5);
             passiveText.setAttribute("text-anchor", offset.dx > 0 ? "start" : "end");
         }
         
         passiveText.setAttribute("fill", "#0f172a");
-        passiveText.setAttribute("font-size", "20");
+        passiveText.setAttribute("font-size", String(cfg.baseFontSize));
         passiveText.setAttribute("font-weight", "800");
         passiveText.setAttribute("stroke", "#ffffff");
-        passiveText.setAttribute("stroke-width", "4.5");
+        passiveText.setAttribute("stroke-width", String(cfg.baseStrokeWidth));
         passiveText.setAttribute("paint-order", "stroke fill");
         passiveText.setAttribute("stroke-linejoin", "round");
         passiveText.textContent = c.short;
@@ -788,10 +947,10 @@ function initMapBaseVectors() {
     ulleungLabel.setAttribute("x", ulleungPt.x + 14);
     ulleungLabel.setAttribute("y", ulleungPt.y + 5);
     ulleungLabel.setAttribute("fill", "#334155");
-    ulleungLabel.setAttribute("font-size", "15");
+    ulleungLabel.setAttribute("font-size", String(cfg.islandFontSize));
     ulleungLabel.setAttribute("font-weight", "700");
     ulleungLabel.setAttribute("stroke", "#ffffff");
-    ulleungLabel.setAttribute("stroke-width", "4");
+    ulleungLabel.setAttribute("stroke-width", String(cfg.islandFontSize > 15 ? 4.5 : 3.5));
     ulleungLabel.setAttribute("paint-order", "stroke fill");
     ulleungLabel.textContent = "울릉";
     baseLayer.appendChild(ulleungLabel);
@@ -800,10 +959,10 @@ function initMapBaseVectors() {
     dokdoLabel.setAttribute("x", dokdoPt.x + 10);
     dokdoLabel.setAttribute("y", dokdoPt.y + 5);
     dokdoLabel.setAttribute("fill", "#334155");
-    dokdoLabel.setAttribute("font-size", "15");
+    dokdoLabel.setAttribute("font-size", String(cfg.islandFontSize));
     dokdoLabel.setAttribute("font-weight", "700");
     dokdoLabel.setAttribute("stroke", "#ffffff");
-    dokdoLabel.setAttribute("stroke-width", "4");
+    dokdoLabel.setAttribute("stroke-width", String(cfg.islandFontSize > 15 ? 4.5 : 3.5));
     dokdoLabel.setAttribute("paint-order", "stroke fill");
     dokdoLabel.textContent = "독도";
     baseLayer.appendChild(dokdoLabel);
@@ -813,6 +972,7 @@ function initMapBaseVectors() {
 // 5. 이슈 데이터 로드 및 렌더링 (Data Binding & Update)
 // =========================================================================================
 function loadIssueData(index) {
+    hidePolicyTooltip();
     currentIssueIndex = index;
     const issue = MASTER_ISSUES[index];
 
@@ -853,13 +1013,18 @@ function loadIssueData(index) {
     // 통합 공공데이터 결합 예측 섹션 내용 갱신
     renderForecastRankingTab(issue);
 
+    // 기본 전체 확산 완료 단계(A, B, C... 전파 마커 전체 지도 노출)로 초기화
+    const maxIdx = issue.propagation.length - 1;
+    slider.value = maxIdx;
+    currentTimelineStep = maxIdx;
+
     // 기본 최초 발원 의회 상세 화면 셋팅
     selectedCouncilName = issue.propagation[0].council;
     selectCouncilDetail(issue.propagation[0]);
+    highlightFlowListItem(0);
 
-    // 타임라인 0단계로 초기화 렌더링
-    currentTimelineStep = 0;
-    renderTimelineStep(0);
+    // 전체 마커 렌더링
+    renderTimelineStep(maxIdx);
 }
 
 // =========================================================================================
@@ -872,10 +1037,30 @@ function renderTimelineStep(stepIdx) {
     const safeIdx = Math.max(0, Math.min(stepIdx, maxSteps - 1));
     const currentItem = issue.propagation[safeIdx];
 
+    // 선택된 의회가 없으면 현재 스텝의 의회로 초기화
+    if (!selectedCouncilName) {
+        selectedCouncilName = currentItem.council;
+    }
+
+    // 우측 목록의 활성탭 동기화
+    const selIdx = issue.propagation.findIndex(p => p.council === selectedCouncilName);
+    if (selIdx !== -1) {
+        highlightFlowListItem(selIdx);
+    }
+
     // 타임라인 상태 텍스트
     document.getElementById("timelineSlider").value = safeIdx;
-    document.getElementById("mapCurrentStepDate").textContent = 
-        `${currentItem.date} (${currentItem.council} ${safeIdx === 0 ? "최초 발원" : "전파"} · ${currentItem.mentions}건)`;
+    
+    // 선택된 의회가 있으면 상단에 선택 의회 상태를 우선 표시
+    const selCouncil = selectedCouncilName ? issue.propagation.find(p => p.council === selectedCouncilName) : null;
+    if (selCouncil) {
+        const isOrig = (selCouncil.order === 1);
+        document.getElementById("mapCurrentStepDate").innerHTML = 
+            `<span class="text-sky-900 font-black mr-1">[${selCouncil.letter}] ${selCouncil.council}</span> ${selCouncil.date} (${isOrig ? "최초 발원" : "+" + selCouncil.lagDays + "일 시차"} · 언급 ${selCouncil.mentions}건)`;
+    } else {
+        document.getElementById("mapCurrentStepDate").textContent = 
+            `${currentItem.date} (${currentItem.council} ${safeIdx === 0 ? "최초 발원" : "전파"} · ${currentItem.mentions}건)`;
+    }
         
     if (safeIdx === maxSteps - 1) {
         document.getElementById("playerStateText").textContent = `${maxSteps}/${maxSteps}단계 관측 완료 (전체 확산)`;
@@ -1024,31 +1209,34 @@ function renderTimelineStep(stepIdx) {
 
         // 노드 그룹
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        g.setAttribute("class", "map-node");
+        g.setAttribute("class", "map-node cursor-pointer");
         g.setAttribute("data-council", item.council);
         g.setAttribute("data-index", i);
+        g.setAttribute("pointer-events", "all");
+        g.setAttribute("cursor", "pointer");
 
         // 선택되었거나 현재 스텝인 경우 제자리 레이더 파동
         if (isSelected || isOrigin || i === safeIdx) {
             const pulseRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             pulseRing.setAttribute("cx", pt.x);
             pulseRing.setAttribute("cy", pt.y);
-            pulseRing.setAttribute("r", `${markerR}`);
+            pulseRing.setAttribute("r", `${markerR + (isSelected ? 6 : 0)}`);
             pulseRing.setAttribute("fill", "none");
-            pulseRing.setAttribute("stroke", isOrigin ? "#f59e0b" : "#0284c7");
-            pulseRing.setAttribute("stroke-width", isSelected ? "3.5" : "2.5");
+            pulseRing.setAttribute("stroke", isSelected ? "#0284c7" : (isOrigin ? "#f59e0b" : "#38bdf8"));
+            pulseRing.setAttribute("stroke-width", isSelected ? "4.5" : "2.5");
+            pulseRing.setAttribute("pointer-events", "none");
 
             const animR = document.createElementNS("http://www.w3.org/2000/svg", "animate");
             animR.setAttribute("attributeName", "r");
-            animR.setAttribute("values", `${markerR};${markerR + 18};${markerR}`);
-            animR.setAttribute("dur", "2.2s");
+            animR.setAttribute("values", `${markerR};${markerR + (isSelected ? 26 : 18)};${markerR}`);
+            animR.setAttribute("dur", isSelected ? "1.6s" : "2.2s");
             animR.setAttribute("repeatCount", "indefinite");
             pulseRing.appendChild(animR);
 
             const animOp = document.createElementNS("http://www.w3.org/2000/svg", "animate");
             animOp.setAttribute("attributeName", "opacity");
-            animOp.setAttribute("values", "0.9;0;0.9");
-            animOp.setAttribute("dur", "2.2s");
+            animOp.setAttribute("values", isSelected ? "1;0;1" : "0.8;0;0.8");
+            animOp.setAttribute("dur", isSelected ? "1.6s" : "2.2s");
             animOp.setAttribute("repeatCount", "indefinite");
             pulseRing.appendChild(animOp);
 
@@ -1059,31 +1247,40 @@ function renderTimelineStep(stepIdx) {
         const mainCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         mainCircle.setAttribute("cx", pt.x);
         mainCircle.setAttribute("cy", pt.y);
-        mainCircle.setAttribute("r", `${markerR}`);
+        mainCircle.setAttribute("r", `${markerR + (isSelected ? 3 : 0)}`);
         mainCircle.setAttribute("fill", isOrigin ? "#f59e0b" : "#0284c7");
         mainCircle.setAttribute("stroke", isSelected ? "#0f172a" : "#ffffff");
-        mainCircle.setAttribute("stroke-width", isSelected ? "4" : "3");
+        mainCircle.setAttribute("stroke-width", isSelected ? "4.5" : "3");
         mainCircle.setAttribute("filter", "url(#glow)");
+        mainCircle.setAttribute("pointer-events", "all");
+        mainCircle.setAttribute("cursor", "pointer");
         g.appendChild(mainCircle);
+
+        const cfg = getMapFontCfg();
 
         // 알파벳 문자 (A, B, C...)
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", pt.x);
-        text.setAttribute("y", pt.y + 6.5);
+        text.setAttribute("y", pt.y + (cfg.orderOriginSize > 22 ? 8 : 6.5));
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("fill", "#ffffff");
-        text.setAttribute("font-size", isOrigin ? "20" : `${15.5 + mentionBonus * 0.4}`);
+        text.setAttribute("font-size", isOrigin ? String(cfg.orderOriginSize) : String(cfg.orderBaseSize + mentionBonus * cfg.orderBonusRatio));
         text.setAttribute("font-weight", "900");
         text.setAttribute("font-family", "JetBrains Mono, Pretendard, sans-serif");
+        text.setAttribute("pointer-events", "all");
+        text.setAttribute("cursor", "pointer");
         text.textContent = item.letter;
         g.appendChild(text);
 
-        // 지도 상 도시명 텍스트 라벨 (오프셋 겹침 방지 + 라이트/다크 테마 에나멜 알약 패널)
+        // 지도 상 도시명 텍스트 라벨 (오프셋 겹침 방지 + 에나멜 알약 패널)
         const labelG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        labelG.setAttribute("pointer-events", "all");
+        labelG.setAttribute("cursor", "pointer");
+
         const offset = getLabelOffset(item.council);
 
-        const lblWidth = coord.short.length * 28 + 22;
-        const lblHeight = 36;
+        const lblWidth = coord.short.length * cfg.activeBoxCharWidth + cfg.activeBoxPad;
+        const lblHeight = cfg.activeBoxHeight;
         let rectX, textX;
 
         if (offset.align === "center") {
@@ -1096,42 +1293,67 @@ function renderTimelineStep(stepIdx) {
 
         const lblBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         lblBg.setAttribute("x", rectX);
-        lblBg.setAttribute("y", pt.y + offset.dy - 25);
+        lblBg.setAttribute("y", pt.y + offset.dy + cfg.activeBoxYOffset);
         lblBg.setAttribute("width", lblWidth);
         lblBg.setAttribute("height", lblHeight);
         lblBg.setAttribute("rx", "8");
-        lblBg.setAttribute("fill", "#ffffff");
-        lblBg.setAttribute("stroke", isOrigin ? "#d97706" : "#0284c7");
-        lblBg.setAttribute("stroke-width", "2.6");
+        lblBg.setAttribute("fill", isSelected ? "#0284c7" : "#ffffff");
+        lblBg.setAttribute("stroke", isSelected ? "#0f172a" : (isOrigin ? "#d97706" : "#0284c7"));
+        lblBg.setAttribute("stroke-width", isSelected ? "3.5" : "2.6");
+        lblBg.setAttribute("pointer-events", "all");
+        lblBg.setAttribute("cursor", "pointer");
         labelG.appendChild(lblBg);
 
         const lblText = document.createElementNS("http://www.w3.org/2000/svg", "text");
         lblText.setAttribute("x", textX);
-        lblText.setAttribute("y", pt.y + offset.dy + 1.2);
+        lblText.setAttribute("y", pt.y + offset.dy + cfg.activeTextYOffset);
         if (offset.align === "center") {
             lblText.setAttribute("text-anchor", "middle");
         }
-        lblText.setAttribute("fill", isOrigin ? "#b45309" : "#0369a1");
-        lblText.setAttribute("font-size", "23");
+        lblText.setAttribute("fill", isSelected ? "#ffffff" : (isOrigin ? "#b45309" : "#0369a1"));
+        lblText.setAttribute("font-size", String(cfg.activeFontSize));
         lblText.setAttribute("font-weight", "900");
+        lblText.setAttribute("pointer-events", "all");
+        lblText.setAttribute("cursor", "pointer");
         lblText.textContent = coord.short;
         labelG.appendChild(lblText);
 
         g.appendChild(labelG);
 
-        // [중요 개선]: 지도 마커 클릭 시 해당하는 의회별 최초 관측 순서 및 시차 화면 즉시 표시!
-        g.addEventListener("mouseenter", (e) => showPolicyTooltip(e, item));
-        g.addEventListener("mouseleave", hidePolicyTooltip);
-        g.addEventListener("click", () => onCouncilMapClick(item.council));
+        // 대형 투명 히트 영역 (마커 주변 어디를 눌러도 100% 클릭 감지)
+        const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        hitArea.setAttribute("cx", pt.x);
+        hitArea.setAttribute("cy", pt.y);
+        hitArea.setAttribute("r", String(Math.max(40, markerR + 18)));
+        hitArea.setAttribute("fill", "transparent");
+        hitArea.setAttribute("pointer-events", "all");
+        hitArea.setAttribute("cursor", "pointer");
+        g.appendChild(hitArea);
+
+        // [중요 개선]: 호버 대신 마커 클릭 시 해당 의회 탭/상세 연동 + 발언 근거 팝업 렌더링
+        g.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onCouncilMapClick(item.council);
+            showPolicyTooltip(e, item);
+        });
+
+        activeNodesLayer.appendChild(g);
 
         activeNodesLayer.appendChild(g);
     }
 }
 
 function renderPredictiveNode(layer, pt, predictData) {
+    const cfg = getMapFontCfg();
+    const isSelected = (selectedCouncilName === predictData.council);
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("class", "map-node");
-    g.addEventListener("click", () => onCouncilMapClick(predictData.council));
+    g.setAttribute("class", "map-node cursor-pointer");
+    g.setAttribute("pointer-events", "all");
+    g.setAttribute("cursor", "pointer");
+    g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onCouncilMapClick(predictData.council);
+    });
 
     // 1) 제자리에서 부드럽게 확장되는 타깃 펄스 파동
     const targetPulse = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -1140,11 +1362,12 @@ function renderPredictiveNode(layer, pt, predictData) {
     targetPulse.setAttribute("r", "12");
     targetPulse.setAttribute("fill", "none");
     targetPulse.setAttribute("stroke", "#f43f5e");
-    targetPulse.setAttribute("stroke-width", "2.5");
+    targetPulse.setAttribute("stroke-width", isSelected ? "4" : "2.5");
+    targetPulse.setAttribute("pointer-events", "none");
 
     const animR = document.createElementNS("http://www.w3.org/2000/svg", "animate");
     animR.setAttribute("attributeName", "r");
-    animR.setAttribute("values", "12;34;12");
+    animR.setAttribute("values", "12;36;12");
     animR.setAttribute("dur", "2.2s");
     animR.setAttribute("repeatCount", "indefinite");
     targetPulse.appendChild(animR);
@@ -1162,11 +1385,12 @@ function renderPredictiveNode(layer, pt, predictData) {
     const targetRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     targetRing.setAttribute("cx", pt.x);
     targetRing.setAttribute("cy", pt.y);
-    targetRing.setAttribute("r", "22");
+    targetRing.setAttribute("r", "24");
     targetRing.setAttribute("fill", "rgba(244, 63, 94, 0.22)");
     targetRing.setAttribute("stroke", "#f43f5e");
     targetRing.setAttribute("stroke-width", "2.8");
     targetRing.setAttribute("stroke-dasharray", "6 4");
+    targetRing.setAttribute("pointer-events", "none");
 
     const animRotate = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
     animRotate.setAttribute("attributeName", "transform");
@@ -1183,47 +1407,70 @@ function renderPredictiveNode(layer, pt, predictData) {
     const innerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     innerCircle.setAttribute("cx", pt.x);
     innerCircle.setAttribute("cy", pt.y);
-    innerCircle.setAttribute("r", "8.5");
+    innerCircle.setAttribute("r", "9");
     innerCircle.setAttribute("fill", "#f43f5e");
-    innerCircle.setAttribute("stroke", "#ffffff");
-    innerCircle.setAttribute("stroke-width", "2");
+    innerCircle.setAttribute("stroke", isSelected ? "#0f172a" : "#ffffff");
+    innerCircle.setAttribute("stroke-width", isSelected ? "3.5" : "2");
     innerCircle.setAttribute("filter", "url(#glow)");
+    innerCircle.setAttribute("pointer-events", "all");
+    innerCircle.setAttribute("cursor", "pointer");
     g.appendChild(innerCircle);
 
     // 4) 타깃 라벨
     const labelG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    labelG.setAttribute("pointer-events", "all");
+    labelG.setAttribute("cursor", "pointer");
+
     const shortName = COUNCIL_COORDS[predictData.council]?.short || predictData.council;
     const lblText = `예측: ${shortName}`;
 
-    const predWidth = lblText.length * 24 + 26;
-    const predHeight = 36;
+    const predWidth = lblText.length * cfg.predictCharWidth + cfg.predictPad;
+    const predHeight = cfg.predictHeight;
 
     const lblBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     lblBg.setAttribute("x", pt.x + 24);
-    lblBg.setAttribute("y", pt.y - 20);
+    lblBg.setAttribute("y", pt.y - (predHeight / 2) - 2);
     lblBg.setAttribute("width", predWidth);
     lblBg.setAttribute("height", predHeight);
     lblBg.setAttribute("rx", "8");
-    lblBg.setAttribute("fill", "#ffffff");
-    lblBg.setAttribute("stroke", "#f43f5e");
-    lblBg.setAttribute("stroke-width", "2.5");
+    lblBg.setAttribute("fill", isSelected ? "#f43f5e" : "#ffffff");
+    lblBg.setAttribute("stroke", isSelected ? "#0f172a" : "#f43f5e");
+    lblBg.setAttribute("stroke-width", isSelected ? "3.5" : "2.5");
+    lblBg.setAttribute("pointer-events", "all");
+    lblBg.setAttribute("cursor", "pointer");
     labelG.appendChild(lblBg);
 
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", pt.x + 36);
-    text.setAttribute("y", pt.y + 6);
-    text.setAttribute("fill", "#be123c");
-    text.setAttribute("font-size", "22");
+    text.setAttribute("y", pt.y + cfg.predictTextYOffset);
+    text.setAttribute("fill", isSelected ? "#ffffff" : "#be123c");
+    text.setAttribute("font-size", String(cfg.predictFontSize));
     text.setAttribute("font-weight", "900");
+    text.setAttribute("pointer-events", "all");
+    text.setAttribute("cursor", "pointer");
     text.textContent = lblText;
     labelG.appendChild(text);
 
     g.appendChild(labelG);
 
-    g.addEventListener("mouseenter", (e) => {
+    // 대형 투명 히트 영역 (예측 마커 주변 클릭 100% 감지)
+    const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    hitArea.setAttribute("cx", pt.x);
+    hitArea.setAttribute("cy", pt.y);
+    hitArea.setAttribute("r", "42");
+    hitArea.setAttribute("fill", "transparent");
+    hitArea.setAttribute("pointer-events", "all");
+    hitArea.setAttribute("cursor", "pointer");
+    g.appendChild(hitArea);
+
+    // [중요 개선]: 호버 대신 클릭 시 해당 의회 연동 + 예측 근거 팝업 렌더링
+    g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onCouncilMapClick(predictData.council);
         showPredictTooltip(e, predictData);
     });
-    g.addEventListener("mouseleave", hidePolicyTooltip);
+
+    layer.appendChild(g);
 
     layer.appendChild(g);
 }
@@ -1252,7 +1499,54 @@ function getLabelOffset(council) {
 }
 
 // =========================================================================================
-// 7. [핵심 기능]: 맵 클릭 시 해당하는 의회별 최초 관측 순서 및 시차 상세 화면 호출
+// 6-1. 동역학 지도 전체 지능형 클릭 핸들러 (영토 및 마커 인근 클릭 시 의회 자동 매핑)
+// =========================================================================================
+function handleMapCanvasClick(e) {
+    const svg = document.getElementById("koreaMapSvg");
+    if (!svg) return;
+
+    // SVG 뷰박스 내부 좌표로 정밀 역변환
+    let svgP = null;
+    try {
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
+        const ctm = svg.getScreenCTM();
+        if (ctm) {
+            svgP = pt.matrixTransform(ctm.inverse());
+        }
+    } catch (err) {}
+
+    if (!svgP || isNaN(svgP.x) || isNaN(svgP.y)) {
+        const rect = svg.getBoundingClientRect();
+        svgP = {
+            x: ((e.clientX - rect.left) / rect.width) * 620,
+            y: ((e.clientY - rect.top) / rect.height) * 680
+        };
+    }
+
+    // 17개 광역의회 좌표 중 클릭한 위치와 가장 가까운 의회 탐색
+    let nearestCouncil = null;
+    let minDistance = Infinity;
+
+    Object.keys(COUNCIL_COORDS).forEach(name => {
+        const c = COUNCIL_COORDS[name];
+        const cPt = geoToSvg(c.lat, c.lon);
+        const dist = Math.hypot(svgP.x - cPt.x, svgP.y - cPt.y);
+        if (dist < minDistance) {
+            minDistance = dist;
+            nearestCouncil = name;
+        }
+    });
+
+    // 지도 권역 내 클릭 시 (거리 220px 이내) 해당 의회 선택 및 목록 활성탭 전환
+    if (nearestCouncil && minDistance <= 220) {
+        onCouncilMapClick(nearestCouncil);
+    }
+}
+
+// =========================================================================================
+// 7. [핵심 기능]: 동역학 지도에서 지역 클릭 시 -> 우측 의회별 목록 활성탭 & 상세 카드 연동
 // =========================================================================================
 function onCouncilMapClick(councilName) {
     selectedCouncilName = councilName;
@@ -1262,29 +1556,26 @@ function onCouncilMapClick(councilName) {
     if (propIndex !== -1) {
         const item = issue.propagation[propIndex];
         
-        // 1) 해당 의회 상세 관측 순서 & 시차 상세 패널 즉시 갱신
+        // 1) 우측 상단 [선택 의회 최초 관측 순서 및 시차 상세] 카드 즉시 갱신
         selectCouncilDetail(item);
 
-        // 2) 우측 순서 리스트 하이라이트 및 부드러운 스크롤 이동
+        // 2) 우측 하단 [의회별 최초 관측 순서 및 시차 전체 목록]에서 해당 항목 활성탭으로 변경 및 스크롤
         highlightFlowListItem(propIndex);
         const flowItemEl = document.getElementById(`flowItem-${propIndex}`);
         if (flowItemEl) {
             flowItemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
 
-        // 3) 상단 타임라인 슬라이더 및 관측 상태 날짜 동기화
-        const slider = document.getElementById("timelineSlider");
-        if (slider) slider.value = propIndex;
-        currentTimelineStep = propIndex;
-        document.getElementById("mapCurrentStepDate").textContent = 
-            `${item.date} (${item.council} ${propIndex === 0 ? "최초 발원" : `${item.order}번째 전파`} · 시차 +${item.lagDays}일 · ${item.mentions}건)`;
-
-        // 4) 지도 상 마커 선택 효과 재렌더링
+        // 3) 지도 상 선택 하이라이트 갱신 (지도의 전체 관측 노드는 유지한 상태에서 선택된 노드 포커스)
         renderTimelineStep(currentTimelineStep);
     } else if (issue.topPredict && issue.topPredict.council === councilName) {
         selectPredictDetail(issue.topPredict);
+        highlightFlowListItem(-1);
+        renderTimelineStep(currentTimelineStep);
     } else {
         selectUnobservedDetail(councilName);
+        highlightFlowListItem(-1);
+        renderTimelineStep(currentTimelineStep);
     }
 }
 
@@ -1359,13 +1650,86 @@ function selectUnobservedDetail(councilName) {
 }
 
 // =========================================================================================
-// 8. 발언 근거 툴팁
+// 8. 발언 근거 툴팁 / 팝업 (클릭 시 렌더링 & 상하/좌우 지능형 경계 보정)
 // =========================================================================================
+function positionTooltip(e, tooltip) {
+    const mapViewport = document.getElementById("mapViewport");
+    if (!mapViewport) return;
+    const viewport = mapViewport.getBoundingClientRect();
+
+    // 툴팁의 치수를 측정하기 위해 클래스 설정
+    tooltip.classList.remove("hidden");
+    tooltip.style.visibility = "hidden";
+    tooltip.style.opacity = "0";
+
+    const ttWidth = tooltip.offsetWidth || 500;
+    const ttHeight = tooltip.offsetHeight || 145;
+
+    let clickX = e ? (e.clientX - viewport.left) : (viewport.width / 2);
+    let clickY = e ? (e.clientY - viewport.top) : (viewport.height / 2);
+
+    // 하단 서브바(범례 등) 안전 여백 확보 (48px)
+    const bottomReserve = 48;
+    const pad = 16;
+
+    const spaceAbove = clickY;
+    const spaceBelow = viewport.height - clickY;
+
+    // [경북·대전 가림 해결 알고리즘]:
+    // 1) 너비 520px 확장으로 슬림해진 높이(약 140px)를 감안하여 위쪽 공간이 확보되면 위쪽으로 우선 배치 (경북, 대전 등 중간 노드가 하단으로 쏠려 가려지는 문제 완벽 방지)
+    // 2) 서울, 인천 등 상단 여백이 절대적으로 부족한 최상단 노드만 아래쪽으로 배치
+    // 3) 공간 비교 후 더 여유로운 방향을 최종 선택
+    let isPlaceAbove;
+    if (spaceAbove >= ttHeight + 15) {
+        isPlaceAbove = true;
+    } else if (spaceBelow >= ttHeight + bottomReserve) {
+        isPlaceAbove = false;
+    } else {
+        isPlaceAbove = (spaceAbove >= spaceBelow);
+    }
+
+    let topPos, transformY;
+    if (isPlaceAbove) {
+        // [상단 배치]
+        topPos = clickY - 14;
+        transformY = "-100%";
+        // 뷰포트 상단 경계 침범 방지 클램핑
+        if (topPos - ttHeight < 10) {
+            topPos = ttHeight + 10;
+        }
+    } else {
+        // [하단 배치]
+        topPos = clickY + 20;
+        transformY = "0%";
+        // 뷰포트 하단(범례 서브바 포함) 침범 방지 클램핑
+        const maxAllowedTop = viewport.height - ttHeight - bottomReserve;
+        if (topPos > maxAllowedTop) {
+            topPos = Math.max(10, maxAllowedTop);
+        }
+    }
+
+    // 좌우 화면 밖으로 벗어남 방지 (뷰포트 패딩 16px 클램핑)
+    const halfW = ttWidth / 2;
+    let leftPos = clickX;
+    if (clickX - halfW < pad) {
+        leftPos = halfW + pad;
+    } else if (clickX + halfW > viewport.width - pad) {
+        leftPos = viewport.width - halfW - pad;
+    }
+
+    tooltip.style.left = `${leftPos}px`;
+    tooltip.style.top = `${topPos}px`;
+    tooltip.style.transform = `translate(-50%, ${transformY})`;
+    tooltip.style.visibility = "visible";
+    tooltip.style.opacity = "1";
+}
+
 function showPolicyTooltip(e, item) {
     const tooltip = document.getElementById("policyTooltip");
-    const viewport = document.getElementById("mapViewport").getBoundingClientRect();
+    if (!tooltip) return;
 
     document.getElementById("ttBadge").textContent = `${item.letter} ${item.order === 1 ? "최초 발원" : "후속 전파"}`;
+    document.getElementById("ttBadge").className = `text-xs font-black px-2 py-0.5 rounded text-white ${item.order === 1 ? "bg-amber-600" : "bg-sky-600"}`;
     document.getElementById("ttCouncil").textContent = item.council;
     document.getElementById("ttDate").textContent = `${item.date} (+${item.lagDays}일)`;
     document.getElementById("ttAction").textContent = `${item.action}`;
@@ -1374,15 +1738,12 @@ function showPolicyTooltip(e, item) {
     document.getElementById("ttExcerpt").textContent = `"${item.excerpt}"`;
     document.getElementById("ttSpeaker").innerHTML = `<i class="fa-solid fa-user-pen mr-1 text-sky-700"></i>${item.speaker} (${item.title})`;
 
-    tooltip.classList.remove("hidden");
-    tooltip.style.left = `${e.clientX - viewport.left}px`;
-    tooltip.style.top = `${e.clientY - viewport.top - 12}px`;
-    tooltip.style.opacity = "1";
+    positionTooltip(e, tooltip);
 }
 
 function showPredictTooltip(e, predictData) {
     const tooltip = document.getElementById("policyTooltip");
-    const viewport = document.getElementById("mapViewport").getBoundingClientRect();
+    if (!tooltip) return;
 
     document.getElementById("ttBadge").textContent = "NEXT 예측";
     document.getElementById("ttBadge").className = "text-xs font-bold px-2 py-0.5 rounded bg-rose-500 text-white";
@@ -1394,14 +1755,12 @@ function showPredictTooltip(e, predictData) {
     document.getElementById("ttExcerpt").textContent = `[예측 근거]: ${predictData.reason}`;
     document.getElementById("ttSpeaker").innerHTML = `<i class="fa-solid fa-scale-balanced mr-1 text-rose-700"></i>자치법규(광역 ${predictData.wideOrdinance}/기초 ${predictData.basicOrdinance}) + 지역통계 신호 융합`;
 
-    tooltip.classList.remove("hidden");
-    tooltip.style.left = `${e.clientX - viewport.left}px`;
-    tooltip.style.top = `${e.clientY - viewport.top - 12}px`;
-    tooltip.style.opacity = "1";
+    positionTooltip(e, tooltip);
 }
 
 function hidePolicyTooltip() {
     const tooltip = document.getElementById("policyTooltip");
+    if (!tooltip || tooltip.classList.contains("hidden")) return;
     tooltip.style.opacity = "0";
     setTimeout(() => {
         tooltip.classList.add("hidden");
@@ -1412,6 +1771,7 @@ function hidePolicyTooltip() {
 // 9. 타임라인 스토리플레이어 컨트롤러 (Play, Pause, Step)
 // =========================================================================================
 function toggleTimelinePlay() {
+    hidePolicyTooltip();
     isPlaying = !isPlaying;
     const icon = document.getElementById("playToggleIcon");
     const btn = document.getElementById("playToggleBtn");
@@ -1458,6 +1818,7 @@ function stopTimeline() {
 
 function stepTimeline(delta) {
     stopTimeline();
+    hidePolicyTooltip();
     const issue = MASTER_ISSUES[currentIssueIndex];
     let nextStep = currentTimelineStep + delta;
     if (nextStep < 0) nextStep = 0;
@@ -1468,6 +1829,7 @@ function stepTimeline(delta) {
 
 function resetTimelineToStart() {
     stopTimeline();
+    hidePolicyTooltip();
     renderTimelineStep(0);
     const issue = MASTER_ISSUES[currentIssueIndex];
     onCouncilMapClick(issue.propagation[0].council);
@@ -1475,6 +1837,7 @@ function resetTimelineToStart() {
 
 function onTimelineSliderChange(val) {
     stopTimeline();
+    hidePolicyTooltip();
     const idx = parseInt(val);
     renderTimelineStep(idx);
     const issue = MASTER_ISSUES[currentIssueIndex];
@@ -1483,12 +1846,13 @@ function onTimelineSliderChange(val) {
 
 function resetMapView() {
     stopTimeline();
+    hidePolicyTooltip();
     const maxIdx = MASTER_ISSUES[currentIssueIndex].propagation.length - 1;
     renderTimelineStep(maxIdx);
 }
 
 // =========================================================================================
-// 10. 우측 의회별 시간순 흐름 리스트 렌더링 (클릭 시 맵 및 상세 동기화)
+// 10. 우측 의회별 시간순 흐름 리스트 렌더링 (지도 클릭에 따라 활성탭 전환)
 // =========================================================================================
 function renderCouncilFlowList(issue) {
     const container = document.getElementById("councilFlowList");
@@ -1498,14 +1862,21 @@ function renderCouncilFlowList(issue) {
         const isOrigin = (index === 0);
         const div = document.createElement("div");
         div.id = `flowItem-${index}`;
-        div.className = `p-3 rounded-xl border border-slate-200 bg-white hover:bg-sky-50/70 hover:border-sky-400 cursor-pointer transition-all flex items-center justify-between text-base gap-2 shadow-sm`;
+        div.className = "p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-all flex items-center justify-between text-base gap-2 shadow-sm";
         div.innerHTML = `
             <div class="flex items-center space-x-3 min-w-0">
-                <span class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 ${isOrigin ? 'bg-amber-100 text-amber-950 border border-amber-300 shadow-sm' : 'bg-sky-100 text-sky-950 border border-sky-300 shadow-sm'}">
+                <span id="flowLetter-${index}" class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 ${
+                    isOrigin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-800 border border-slate-300'
+                }">
                     ${item.letter}
                 </span>
                 <div class="min-w-0">
-                    <span class="font-black text-slate-900 block text-base leading-snug truncate">${item.council}</span>
+                    <div class="flex items-center gap-2">
+                        <span id="flowName-${index}" class="font-bold text-slate-800 block text-base leading-snug truncate">${item.council}</span>
+                        <span id="flowTabBadge-${index}" class="hidden text-xs px-2 py-0.5 rounded-full bg-sky-700 text-white font-black shadow-sm shrink-0">
+                            <i class="fa-solid fa-check mr-0.5"></i>선택
+                        </span>
+                    </div>
                     <span class="text-xs md:text-sm text-slate-700 font-medium">${item.action} · <span class="text-sky-700 font-bold">#${item.view}</span></span>
                 </div>
             </div>
@@ -1519,24 +1890,65 @@ function renderCouncilFlowList(issue) {
                 <span class="text-xs text-slate-600 font-medium">${item.date}</span>
             </div>
         `;
+
+        // [사용자 요구사항]: 목록 항목을 클릭했을 때 동역학 지도를 변경/되감지 않고,
+        // 해당 의회 상세 카드 갱신 및 활성 탭 전환만 독립적으로 수행!
         div.addEventListener("click", () => {
-            onCouncilMapClick(item.council);
+            selectedCouncilName = item.council;
+            selectCouncilDetail(item);
+            highlightFlowListItem(index);
+            renderTimelineStep(currentTimelineStep);
         });
+
         container.appendChild(div);
     });
+
+    // 초기 로드 시 0번째 의회(최초 발원 의회) 활성탭 적용
+    highlightFlowListItem(0);
 }
 
 function highlightFlowListItem(idx) {
     const issue = MASTER_ISSUES[currentIssueIndex];
+    const indEl = document.getElementById("activeCouncilIndicator");
+    if (idx === -1 && indEl && selectedCouncilName) {
+        indEl.textContent = `선택 활성: ${selectedCouncilName}`;
+    }
+
     for (let i = 0; i < issue.propagation.length; i++) {
         const el = document.getElementById(`flowItem-${i}`);
+        const badge = document.getElementById(`flowTabBadge-${i}`);
+        const letterBox = document.getElementById(`flowLetter-${i}`);
+        const nameEl = document.getElementById(`flowName-${i}`);
         if (!el) continue;
+
+        const isOrigin = (i === 0);
         if (i === idx) {
-            el.classList.add("border-2", "border-sky-600", "bg-sky-50", "shadow-md");
-            el.classList.remove("border-slate-200", "bg-white");
+            // 활성 탭 스타일 (선명한 고대비 스카이 블루 배경 + 굵은 테두리 + 선택 뱃지)
+            el.className = "p-3 rounded-xl border-2 border-sky-600 bg-sky-100/70 shadow-md ring-2 ring-sky-400/40 cursor-pointer transition-all flex items-center justify-between text-base gap-2";
+            if (badge) badge.classList.remove("hidden");
+            if (letterBox) {
+                letterBox.className = `w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 shadow-sm ${
+                    isOrigin ? 'bg-amber-500 text-white border border-amber-600' : 'bg-sky-600 text-white border border-sky-700'
+                }`;
+            }
+            if (nameEl) {
+                nameEl.className = "font-black text-sky-950 block text-base leading-snug truncate";
+            }
+            if (indEl) {
+                indEl.textContent = `선택 활성: ${issue.propagation[i].council}`;
+            }
         } else {
-            el.classList.remove("border-2", "border-sky-600", "bg-sky-50", "shadow-md");
-            el.classList.add("border-slate-200", "bg-white");
+            // 비활성 탭 스타일
+            el.className = "p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-all flex items-center justify-between text-base gap-2 shadow-sm opacity-90";
+            if (badge) badge.classList.add("hidden");
+            if (letterBox) {
+                letterBox.className = `w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 ${
+                    isOrigin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-800 border border-slate-300'
+                }`;
+            }
+            if (nameEl) {
+                nameEl.className = "font-bold text-slate-800 block text-base leading-snug truncate";
+            }
         }
     }
 }

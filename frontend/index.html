@@ -46,7 +46,7 @@
     <style>
         * { box-sizing: border-box; }
         html {
-            font-size: 17px; /* 시니어/공무원 열람 최적화 17px 스케일 */
+            font-size: 18px; /* 기본 18px 스케일 (보통 폰트 가독성 확대) */
             transition: font-size 0.2s ease;
         }
         body {
@@ -92,16 +92,15 @@
 
         /* Map Node Hover */
         .map-node {
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
         }
         .map-node:hover {
-            transform: scale(1.18);
-            filter: drop-shadow(0 4px 14px rgba(2, 132, 199, 0.45));
+            filter: drop-shadow(0 2px 10px rgba(2, 132, 199, 0.5));
         }
 
         #policyTooltip {
-            pointer-events: none;
+            pointer-events: auto;
             transition: opacity 0.15s ease, transform 0.15s ease;
             transform: translate(-50%, -100%);
             z-index: 100;
@@ -352,11 +351,11 @@
 
                 <!-- Interactive SVG Map Canvas Area -->
                 <div id="mapViewport" class="flex-1 relative w-full bg-[#f8fafc] overflow-hidden flex items-center justify-center select-none">
-                    <!-- Subtle GIS coordinate grid background -->
-                    <div class="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-60"></div>
+                    <!-- Subtle GIS coordinate grid background (클릭 간섭 방지 pointer-events-none) -->
+                    <div class="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none"></div>
 
-                    <!-- SVG Map Elements -->
-                    <svg id="koreaMapSvg" viewBox="0 0 620 680" class="w-full h-full max-h-[540px] pointer-events-auto">
+                    <!-- SVG Map Elements (최상단 z-10 보장 및 포인터 활성화) -->
+                    <svg id="koreaMapSvg" viewBox="0 0 620 680" class="w-full h-full max-h-[540px] relative z-10 pointer-events-auto cursor-pointer">
                         <defs>
                             <linearGradient id="arcGlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.95" />
@@ -428,27 +427,32 @@
                         </div>
                     </div>
 
-                    <!-- Floating Interactive Policy Tooltip -->
-                    <div id="policyTooltip" class="absolute hidden opacity-0 bg-white text-slate-900 p-3.5 rounded-xl border-2 border-sky-600 shadow-2xl max-w-md pointer-events-none transition-all duration-150">
-                        <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                    <!-- Floating Interactive Policy Tooltip (너비 확장 520px 및 콤팩트 패딩으로 높이 압축) -->
+                    <div id="policyTooltip" class="absolute hidden opacity-0 bg-white text-slate-900 p-3 rounded-xl border-2 border-sky-600 shadow-2xl ring-1 ring-slate-900/10 w-[520px] max-w-[92vw] pointer-events-auto transition-all duration-150 z-50">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 mb-1.5">
                             <div class="flex items-center space-x-2">
                                 <span id="ttBadge" class="text-xs font-black px-2 py-0.5 rounded bg-sky-600 text-white">A 최초</span>
                                 <h4 id="ttCouncil" class="font-black text-base text-sky-900">서울특별시의회</h4>
                             </div>
-                            <span id="ttDate" class="text-xs font-mono text-slate-700 font-bold">2024-01-15</span>
+                            <div class="flex items-center gap-2">
+                                <span id="ttDate" class="text-xs font-mono text-slate-700 font-bold">2024-01-15</span>
+                                <button id="ttCloseBtn" type="button" class="text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-100 transition-colors cursor-pointer" title="닫기">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="space-y-2 text-xs">
+                        <div class="space-y-1.5 text-xs">
                             <div class="flex items-center gap-2 text-xs text-slate-800 font-medium">
                                 <span id="ttAction" class="px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300 font-bold">5분 자유발언</span>
                                 <span id="ttPerspective" class="text-sky-800 font-black">청년 정주 여건</span>
                                 <span id="ttLag" class="font-mono text-amber-800 font-black ml-auto">언급 168건</span>
                             </div>
-                            <p id="ttExcerpt" class="text-slate-950 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200 italic text-sm font-medium">
+                            <p id="ttExcerpt" class="text-slate-950 leading-snug bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 italic text-xs md:text-sm font-medium">
                                 "지방소멸 위기에 따른 수도권-지방 간 청년 인구 이동 양극화 현상을 분석하고..."
                             </p>
-                            <div class="flex items-center justify-between text-xs text-slate-700 pt-1 font-bold">
-                                <span id="ttSpeaker" class="truncate max-w-[220px]"><i class="fa-solid fa-user-pen mr-1 text-sky-700"></i>김영수 의원</span>
-                                <span class="text-emerald-700 font-mono font-black"><i class="fa-solid fa-check-double mr-1"></i>신뢰도 0.94</span>
+                            <div class="flex items-center justify-between text-xs text-slate-700 pt-0.5 font-bold">
+                                <span id="ttSpeaker" class="truncate max-w-[280px]"><i class="fa-solid fa-user-pen mr-1 text-sky-700"></i>김영수 의원</span>
+                                <span class="text-emerald-700 font-mono font-black shrink-0"><i class="fa-solid fa-check-double mr-1"></i>신뢰도 0.94</span>
                             </div>
                         </div>
                     </div>
@@ -570,21 +574,23 @@
                 </div>
 
                 <!-- BOTTOM CARD: [전체 17개 의회 시계열 관측 순서 스트림] -->
-                <div class="glass-panel rounded-2xl border border-slate-300 p-4 flex flex-col shadow-sm bg-white">
+                <div class="glass-panel rounded-2xl border-2 border-slate-300 p-4 flex flex-col shadow-sm bg-white">
                     <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
                         <div>
                             <h3 class="text-sm md:text-base font-black text-slate-950 flex items-center gap-1.5">
                                 <i class="fa-solid fa-timeline text-sky-700"></i>
                                 <span>의회별 최초 관측 순서 및 시차 전체 목록</span>
                             </h3>
-                            <p class="text-xs text-slate-600 mt-0.5">지도 마커를 클릭하면 해당 의회의 관측 순서·시차 카드가 자동으로 활성화됩니다.</p>
+                            <p class="text-xs text-slate-600 mt-0.5">동역학 지도에서 지역을 클릭하면 해당 의회 탭이 자동으로 선택 활성화됩니다.</p>
                         </div>
-                        <span class="text-xs text-sky-800 font-mono font-bold shrink-0">지도 연동</span>
+                        <span id="activeCouncilIndicator" class="text-xs text-sky-900 font-mono font-black shrink-0 px-2.5 py-1 rounded-lg bg-sky-100 border border-sky-300 shadow-sm">
+                            선택 활성: 서울특별시의회
+                        </span>
                     </div>
 
                     <!-- Flow List Scroll Container -->
-                    <div id="councilFlowList" class="space-y-2 overflow-y-auto max-h-[190px] pr-1">
-                        <!-- Populated dynamically by JS with mentions count badges -->
+                    <div id="councilFlowList" class="space-y-2 overflow-y-auto max-h-[220px] pr-1">
+                        <!-- Populated dynamically by JS with mentions count badges and active tab states -->
                     </div>
                 </div>
             </section>
