@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>의정이슈레이더 | 17개 시·도의회 정책 시공간 확산 및 미래 예측</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            DEFAULT: '#0284c7'
+                        },
+                        radar: {
+                            dark: '#0a0d14',
+                            panel: '#111726',
+                            border: '#1f293d',
+                            highlight: '#38bdf8',
+                            coral: '#f43f5e',
+                            amber: '#f59e0b',
+                            emerald: '#10b981',
+                            indigo: '#6366f1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Pretendard & JetBrains Mono Fonts -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; }
+        html {
+            font-size: 17px; /* 시니어/공무원 열람 최적화 17px 스케일 */
+            transition: font-size 0.2s ease;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: #f1f5f9; /* 고대비 밝은 슬레이트 배경 */
+            color: #0f172a; /* 최고 대비 딥 네이비 텍스트 */
+            overflow-x: hidden;
+            font-size: 1.05rem;
+            line-height: 1.65;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+
+
+        /* Light Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+        /* Light Theme Card Panels */
+        .glass-panel {
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+        }
+        .glass-card {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        }
+
+        /* High Visibility Animated Diffusion Arcs */
+        @keyframes flowGlow {
+            0% { stroke-dashoffset: 100; opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0.6; }
+        }
+        .flow-line {
+            stroke-dasharray: 8 6;
+            animation: flowGlow 2.5s linear infinite;
+        }
+
+        /* Map Node Hover */
+        .map-node {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .map-node:hover {
+            transform: scale(1.18);
+            filter: drop-shadow(0 4px 14px rgba(2, 132, 199, 0.45));
+        }
+
+        #policyTooltip {
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            transform: translate(-50%, -100%);
+            z-index: 100;
+        }
+
+        /* Light Theme High Affordance Tabs */
+        .tab-btn {
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: #334155;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            white-space: nowrap;
+            user-select: none;
+            position: relative;
+        }
+        .tab-btn:hover {
+            background: #f8fafc;
+            border-color: #0284c7;
+            color: #0284c7;
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+        }
+        .tab-btn:active {
+            transform: translateY(0.5px);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+        }
+        .tab-btn.active {
+            background: #0284c7;
+            border-color: #0284c7;
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35);
+        }
+        .tab-btn.active span[class*="rounded"] {
+            background: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+        }
+        .tab-btn.active i {
+            color: #ffffff !important;
+        }
+
+        /* Floating Chatbot Pulse Glow */
+        @keyframes chatFloatGlow {
+            0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.6); }
+            70% { box-shadow: 0 0 0 14px rgba(2, 132, 199, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+        }
+        .floating-chat-btn {
+            animation: chatFloatGlow 3s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white border-b-2 border-slate-300 px-4 lg:px-6 py-3 flex items-center justify-between shadow-sm">
+        <!-- Logo & Branding -->
+        <div class="flex items-center space-x-3.5 shrink-0">
+            <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-rose-500 p-0.5 shadow-lg shadow-sky-500/20">
+                <div class="w-full h-full bg-sky-50 rounded-[10px] flex items-center justify-center border border-sky-200">
+                    <i class="fa-solid fa-satellite-dish text-sky-700 text-xl animate-pulse"></i>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">TEAM 꺼드럭's · KISTI 경진대회</span>
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-950 border border-emerald-400 font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        AI 의정 분석 엔진 가동 중
+                    </span>
+                </div>
+                <h1 class="text-base md:text-lg font-black text-slate-950 flex items-center gap-1.5 leading-tight tracking-tight mt-0.5">
+                    의정이슈레이더 <span class="text-slate-700 font-bold text-xs md:text-sm hidden sm:inline">| 17개 시·도의회 정책 시공간 확산 및 미래 예측</span>
+                </h1>
+            </div>
+        </div>
+
+        <!-- 단일 통합 메인 검색창 (중복 드롭다운 완전 제거) -->
+        <div class="flex items-center space-x-3 max-w-xl w-full mx-4 justify-center">
+            <div class="relative w-full">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-700 text-sm">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="globalSearchInput" placeholder="정책 이슈 검색 (예: 전세사기, 늘봄학교, 전기차 화재, 지역 소멸)" class="w-full pl-10 pr-16 py-2.5 bg-white border-2 border-slate-300 rounded-xl text-sm md:text-base text-slate-950 placeholder-slate-500 focus:outline-none focus:border-sky-600 font-bold transition-all shadow-sm">
+                <button onclick="handleGlobalSearch()" class="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-sky-700 hover:bg-sky-600 text-white rounded-lg text-xs md:text-sm font-black transition-all shadow-sm">
+                    분석
+                </button>
+            </div>
+        </div>
+
+        <!-- 우측 액션: 폰트 크기 조절 옵션 & 테마 전환 -->
+        <div class="flex items-center space-x-2.5 shrink-0">
+            <!-- 글자 크기 3단계 조절 버튼 (작게 / 보통 / 크게) -->
+            <div class="flex items-center space-x-1 bg-slate-100 border border-slate-300 p-1 rounded-xl shadow-inner text-xs">
+                <span class="text-slate-700 pl-2 pr-1 flex items-center gap-1 font-bold">
+                    <i class="fa-solid fa-text-height text-sky-700"></i>
+                    <span class="hidden md:inline">글자 크기</span>
+                </span>
+                <button onclick="setFontScale('small')" id="btnFont-small" class="px-2.5 py-1.5 rounded-lg text-slate-700 hover:bg-slate-200 transition-all font-bold cursor-pointer">작게</button>
+                <button onclick="setFontScale('normal')" id="btnFont-normal" class="px-2.5 py-1.5 rounded-lg bg-sky-700 text-white font-black shadow-sm transition-all cursor-pointer">보통</button>
+                <button onclick="setFontScale('large')" id="btnFont-large" class="px-2.5 py-1.5 rounded-lg text-slate-700 hover:bg-slate-200 transition-all font-bold cursor-pointer">크게</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs (총 3개 핵심 탭으로 메뉴 구조 단순화) -->
+    <nav class="bg-white border-b-2 border-slate-300 px-4 lg:px-6 py-2.5 flex items-center gap-3 overflow-x-auto text-sm shrink-0 select-none shadow-sm">
+        <!-- TAB 1: 메인 검색/분석 대시보드 -->
+        <button onclick="switchTab('radar')" id="tab-radar" class="tab-btn active shrink-0">
+            <i class="fa-solid fa-chart-line text-sm"></i>
+            <span>메인 검색/분석 대시보드</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-sky-100 text-sky-900 border border-sky-300">통합 뷰</span>
+        </button>
+
+        <!-- TAB 2: 10대 대표 키워드/이슈 (TOP 10) -->
+        <button onclick="switchTab('catalog')" id="tab-catalog" class="tab-btn shrink-0">
+            <i class="fa-solid fa-fire text-amber-700 text-sm"></i>
+            <span>10대 대표 키워드/이슈 (TOP 10)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">트렌드</span>
+        </button>
+
+        <!-- TAB 3: 근거 원문 상세 내용 -->
+        <button onclick="switchTab('search')" id="tab-search" class="tab-btn shrink-0">
+            <i class="fa-solid fa-file-lines text-purple-700 text-sm"></i>
+            <span>근거 원문 상세 내용</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-purple-100 text-purple-900 border border-purple-300">회의록 원문</span>
+        </button>
+    </nav>
+
+    <!-- Top KPI Metric Cards (상시 핵심 지표) -->
+    <section class="px-4 lg:px-6 pt-3.5 pb-1 shrink-0">
+        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 max-w-[1800px] mx-auto">
+            <!-- 1. 최초 관측 시점 & 의회 -->
+            <div class="glass-card rounded-xl p-3.5 border-l-4 border-l-amber-500 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider block">최초 발원 의회 (Origin)</span>
+                    <div class="flex items-baseline space-x-1.5 mt-1">
+                        <span id="kpiFirstCouncil" class="text-base md:text-lg font-black text-amber-800">서울특별시의회</span>
+                    </div>
+                    <span id="kpiFirstDate" class="text-xs font-mono text-slate-800 font-bold block mt-0.5">2024-01-15 (시차 0일)</span>
+                </div>
+                <div class="w-9 h-9 rounded-lg bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-flag"></i>
+                </div>
+            </div>
+
+            <!-- 2. 전국 확산 현황 -->
+            <div class="glass-card rounded-xl p-3.5 border-l-4 border-l-sky-500 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider block">전국 광역의회 확산도</span>
+                    <div class="flex items-baseline space-x-2 mt-1">
+                        <span id="kpiCouncilCount" class="text-lg md:text-xl font-black text-sky-800">12 / 17곳</span>
+                        <span id="kpiCouncilRatio" class="text-xs font-mono text-sky-950 bg-sky-100 px-1.5 py-0.5 rounded border border-sky-300 font-bold">70.6%</span>
+                    </div>
+                    <span class="text-xs md:text-sm text-slate-800 block mt-0.5">수도권 → 영호남 광역 연쇄</span>
+                </div>
+                <div class="w-9 h-9 rounded-lg bg-sky-100 border border-sky-300 text-sky-800 flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+            </div>
+
+            <!-- 3. 신뢰 검증 근거 발언수 -->
+            <div class="glass-card rounded-xl p-3.5 border-l-4 border-l-emerald-500 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider block">신뢰 검증 근거 발언수</span>
+                    <div class="flex items-baseline space-x-2 mt-1">
+                        <span id="kpiEvidenceCount" class="text-lg md:text-xl font-black text-emerald-800">1,234 건</span>
+                        <span class="text-xs text-emerald-950 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300 font-bold">정제 완료</span>
+                    </div>
+                    <span id="kpiDataRange" class="text-xs md:text-sm text-slate-800 block mt-0.5">2024.01 ~ 2025.12 데이터</span>
+                </div>
+                <div class="w-9 h-9 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+            </div>
+
+            <!-- 4. 차기월 논의 지속 확률 & 예상 언급량 -->
+            <div class="glass-card rounded-xl p-3.5 border-l-4 border-l-indigo-500 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider block">차기월 지속 확률 / 예상 언급</span>
+                    <div class="flex items-baseline space-x-2 mt-1">
+                        <span id="kpiActiveProb" class="text-lg md:text-xl font-black text-indigo-800">88.5%</span>
+                        <span id="kpiForecastCount" class="text-xs font-mono text-indigo-950 font-bold bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300">예상 142건</span>
+                    </div>
+                    <span id="kpiTrendBadge" class="text-xs md:text-sm text-slate-800 block mt-0.5">확산 가속 구간 (예측 모델)</span>
+                </div>
+                <div class="w-9 h-9 rounded-lg bg-indigo-100 border border-indigo-300 text-indigo-800 flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+            </div>
+
+            <!-- 5. 공공데이터 기반 1위 예측 후보 -->
+            <div class="glass-card rounded-xl p-3.5 border-l-4 border-l-rose-500 shadow-sm hidden xl:flex items-center justify-between">
+                <div>
+                    <span class="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider block">공공데이터 결합 차기 예측 1위</span>
+                    <div class="flex items-baseline space-x-2 mt-1">
+                        <span id="kpiTopPredictedCouncil" class="text-base md:text-lg font-black text-rose-800">전라남도의회</span>
+                        <span id="kpiPredDays" class="text-xs text-rose-800 font-mono font-black">향후 45일 내</span>
+                    </div>
+                    <span id="kpiPredReason" class="text-xs text-slate-800 truncate max-w-[200px] block mt-0.5">자치법규 3건 발의 + 소멸지수 고위험</span>
+                </div>
+                <div class="w-9 h-9 rounded-lg bg-rose-100 border border-rose-300 text-rose-800 flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-bullseye"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Container Body -->
+    <main class="flex-1 px-4 lg:px-6 py-3 max-w-[1800px] w-full mx-auto space-y-4">
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 1: 📍 메인 검색/분석 대시보드 (지도 + 선택의회 관측순서 및 시차 상세 + 전체 순서 + 공공예측 통합) -->
+        <!-- ========================================================================================= -->
+        <div id="tabContent-radar" class="tab-content grid grid-cols-12 gap-3.5">
+            <!-- Left 7 Cols: High-Precision Interactive Korea Diffusion Map & Timeline Story Player -->
+            <section class="col-span-12 lg:col-span-7 flex flex-col glass-panel rounded-2xl border border-slate-300 overflow-hidden shadow-sm relative min-h-[580px]">
+                <!-- Map Header & Current Time Display -->
+                <div class="px-4 py-3 border-b border-slate-300 flex items-center justify-between bg-slate-50 shrink-0">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-3 h-3 rounded-full bg-sky-500 animate-ping"></div>
+                        <h2 class="text-sm md:text-base font-black text-slate-950 flex items-center gap-1.5">
+                            <i class="fa-solid fa-map-location-dot text-sky-700"></i>
+                            <span>17개 광역의회 시공간 전파 동역학 지도</span>
+                        </h2>
+                    </div>
+
+                    <!-- Map Status Badges & Controls -->
+                    <div class="flex items-center space-x-2.5">
+                        <span id="mapCurrentStepDate" class="text-xs font-mono font-bold px-3 py-1 rounded bg-sky-100 text-sky-950 border border-sky-300 shadow-sm">
+                            2024-01-15 (최초 관측)
+                        </span>
+                        <button onclick="resetMapView()" title="지도 뷰 초기화" class="p-2 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 text-xs font-black transition-colors shadow-sm">
+                            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive SVG Map Canvas Area -->
+                <div id="mapViewport" class="flex-1 relative w-full bg-[#f8fafc] overflow-hidden flex items-center justify-center select-none">
+                    <!-- Subtle GIS coordinate grid background -->
+                    <div class="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-60"></div>
+
+                    <!-- SVG Map Elements -->
+                    <svg id="koreaMapSvg" viewBox="0 0 620 680" class="w-full h-full max-h-[540px] pointer-events-auto">
+                        <defs>
+                            <linearGradient id="arcGlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.95" />
+                                <stop offset="100%" stop-color="#0284c7" stop-opacity="0.95" />
+                            </linearGradient>
+                            <linearGradient id="predGlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.8" />
+                                <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.9" />
+                            </linearGradient>
+
+                            <marker id="arrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0284c7" />
+                            </marker>
+                            <marker id="arrowHeadOrigin" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+                            </marker>
+                            <marker id="arrowHeadPred" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f43f5e" />
+                            </marker>
+
+                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                        </defs>
+
+                        <!-- 1. South Korea Mainland & Islands Polygon Background -->
+                        <g id="landLayer" class="opacity-80">
+                            <polygon id="mainlandPolygon" points="" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.6" class="transition-colors hover:fill-[#cbd5e1]" />
+                            <ellipse id="jejuEllipse" cx="0" cy="0" rx="0" ry="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.6" />
+                            <ellipse id="ulleungEllipse" cx="0" cy="0" rx="0" ry="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.6" />
+                            <circle id="dokdoCircle" cx="0" cy="0" r="3" fill="#94a3b8" />
+                        </g>
+
+                        <!-- 2. Passive Council Coordinate Dots (17 Councils) -->
+                        <g id="baseCouncilsLayer"></g>
+
+                        <!-- 3. Policy Propagation Dynamic Arcs (Bézier Curves) -->
+                        <g id="propagationArcsLayer"></g>
+
+                        <!-- 4. Leader Lines for Closely Clustered Councils -->
+                        <g id="leaderLinesLayer"></g>
+
+                        <!-- 5. Active Pulsing Markers and Letter Badges (Sized by Mention Counts) -->
+                        <g id="activeNodesLayer"></g>
+                    </svg>
+
+                    <!-- Map Legend Overlay -->
+                    <div class="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-slate-900 p-3.5 rounded-xl border border-slate-300 shadow-xl text-xs md:text-sm space-y-2.5 z-20">
+                        <div class="font-bold text-sky-800 border-b border-slate-300 pb-1 flex items-center justify-between gap-3">
+                            <span class="font-black text-sky-700">전파 범례</span>
+                            <span class="text-xs font-mono text-slate-600">17개 광역의회</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white shadow-sm shadow-amber-500/50"></span>
+                            <span class="font-bold text-slate-800">최초 발원 의회 (A)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-sky-500 border-2 border-white shadow-sm shadow-sky-500/50"></span>
+                            <span class="font-bold text-slate-800">후속 논의 의회 (B~)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3.5 h-3.5 rounded-full border-2 border-dashed border-rose-500 bg-rose-500/30"></span>
+                            <span class="font-bold text-rose-700">차기 예측 의회 (Next)</span>
+                        </div>
+                        <div class="pt-1 border-t border-slate-300 text-[11px] text-slate-700 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-hand-pointer text-sky-700"></i>
+                            <span>지역 클릭 시 의회별 관측순서·시차 연동</span>
+                        </div>
+                    </div>
+
+                    <!-- Floating Interactive Policy Tooltip -->
+                    <div id="policyTooltip" class="absolute hidden opacity-0 bg-white text-slate-900 p-3.5 rounded-xl border-2 border-sky-600 shadow-2xl max-w-md pointer-events-none transition-all duration-150">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                            <div class="flex items-center space-x-2">
+                                <span id="ttBadge" class="text-xs font-black px-2 py-0.5 rounded bg-sky-600 text-white">A 최초</span>
+                                <h4 id="ttCouncil" class="font-black text-base text-sky-900">서울특별시의회</h4>
+                            </div>
+                            <span id="ttDate" class="text-xs font-mono text-slate-700 font-bold">2024-01-15</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center gap-2 text-xs text-slate-800 font-medium">
+                                <span id="ttAction" class="px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300 font-bold">5분 자유발언</span>
+                                <span id="ttPerspective" class="text-sky-800 font-black">청년 정주 여건</span>
+                                <span id="ttLag" class="font-mono text-amber-800 font-black ml-auto">언급 168건</span>
+                            </div>
+                            <p id="ttExcerpt" class="text-slate-950 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200 italic text-sm font-medium">
+                                "지방소멸 위기에 따른 수도권-지방 간 청년 인구 이동 양극화 현상을 분석하고..."
+                            </p>
+                            <div class="flex items-center justify-between text-xs text-slate-700 pt-1 font-bold">
+                                <span id="ttSpeaker" class="truncate max-w-[220px]"><i class="fa-solid fa-user-pen mr-1 text-sky-700"></i>김영수 의원</span>
+                                <span class="text-emerald-700 font-mono font-black"><i class="fa-solid fa-check-double mr-1"></i>신뢰도 0.94</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Timeline Story Player Controller -->
+                <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col space-y-2.5 shrink-0">
+                    <div class="flex items-center justify-between text-xs md:text-sm">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="flex items-center space-x-1.5 text-slate-800">
+                                <i class="fa-solid fa-sliders text-sky-700 text-sm"></i>
+                                <span class="font-black text-slate-950 text-sm md:text-base">타임라인 스토리플레이어</span>
+                            </span>
+                            <span id="playerStateText" class="text-sky-900 font-mono text-xs md:text-sm font-bold bg-sky-100 px-3 py-1 rounded border border-sky-300">
+                                탐색 준비 완료
+                            </span>
+                        </div>
+                        <div class="text-xs md:text-sm text-slate-700 font-mono flex items-center space-x-2 font-bold">
+                            <span id="playerSpeedText">속도: 1.3s</span>
+                            <span class="text-slate-400">|</span>
+                            <span>전체 <span id="totalStepCount" class="font-black text-sky-700">7</span>단계</span>
+                        </div>
+                    </div>
+
+                    <!-- Controls and Slider Bar -->
+                    <div class="flex items-center space-x-3.5">
+                        <button onclick="toggleTimelinePlay()" id="playToggleBtn" class="w-12 h-12 rounded-xl bg-sky-700 hover:bg-sky-600 text-white flex items-center justify-center shadow-md transition-all active:scale-95 shrink-0 cursor-pointer">
+                            <i id="playToggleIcon" class="fa-solid fa-play text-sm"></i>
+                        </button>
+                        <button onclick="stepTimeline(-1)" title="이전 의회" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center border border-slate-300 transition-colors shrink-0 shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-backward-step text-xs"></i>
+                        </button>
+                        <button onclick="stepTimeline(1)" title="다음 의회" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center border border-slate-300 transition-colors shrink-0 shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-forward-step text-xs"></i>
+                        </button>
+                        <button onclick="resetTimelineToStart()" title="처음으로" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center border border-slate-300 transition-colors shrink-0 shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-rotate-left text-xs"></i>
+                        </button>
+                        <div class="flex-1 flex items-center relative">
+                            <input type="range" id="timelineSlider" min="0" max="6" value="0" step="1" oninput="onTimelineSliderChange(this.value)" class="w-full accent-sky-700 h-2.5 bg-slate-200 rounded-lg cursor-pointer">
+                        </div>
+                        <span id="timelineEndDate" class="text-xs font-mono text-slate-800 font-black shrink-0">2025.12</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right 5 Cols: [중요] 맵 클릭 시 해당 의회 최초 관측 순서 & 시차 상세가 즉시 나오는 연동 패널 -->
+            <section class="col-span-12 lg:col-span-5 flex flex-col space-y-3.5">
+                <!-- TOP CARD: [선택 의회 최초 관측 순서 및 시차 상세] (지도 마커 클릭 시 즉시 갱신) -->
+                <div class="glass-panel rounded-2xl border-2 border-sky-600/40 p-4.5 flex-1 flex flex-col shadow-md bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-xl bg-sky-100 border border-sky-300 text-sky-800 flex items-center justify-center text-sm shadow-sm">
+                                <i class="fa-solid fa-file-waveform text-base"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 id="detailCouncilName" class="text-lg font-black text-slate-950">서울특별시의회</h3>
+                                    <span id="detailOrderBadge" class="text-xs font-black px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shadow-sm">
+                                        A (1번째 관측)
+                                    </span>
+                                </div>
+                                <p id="detailStageText" class="text-xs md:text-sm text-amber-800 font-extrabold mt-0.5">
+                                    최초 발원 의회 관측 (시차 0일)
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-1 font-mono">
+                            <span id="detailMentionBadge" class="text-xs font-black px-2.5 py-1 rounded-md bg-sky-100 text-sky-950 border border-sky-300 shadow-sm">
+                                언급 168건
+                            </span>
+                            <span id="detailSimilarity" class="text-[11px] font-bold text-emerald-800">
+                                임베딩 유사도 0.94
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Excerpt Detail Content Box -->
+                    <div class="space-y-3 text-xs md:text-sm overflow-y-auto pr-1">
+                        <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-1.5 shadow-sm">
+                            <div class="flex items-center justify-between text-xs text-slate-800 font-medium">
+                                <span class="font-black text-slate-950 flex items-center gap-1">
+                                    <i class="fa-solid fa-calendar-check text-sky-700"></i>
+                                    <span>관측 일시 및 시차</span>
+                                </span>
+                                <span id="detailMeetingDate" class="font-mono text-sky-800 font-black">2024-01-15 (+0일)</span>
+                            </div>
+                            <div id="detailMeetingName" class="text-sm md:text-base font-black text-slate-950 leading-snug">
+                                제315회 서울특별시의회(임시회) 기획경제위원회 제1차 회의록
+                            </div>
+                            <div class="flex items-center gap-2 pt-1 text-xs md:text-sm text-slate-800 font-bold">
+                                <span><b>발언자:</b> <span id="detailSpeaker" class="text-slate-950 font-black">김영수 의원</span></span>
+                                <span>|</span>
+                                <span><b>안건:</b> <span id="detailAgenda" class="text-slate-900 font-semibold">청년인구 유출 대책 수립 건</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Full Text Span Quotation -->
+                        <div class="relative bg-sky-50/80 rounded-xl p-4 border border-sky-200 text-base md:text-lg leading-relaxed text-slate-900 shadow-sm font-medium">
+                            <i class="fa-solid fa-quote-left text-slate-400 text-xl absolute top-2.5 left-2.5 pointer-events-none opacity-40"></i>
+                            <div id="detailExcerptText" class="relative z-10 pl-3 font-medium">
+                                "지방소멸 위기에 따른 수도권-지방 간 청년 인구 이동 양극화 현상을 분석하고, 상생 협력 및 연계 지원책 수립을 위한 기초 조례안에 대해 논의를 진행하였습니다."
+                            </div>
+                        </div>
+
+                        <!-- Parent Context Accordion -->
+                        <div class="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                            <button onclick="toggleParentContext()" class="w-full px-3.5 py-2.5 text-left text-xs md:text-sm font-bold text-slate-800 hover:text-slate-950 flex items-center justify-between transition-colors">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-arrows-up-down text-xs text-sky-700"></i> 앞뒤 대화 문맥 (Parent Context)</span>
+                                <i id="parentContextArrow" class="fa-solid fa-chevron-down text-xs transition-transform"></i>
+                            </button>
+                            <div id="parentContextContent" class="hidden px-4 py-3 text-xs md:text-sm text-slate-900 border-t border-slate-200 bg-white leading-relaxed font-mono">
+                                [위원장]: 다음은 청년 일자리 및 지방 상생 기금 출연 동의안 심사 순서입니다.<br>
+                                [김영수 의원]: 본 의원이 질의하겠습니다. 최근 인구통계를 보면 수도권으로 유입되는 청년들의 주거난과 함께, 지방 거점 도시들의 소멸 위험이 동시에 심화되고 있습니다...<br>
+                                [기획조정실장]: 의원님 말씀에 전적으로 공감하며, 국토부 및 타 시·도와의 초광역 협의체를 가동 중에 있습니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM CARD: [전체 17개 의회 시계열 관측 순서 스트림] -->
+                <div class="glass-panel rounded-2xl border border-slate-300 p-4 flex flex-col shadow-sm bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                        <div>
+                            <h3 class="text-sm md:text-base font-black text-slate-950 flex items-center gap-1.5">
+                                <i class="fa-solid fa-timeline text-sky-700"></i>
+                                <span>의회별 최초 관측 순서 및 시차 전체 목록</span>
+                            </h3>
+                            <p class="text-xs text-slate-600 mt-0.5">지도 마커를 클릭하면 해당 의회의 관측 순서·시차 카드가 자동으로 활성화됩니다.</p>
+                        </div>
+                        <span class="text-xs text-sky-800 font-mono font-bold shrink-0">지도 연동</span>
+                    </div>
+
+                    <!-- Flow List Scroll Container -->
+                    <div id="councilFlowList" class="space-y-2 overflow-y-auto max-h-[190px] pr-1">
+                        <!-- Populated dynamically by JS with mentions count badges -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Row: Monthly Discussion Intensity & ML Forecast + 시계열 검증 모델 설명 인라인 축소 통합 -->
+            <section class="col-span-12 glass-panel rounded-2xl border border-slate-300 p-4 shadow-sm bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <!-- Left 7 Cols: Monthly Time-Series Bar Visualizer -->
+                    <div class="md:col-span-7 flex flex-col space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm md:text-base font-black text-slate-950 flex items-center gap-1.5">
+                                <i class="fa-solid fa-chart-column text-sky-700"></i>
+                                <span>2024~2025 월별 논의 강도 시계열 (Monthly Trend)</span>
+                            </h3>
+                            <span class="text-xs text-slate-700 font-mono font-bold">단위: 월별 실질 발언 건수</span>
+                        </div>
+                        <div class="h-28 w-full flex items-end gap-1.5 pt-3 pb-1 px-2 bg-slate-50 rounded-xl border border-slate-200" id="monthlyChartBars">
+                            <!-- Monthly Bars rendered dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right 5 Cols: ML Multi-Issue Forecast & 시계열 검증 모델 성능 (인라인 요약) -->
+                    <div class="md:col-span-5 flex flex-col justify-between space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-microchip text-indigo-700 text-sm"></i>
+                                <span class="text-base font-black text-slate-950">차기월 정책 방향성 예측 (ML Model)</span>
+                            </div>
+                            <span id="forecastTargetMonth" class="text-xs font-mono font-black px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-950 border border-indigo-300">2026.01 전망</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 text-xs md:text-sm">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                <span class="text-xs md:text-sm font-bold text-slate-700 block">논의 지속 확률</span>
+                                <span id="forecastProbValue" class="text-xl md:text-2xl font-black text-indigo-800 block mt-0.5">88.5%</span>
+                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                    <div id="forecastProbBar" class="bg-indigo-600 h-full rounded-full" style="width: 88.5%"></div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                <span class="text-xs md:text-sm font-bold text-slate-700 block">예상 언급량 (80% 신뢰)</span>
+                                <span id="forecastMentionsValue" class="text-xl md:text-2xl font-black text-sky-800 block mt-0.5">142 건</span>
+                                <span id="forecastIntervalValue" class="text-xs text-slate-700 block mt-1 font-mono font-bold">구간: 118 ~ 165건</span>
+                            </div>
+                        </div>
+
+                        <!-- 시계열 검증 모델 성능 인라인 컴팩트 요약 -->
+                        <div class="text-xs text-slate-800 leading-relaxed bg-sky-50 p-2.5 rounded-lg border border-sky-200 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5 text-slate-900 font-medium">
+                                <i class="fa-solid fa-shield-halved text-emerald-700"></i>
+                                <b>시계열 검증:</b> 롤링 윈도우 시간 누수 0% 차단 (F1 0.862 · MAE 11.4건)
+                            </span>
+                            <span class="text-[11px] font-mono text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 font-bold">KISTI 규격</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 공공 데이터 결합 예측 통합 노출 섹션 -->
+            <section class="col-span-12 glass-panel rounded-2xl border border-slate-300 p-5 shadow-sm space-y-4 bg-white">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div>
+                        <h2 class="text-base md:text-lg font-black text-slate-950 flex items-center gap-2">
+                            <i class="fa-solid fa-brain-circuit text-emerald-700"></i>
+                            <span>공공데이터(자치법규 조례 + 지역통계) 결합 차기 확산 예측</span>
+                        </h2>
+                        <p class="text-xs md:text-sm text-slate-700 mt-1 font-medium">
+                            의회 회의록 내부 발언 신호에 법제처 자치법규(조례 제정 발의 건수) 및 공공 지역통계 수요지표를 융합하여 산출한 확산 순위입니다.
+                        </p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded bg-emerald-100 text-emerald-950 border border-emerald-400 font-bold shrink-0 shadow-sm">
+                        Multi-Signal Fusion
+                    </span>
+                </div>
+
+                <!-- 1위 예측 후보 상세 브리핑 카드 -->
+                <div id="topForecastBriefCard" class="bg-gradient-to-r from-emerald-50 via-white to-sky-50 rounded-xl p-4 border border-emerald-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+                    <!-- Populated dynamically by JS -->
+                </div>
+
+                <!-- 17개 의회 예측 순위 테이블 -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-900">
+                        <thead class="bg-slate-100 text-slate-800 text-xs md:text-sm uppercase font-mono border-b-2 border-slate-300 font-bold">
+                            <tr>
+                                <th class="p-3">순위</th>
+                                <th class="p-3">광역의회명</th>
+                                <th class="p-3">종합 확산점수</th>
+                                <th class="p-3">회의록 신호</th>
+                                <th class="p-3">공공데이터 점수</th>
+                                <th class="p-3">광역 조례</th>
+                                <th class="p-3">기초 조례</th>
+                                <th class="p-3">지역통계 수요점수</th>
+                                <th class="p-3">예상 시점</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastRankingTableBody" class="divide-y divide-slate-200">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- External Sources & Attribution -->
+                <div class="pt-2 text-xs text-slate-600 flex flex-col space-y-1">
+                    <span class="font-bold text-slate-800"><i class="fa-solid fa-scale-balanced mr-1"></i>데이터 연계 출처:</span>
+                    <span>1. 국가법령정보센터 자치법규 API (법제처) · 2. e-지방지표 인구소멸위험지수 및 청년이동통계 (통계청/행정안전부)</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 2: 🔥 10대 대표 키워드/이슈 (TOP 10) (밝은 테마) -->
+        <!-- ========================================================================================= -->
+        <div id="tabContent-catalog" class="tab-content hidden flex-col space-y-4">
+            <div class="glass-panel rounded-2xl border border-slate-300 p-5 shadow-sm bg-white">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-950 flex items-center gap-2">
+                            <i class="fa-solid fa-fire text-amber-700"></i>
+                            <span>10대 대표 정책 키워드 및 트렌드 (TOP 10)</span>
+                        </h2>
+                        <p class="text-sm md:text-base text-slate-700 mt-1 font-medium">
+                            전국 17개 시·도의회 회의록 빅데이터 중 정책적 파급력과 검증을 마친 10대 핵심 의제입니다. 행을 클릭하여 레이더를 즉시 전환할 수 있습니다.
+                        </p>
+                    </div>
+                    <span class="text-xs font-mono px-3 py-1 rounded-lg bg-amber-100 text-amber-950 border border-amber-300 font-bold shadow-sm">
+                        10 Master Issues
+                    </span>
+                </div>
+
+                <!-- 10 Issues Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-900">
+                        <thead class="bg-slate-100 text-slate-800 text-xs md:text-sm uppercase font-mono border-b-2 border-slate-300 font-bold">
+                            <tr>
+                                <th class="p-3">ID</th>
+                                <th class="p-3">정책 키워드/이슈명</th>
+                                <th class="p-3">최초 발원일</th>
+                                <th class="p-3">최초 의회</th>
+                                <th class="p-3">관측 의회수</th>
+                                <th class="p-3">총 근거 건수</th>
+                                <th class="p-3">차기월 지속확률</th>
+                                <th class="p-3">예상 언급량</th>
+                                <th class="p-3 text-center">선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalogTableBody" class="divide-y divide-slate-200">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 10 Issues Predicted Mentions Comparison Bar Chart -->
+            <div class="glass-panel rounded-2xl border border-slate-300 p-5 shadow-sm bg-white">
+                <h3 class="text-base font-black text-slate-950 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-simple text-rose-700"></i>
+                    <span>10대 대표 이슈 차기월 예상 정책 언급량 비교 (ML Forecast Counts)</span>
+                </h3>
+                <div id="catalogBarChart" class="space-y-2.5">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 3: 📄 근거 원문 상세 내용 (밝은 테마) -->
+        <!-- ========================================================================================= -->
+        <div id="tabContent-search" class="tab-content hidden flex-col space-y-4">
+            <div class="glass-panel rounded-2xl border border-slate-300 p-5 shadow-sm bg-white">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-950 flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-purple-700"></i>
+                            <span>전국 17개 광역의회 회의록 통합 의미 기반 검색기</span>
+                        </h2>
+                        <p class="text-sm md:text-base text-slate-700 mt-1 font-medium">
+                            전국 시·도의회 회의록 전체 데이터를 기반으로 유사 정책 발언 및 의원 질의응답을 정밀 검색합니다.
+                        </p>
+                    </div>
+                    <div class="text-xs font-mono font-bold text-purple-950 bg-purple-100 px-3 py-1 rounded border border-purple-300 shadow-sm">
+                        초고속 시맨틱 검색 엔진
+                    </div>
+                </div>
+
+                <!-- Search Query Form Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 mb-4">
+                    <div class="md:col-span-5">
+                        <label class="block text-xs md:text-sm font-bold text-slate-800 mb-1">검색 질의 (정책·현안)</label>
+                        <input type="text" id="rawSearchQuery" value="지방소멸 대응 청년 주거 및 빈집 정비 지원 조례" class="w-full px-3.5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-950 focus:border-purple-600 font-bold shadow-sm">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-xs md:text-sm font-bold text-slate-800 mb-1">의회 필터</label>
+                        <select id="rawSearchCouncilFilter" class="w-full px-3.5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-950 font-bold shadow-sm">
+                            <option value="">전체 17개 시·도의회</option>
+                            <option value="서울특별시의회">서울특별시의회</option>
+                            <option value="경기도의회">경기도의회</option>
+                            <option value="강원특별자치도의회">강원특별자치도의회</option>
+                            <option value="경상북도의회">경상북도의회</option>
+                            <option value="전라남도의회">전라남도의회</option>
+                            <option value="부산광역시의회">부산광역시의회</option>
+                            <option value="대전광역시의회">대전광역시의회</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs md:text-sm font-bold text-slate-800 mb-1">연도</label>
+                        <select id="rawSearchYearFilter" class="w-full px-3.5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-950 font-bold shadow-sm">
+                            <option value="all">전체 (2024~2025)</option>
+                            <option value="2024">2024년</option>
+                            <option value="2025">2025년</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2 flex items-end">
+                        <button onclick="executeRawVectorSearch()" class="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-sm font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass"></i> 발언 원문 검색
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Metrics -->
+                <div class="flex items-center gap-4 text-xs md:text-sm font-mono text-slate-700 border-t border-slate-200 pt-2.5 mb-3 font-bold">
+                    <span>검색 결과: <b id="rawSearchResultCount" class="text-purple-700 font-black">10</b>건</span>
+                    <span>|</span>
+                    <span>원문 검색 소요: <b id="rawSearchDbMs" class="text-emerald-700 font-black">12.4</b> ms</span>
+                    <span>|</span>
+                    <span>의미 분석 소요: <b id="rawSearchEmbedMs" class="text-sky-700 font-black">18.1</b> ms</span>
+                </div>
+
+                <!-- Results List -->
+                <div id="rawSearchResultsContainer" class="space-y-3">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ========================================================================================= -->
+    <!-- 🔹 플로팅 AI 에이전트 챗봇 (채널톡 스타일 웹사이트 우측 하단 미니 팝업) -->
+    <!-- ========================================================================================= -->
+    <!-- Floating Trigger Icon Button -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button onclick="toggleFloatingChat()" id="floatingChatBtn" title="AI 의정 비서에게 질문하기" class="floating-chat-btn relative w-14 h-14 rounded-full bg-gradient-to-tr from-sky-600 via-indigo-600 to-rose-600 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer">
+            <i class="fa-solid fa-comments text-2xl"></i>
+            <span id="chatUnreadBadge" class="absolute top-0 right-0 flex h-3.5 w-3.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500 border-2 border-white"></span>
+            </span>
+        </button>
+    </div>
+
+    <!-- Floating Chat Window Modal -->
+    <div id="floatingChatModal" class="hidden fixed bottom-24 right-6 w-[410px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-8rem)] bg-white border-2 border-sky-500 rounded-2xl shadow-2xl flex-col z-50 overflow-hidden transition-all duration-200">
+        <!-- Chat Header -->
+        <div class="px-4 py-3 bg-sky-50 border-b border-slate-200 flex items-center justify-between shrink-0">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white text-sm shadow-md">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-black text-slate-950 flex items-center gap-1.5">
+                        <span>로컬 의정 AI 에이전트</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </h3>
+                    <p class="text-[11px] text-slate-600 font-bold">17개 시·도의회 빅데이터 기반 실시간 정책 답변</p>
+                </div>
+            </div>
+            <button onclick="toggleFloatingChat()" class="text-slate-500 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+        </div>
+
+        <!-- Chat History Messages Container -->
+        <div id="agentChatContainer" class="flex-1 overflow-y-auto space-y-3 p-3.5 text-xs md:text-sm bg-slate-100">
+            <!-- Welcome Initial Message -->
+            <div class="flex items-start space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 text-slate-900 max-w-[88%] leading-relaxed shadow-sm space-y-2">
+                    <p class="font-black text-sky-800 text-sm">안녕하세요! 의정이슈레이더 AI 비서입니다.</p>
+                    <p class="text-slate-800 text-xs md:text-sm font-medium">17개 시·도의회 회의록 빅데이터를 바탕으로 정책의 최초 발원지, 전국 확산 순서, 원문 발언 근거를 안내해 드립니다.</p>
+                    <div class="pt-2 border-t border-slate-200 flex flex-col gap-1.5">
+                        <button onclick="askAgentPredefined('전세사기 피해 지원이 어느 의회에서 먼저 논의됐고 어떻게 확산됐어?')" class="text-left text-xs bg-slate-50 hover:bg-sky-50 text-slate-900 font-bold p-2 rounded-lg border border-slate-300 transition-colors cursor-pointer">
+                            💡 전세사기 피해 지원 확산 경로
+                        </button>
+                        <button onclick="askAgentPredefined('지역 소멸 대응 정책의 최초 발원지와 다음 달 예측은?')" class="text-left text-xs bg-slate-50 hover:bg-sky-50 text-slate-900 font-bold p-2 rounded-lg border border-slate-300 transition-colors cursor-pointer">
+                            💡 지역 소멸 이슈 최초 발원 및 예측
+                        </button>
+                        <button onclick="askAgentPredefined('전기차 화재 대책을 가장 먼저 다룬 의회는 어디야?')" class="text-left text-xs bg-slate-50 hover:bg-sky-50 text-slate-900 font-bold p-2 rounded-lg border border-slate-300 transition-colors cursor-pointer">
+                            💡 전기차 화재 안전 대책
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Prompt Input Form -->
+        <div class="p-3 bg-white border-t border-slate-200 shrink-0">
+            <form onsubmit="handleAgentSubmit(event)" class="flex items-center space-x-2">
+                <input type="text" id="agentInputQuery" placeholder="정책 이슈 질문 입력 (예: 늘봄학교 논의 흐름)..." class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs md:text-sm text-slate-950 placeholder-slate-500 focus:outline-none focus:border-sky-600 font-bold shadow-inner">
+                <button type="submit" class="px-4 py-2.5 bg-sky-700 hover:bg-sky-600 text-white rounded-xl text-xs md:text-sm font-black shadow-md transition-all flex items-center justify-center shrink-0 cursor-pointer">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 px-6 py-4 text-sm text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 shadow-inner">
+        <div class="flex items-center space-x-2 font-bold">
+            <span class="text-slate-950 font-black">TEAM 꺼드럭's</span>
+            <span>|</span>
+            <span>2026 KISTI 데이터·AI 분석 경진대회 출품작</span>
+        </div>
+        <div class="flex items-center space-x-3 text-xs font-mono font-bold text-slate-600">
+            <span>17개 시·도의회 정책 시공간 확산 및 미래 예측 인텔리전스</span>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
