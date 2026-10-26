@@ -1,10 +1,17 @@
-.vscode/
-.idea/
-data/
-text/
-chroma_db/
-*.zip
-*.tar.gz
+# 전체 파일 제외
+*
+
+# 하위 폴더 탐색 허용
+!*/
+
+# 업로드할 파일만 허용
+!*.py
+!*.html
+!*.htm
+!.gitignore
+!requirements.txt
+
+# 가상환경 및 캐시 제외
+.venv/
+venv/
 __pycache__/
-*.pyc
-.env
