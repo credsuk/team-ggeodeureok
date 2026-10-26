@@ -111,6 +111,34 @@ def safe_auc(metric: Any, y_true: np.ndarray, scores: np.ndarray) -> float | Non
     return float(metric(y_true, scores))
 
 
+def change_direction(current: float, future: float) -> str:
+    """언급 건수를 정수 단위로 비교해 증가·지속·감소를 구분한다."""
+    current_rounded = int(round(max(0.0, current)))
+    future_rounded = int(round(max(0.0, future)))
+    if future_rounded > current_rounded:
+        return "growth"
+    if future_rounded < current_rounded:
+        return "attenuation"
+    return "persistence"
+
+
+def directional_accuracy(
+    current: np.ndarray, actual: np.ndarray, predicted: np.ndarray,
+) -> float:
+    matches = [
+        change_direction(now, truth) == change_direction(now, estimate)
+        for now, truth, estimate in zip(current, actual, predicted)
+    ]
+    return float(np.mean(matches)) if matches else 0.0
+
+
+def improvement_percent(baseline: float, candidate: float) -> float | None:
+    """오차 지표에서 기준선 대비 개선율을 반환한다. 양수일수록 좋다."""
+    if baseline <= 0:
+        return None
+    return float((baseline - candidate) / baseline * 100.0)
+
+
 def main() -> None:
     args = parse_args()
     if args.minimum_train_months < 3:
@@ -130,6 +158,8 @@ def main() -> None:
     feature_columns = [
         name for name in all_rows[0] if name not in IDENTIFIERS | TARGETS
     ]
+    if "mention_count" not in feature_columns:
+        raise ValueError("방향성 및 전월 유지 기준선 계산에 mention_count가 필요합니다")
     months = sorted({row["target_month"] for row in rows})
     if len(months) <= args.minimum_train_months:
         raise ValueError("시간순 검증에 필요한 월이 부족합니다")
@@ -161,6 +191,9 @@ def main() -> None:
                 0.98, max(0.02, float(row["active_month_ratio_3m"]))
             )
             baseline_count = max(0.0, float(row["mention_mean_3m"]))
+            current_count = max(0.0, float(row["mention_count"]))
+            last_month_probability = 0.98 if current_count > 0 else 0.02
+            actual_count = float(row["next_month_mention_count"])
             predictions.append({
                 "issue_id": row["issue_id"],
                 "issue_name": row["issue_name"],
@@ -168,9 +201,16 @@ def main() -> None:
                 "actual_active": int(row["target_discussion_active"]),
                 "logistic_probability": float(probability),
                 "baseline_probability": baseline_probability,
-                "actual_count": float(row["next_month_mention_count"]),
+                "last_month_probability": last_month_probability,
+                "current_count": current_count,
+                "actual_count": actual_count,
                 "poisson_count": float(count),
                 "baseline_count": baseline_count,
+                "last_value_count": current_count,
+                "actual_direction": change_direction(current_count, actual_count),
+                "poisson_direction": change_direction(current_count, float(count)),
+                "mean_3m_direction": change_direction(current_count, baseline_count),
+                "last_value_direction": "persistence",
             })
 
     if not predictions:
@@ -178,9 +218,16 @@ def main() -> None:
     y_active = np.asarray([row["actual_active"] for row in predictions])
     logistic_scores = np.asarray([row["logistic_probability"] for row in predictions])
     baseline_scores = np.asarray([row["baseline_probability"] for row in predictions])
+    last_month_scores = np.asarray([
+        row["last_month_probability"] for row in predictions
+    ])
+    current_count = np.asarray([row["current_count"] for row in predictions])
     y_count = np.asarray([row["actual_count"] for row in predictions])
     poisson_count = np.asarray([row["poisson_count"] for row in predictions])
     baseline_count = np.asarray([row["baseline_count"] for row in predictions])
+    last_value_count = np.asarray([
+        row["last_value_count"] for row in predictions
+    ])
 
     def class_metrics(scores: np.ndarray) -> dict[str, Any]:
         labels = (scores >= args.threshold).astype(np.int64)
@@ -196,16 +243,21 @@ def main() -> None:
         return {
             "mae": float(mean_absolute_error(y_count, values)),
             "rmse": float(mean_squared_error(y_count, values) ** 0.5),
+            "directional_accuracy": directional_accuracy(
+                current_count, y_count, values
+            ),
         }
 
     metrics = {
         "classification": {
             "logistic_regression": class_metrics(logistic_scores),
             "active_ratio_baseline": class_metrics(baseline_scores),
+            "last_month_activity_baseline": class_metrics(last_month_scores),
         },
         "count_regression": {
             "poisson_regression": count_metrics(poisson_count),
             "mean_3m_baseline": count_metrics(baseline_count),
+            "last_value_baseline": count_metrics(last_value_count),
         },
     }
     selected_classifier = max(
@@ -216,6 +268,69 @@ def main() -> None:
         metrics["count_regression"],
         key=lambda name: metrics["count_regression"][name]["mae"],
     )
+
+    rolling_rows: list[dict[str, Any]] = []
+    for target_month in sorted({row["target_month"] for row in predictions}):
+        indices = np.asarray([
+            index for index, row in enumerate(predictions)
+            if row["target_month"] == target_month
+        ], dtype=np.int64)
+        fold_active = y_active[indices]
+        fold_current = current_count[indices]
+        fold_actual_count = y_count[indices]
+        fold_values = {
+            "poisson_regression": poisson_count[indices],
+            "mean_3m_baseline": baseline_count[indices],
+            "last_value_baseline": last_value_count[indices],
+        }
+        fold_scores = {
+            "logistic_regression": logistic_scores[indices],
+            "active_ratio_baseline": baseline_scores[indices],
+            "last_month_activity_baseline": last_month_scores[indices],
+        }
+        row: dict[str, Any] = {
+            "target_month": target_month,
+            "prediction_count": int(len(indices)),
+        }
+        for name, scores in fold_scores.items():
+            labels = (scores >= args.threshold).astype(np.int64)
+            row[f"{name}_f1"] = float(
+                f1_score(fold_active, labels, zero_division=0)
+            )
+        for name, values in fold_values.items():
+            row[f"{name}_mae"] = float(
+                mean_absolute_error(fold_actual_count, values)
+            )
+            row[f"{name}_rmse"] = float(
+                mean_squared_error(fold_actual_count, values) ** 0.5
+            )
+            row[f"{name}_directional_accuracy"] = directional_accuracy(
+                fold_current, fold_actual_count, values
+            )
+        rolling_rows.append(row)
+
+    selected_class_metrics = metrics["classification"][selected_classifier]
+    selected_count_metrics = metrics["count_regression"][selected_regressor]
+    last_class_metrics = metrics["classification"][
+        "last_month_activity_baseline"
+    ]
+    last_count_metrics = metrics["count_regression"]["last_value_baseline"]
+    baseline_comparison = {
+        "reference": "last_month_persistence",
+        "classification_f1_delta": float(
+            selected_class_metrics["f1"] - last_class_metrics["f1"]
+        ),
+        "count_mae_improvement_percent": improvement_percent(
+            last_count_metrics["mae"], selected_count_metrics["mae"]
+        ),
+        "count_rmse_improvement_percent": improvement_percent(
+            last_count_metrics["rmse"], selected_count_metrics["rmse"]
+        ),
+        "directional_accuracy_delta": float(
+            selected_count_metrics["directional_accuracy"]
+            - last_count_metrics["directional_accuracy"]
+        ),
+    }
 
     x_all = numeric_matrix(rows, feature_columns)
     classifier = classification_pipeline().fit(
@@ -235,8 +350,12 @@ def main() -> None:
     for row, probability, count in zip(latest_rows, latest_probability, latest_count):
         if selected_classifier == "active_ratio_baseline":
             probability = min(0.98, max(0.02, float(row["active_month_ratio_3m"])))
+        elif selected_classifier == "last_month_activity_baseline":
+            probability = 0.98 if float(row["mention_count"]) > 0 else 0.02
         if selected_regressor == "mean_3m_baseline":
             count = max(0.0, float(row["mention_mean_3m"]))
+        elif selected_regressor == "last_value_baseline":
+            count = max(0.0, float(row["mention_count"]))
         forecasts.append({
             "issue_id": row["issue_id"],
             "issue_name": row["issue_name"],
@@ -257,6 +376,12 @@ def main() -> None:
         writer = csv.DictWriter(file, fieldnames=list(predictions[0]))
         writer.writeheader()
         writer.writerows(predictions)
+    with (output_dir / "rolling_backtest_metrics.csv").open(
+        "w", encoding="utf-8-sig", newline=""
+    ) as file:
+        writer = csv.DictWriter(file, fieldnames=list(rolling_rows[0]))
+        writer.writeheader()
+        writer.writerows(rolling_rows)
     report = {
         "status": "complete",
         "method": "expanding_window_by_target_month",
@@ -266,9 +391,25 @@ def main() -> None:
         "validation_predictions": len(predictions),
         "feature_columns": feature_columns,
         "metrics": metrics,
+        "rolling_backtest": {
+            "strategy": "expanding_window_by_target_month",
+            "fold_count": len(rolling_rows),
+            "first_validation_month": rolling_rows[0]["target_month"],
+            "last_validation_month": rolling_rows[-1]["target_month"],
+            "metrics_file": str(output_dir / "rolling_backtest_metrics.csv"),
+        },
         "selection": {
             "classifier": selected_classifier,
             "count_model": selected_regressor,
+        },
+        "required_evaluation": {
+            "discussion_active_f1": selected_class_metrics["f1"],
+            "mention_count_mae": selected_count_metrics["mae"],
+            "mention_count_rmse": selected_count_metrics["rmse"],
+            "directional_accuracy": selected_count_metrics[
+                "directional_accuracy"
+            ],
+            "last_month_persistence_comparison": baseline_comparison,
         },
         "forecasts": forecasts,
         "limitations": [
@@ -290,8 +431,22 @@ def main() -> None:
     )
     print(
         f"선택 언급량: {selected_regressor} | "
-        f"MAE={metrics['count_regression'][selected_regressor]['mae']:.4f}"
+        f"MAE={selected_count_metrics['mae']:.4f} | "
+        f"RMSE={selected_count_metrics['rmse']:.4f} | "
+        f"방향성 정확도={selected_count_metrics['directional_accuracy']:.4f}"
     )
+    print(
+        f"논의 지속 F1={selected_class_metrics['f1']:.4f} | "
+        f"Rolling folds={len(rolling_rows)}"
+    )
+    print(
+        "전월 유지 기준선 대비: "
+        f"F1 Δ={baseline_comparison['classification_f1_delta']:+.4f} | "
+        f"MAE 개선={baseline_comparison['count_mae_improvement_percent']}% | "
+        f"RMSE 개선={baseline_comparison['count_rmse_improvement_percent']}% | "
+        f"방향성 정확도 Δ={baseline_comparison['directional_accuracy_delta']:+.4f}"
+    )
+    print(f"rolling: {output_dir / 'rolling_backtest_metrics.csv'}")
     print(f"result: {output_dir / 'multi_issue_forecast.json'}")
 
 

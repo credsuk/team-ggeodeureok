@@ -97,6 +97,8 @@ def main() -> None:
             **forecast,
             "model_selection": model_report.get("selection"),
             "validation_metrics": model_report.get("metrics"),
+            "required_evaluation": model_report.get("required_evaluation"),
+            "rolling_backtest": model_report.get("rolling_backtest"),
             "method": model_report.get("method"),
             "leakage_control": model_report.get("leakage_control"),
             "limitations": model_report.get("limitations"),
@@ -138,6 +140,8 @@ def main() -> None:
         "model_summary": {
             "selection": model_report.get("selection"),
             "metrics": metrics,
+            "required_evaluation": model_report.get("required_evaluation"),
+            "rolling_backtest": model_report.get("rolling_backtest"),
             "method": model_report.get("method"),
             "leakage_control": model_report.get("leakage_control"),
             "training_rows": model_report.get("training_rows"),

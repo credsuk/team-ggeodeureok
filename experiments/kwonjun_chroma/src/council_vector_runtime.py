@@ -15,6 +15,9 @@ import duckdb
 import numpy as np
 import pyarrow.parquet as pq
 
+from bm25_runtime import BM25Index, reciprocal_rank_fusion
+from search_aliases import committee_alias_values, council_alias_values
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL = "dragonkue/snowflake-arctic-embed-l-v2.0-ko"
@@ -132,11 +135,16 @@ class SearchFilters:
     policy_category: str | None = None
 
     def matches(self, metadata: dict[str, Any]) -> bool:
-        if self.council and str(metadata.get("council") or "") != self.council:
+        council_values = council_alias_values(self.council)
+        if council_values and str(metadata.get("council") or "") not in council_values:
             return False
         if self.year is not None and int(metadata.get("year") or -1) != self.year:
             return False
-        if self.committee and self.committee not in str(metadata.get("committee") or ""):
+        committee_values = committee_alias_values(self.committee)
+        if committee_values and not any(
+            value in str(metadata.get("committee") or "")
+            for value in committee_values
+        ):
             return False
         current_date = date_string(metadata.get("meeting_date"))
         if self.date_from and (not current_date or current_date < self.date_from):
@@ -156,8 +164,11 @@ class SearchFilters:
 
     def chroma_where(self) -> dict[str, Any] | None:
         conditions: list[dict[str, Any]] = []
-        if self.council:
-            conditions.append({"council": self.council})
+        council_values = council_alias_values(self.council)
+        if len(council_values) == 1:
+            conditions.append({"council": council_values[0]})
+        elif council_values:
+            conditions.append({"council": {"$in": list(council_values)}})
         if self.year is not None:
             conditions.append({"year": self.year})
         if self.date_from:
@@ -181,6 +192,10 @@ class SearchResult:
     text: str
     metadata: dict[str, Any]
     parent_context: str | None = None
+    retrieval_score: float | None = None
+    dense_rank: int | None = None
+    bm25_rank: int | None = None
+    bm25_score: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -300,12 +315,21 @@ class CouncilSearchService:
         pg_dsn: str | None = None,
         pg_table: str = "council_chunks_final_v1",
         pg_ef_search: int = 100,
+        retrieval_mode: str = "dense",
+        bm25_index: Path | None = None,
+        rrf_k: int = 60,
+        dense_weight: float = 1.0,
+        bm25_weight: float = 1.0,
         device: str = "auto",
         model_cache: Path | None = None,
         local_files_only: bool = True,
     ):
         if backend not in {"exact", "chroma", "pgvector"}:
             raise ValueError(f"지원하지 않는 backend: {backend}")
+        if retrieval_mode not in {"dense", "hybrid"}:
+            raise ValueError(f"지원하지 않는 retrieval_mode: {retrieval_mode}")
+        if retrieval_mode == "hybrid" and backend != "pgvector":
+            raise ValueError("hybrid 모드는 pgvector backend에서만 지원합니다")
         self.backend = backend
         self.artifact = EmbeddingArtifact(embedding_dir)
         self.parent_path = parent_path
@@ -318,6 +342,13 @@ class CouncilSearchService:
         self.pg_dsn = pg_dsn or os.environ.get("PGVECTOR_DSN")
         self.pg_table = pg_table
         self.pg_ef_search = pg_ef_search
+        self.retrieval_mode = retrieval_mode
+        self.rrf_k = rrf_k
+        self.dense_weight = dense_weight
+        self.bm25_weight = bm25_weight
+        self.bm25 = BM25Index(bm25_index) if retrieval_mode == "hybrid" and bm25_index else None
+        if retrieval_mode == "hybrid" and self.bm25 is None:
+            raise ValueError("hybrid 검색에는 bm25_index가 필요합니다")
         self.chroma = None
         if backend == "chroma":
             import chromadb
@@ -386,12 +417,17 @@ class CouncilSearchService:
 
         conditions = []
         parameters: list[Any] = []
-        if filters.council:
-            conditions.append(sql.SQL("council = %s")); parameters.append(filters.council)
+        council_values = council_alias_values(filters.council)
+        if council_values:
+            conditions.append(sql.SQL("council = ANY(%s)")); parameters.append(list(council_values))
         if filters.year is not None:
             conditions.append(sql.SQL("year = %s")); parameters.append(filters.year)
-        if filters.committee:
-            conditions.append(sql.SQL("committee ILIKE %s")); parameters.append(f"%{filters.committee}%")
+        committee_values = committee_alias_values(filters.committee)
+        if committee_values:
+            conditions.append(sql.SQL("(") + sql.SQL(" OR ").join(
+                sql.SQL("committee ILIKE %s") for _ in committee_values
+            ) + sql.SQL(")"))
+            parameters.extend(f"%{value}%" for value in committee_values)
         if filters.date_from:
             conditions.append(sql.SQL("meeting_date >= %s")); parameters.append(filters.date_from)
         if filters.date_to:
@@ -443,12 +479,55 @@ class CouncilSearchService:
         query_vector = self.encoder.encode([query])[0]
         encoded_ms = (time.perf_counter() - started) * 1000
         search_started = time.perf_counter()
+        bm25_ms = 0.0
+        fusion_ms = 0.0
+        bm25_tokens: list[str] = []
         if self.backend == "exact":
             candidates = self._search_exact(query_vector, candidate_k)
         elif self.backend == "chroma":
             candidates = self._search_chroma(query_vector, candidate_k, filters)
         else:
-            candidates = self._search_pgvector(query_vector, candidate_k, filters)
+            dense_limit = candidate_k * 2 if self.retrieval_mode == "hybrid" else candidate_k
+            dense_rows = self._search_pgvector(query_vector, dense_limit, filters)
+            if self.retrieval_mode == "hybrid":
+                assert self.bm25 is not None
+                bm25_started = time.perf_counter()
+                hits, bm25_tokens = self.bm25.search(
+                    query, candidate_k * 2,
+                    council=filters.council, year=filters.year,
+                    committee=filters.committee, date_from=filters.date_from,
+                    date_to=filters.date_to, priorities=filters.priorities,
+                    policy_category=filters.policy_category,
+                )
+                rows = rows_by_chunk_ids(
+                    self.artifact.paths.metadata,
+                    [hit.chunk_id for hit in hits],
+                )
+                bm25_rows = []
+                for hit in hits:
+                    row = rows.get(hit.chunk_id)
+                    if not row:
+                        continue
+                    bm25_rows.append({
+                        "chunk_id": hit.chunk_id,
+                        "text": str(row.get("text") or ""),
+                        "metadata": {
+                            key: value for key, value in row.items()
+                            if key not in {"text", "embedding_text"}
+                        },
+                        "similarity": 0.0,
+                        "bm25_score": hit.score,
+                    })
+                bm25_ms = (time.perf_counter() - bm25_started) * 1000
+                fusion_started = time.perf_counter()
+                candidates = reciprocal_rank_fusion(
+                    dense_rows, bm25_rows, candidate_k,
+                    rrf_k=self.rrf_k, dense_weight=self.dense_weight,
+                    bm25_weight=self.bm25_weight,
+                )
+                fusion_ms = (time.perf_counter() - fusion_started) * 1000
+            else:
+                candidates = dense_rows
         search_ms = (time.perf_counter() - search_started) * 1000
         selected = [row for row in candidates if filters.matches(row["metadata"])][:top_k]
         contexts = parent_contexts(
@@ -466,17 +545,31 @@ class CouncilSearchService:
                 text=row["text"],
                 metadata=metadata,
                 parent_context=contexts.get(parent_id),
+                retrieval_score=(
+                    round(float(row.get("rrf_score")), 9)
+                    if row.get("rrf_score") is not None else None
+                ),
+                dense_rank=row.get("dense_rank"),
+                bm25_rank=row.get("bm25_rank"),
+                bm25_score=(
+                    round(float(row.get("bm25_score")), 6)
+                    if row.get("bm25_score") is not None else None
+                ),
             )
             results.append(result.to_dict())
         return {
             "query": query,
             "backend": self.backend,
+            "retrieval_mode": self.retrieval_mode,
             "model": self.encoder.model_name,
             "filters": asdict(filters),
             "top_k": top_k,
             "candidate_k": candidate_k,
             "query_embedding_ms": round(encoded_ms, 3),
             "search_ms": round(search_ms, 3),
+            "bm25_ms": round(bm25_ms, 3),
+            "fusion_ms": round(fusion_ms, 3),
+            "bm25_tokens": bm25_tokens,
             "result_count": len(results),
             "results": results,
         }

@@ -183,8 +183,11 @@ def main() -> None:
     reranked = []
     for row, score in zip(candidates, scores):
         current = dict(row)
-        current["dense_rank"] = int(row.get("candidate_rank") or 0)
-        current["dense_similarity"] = float(row.get("similarity") or 0.0)
+        current["retrieval_rank"] = int(row.get("candidate_rank") or 0)
+        if row.get("dense_rank") is not None:
+            current["dense_rank"] = int(row["dense_rank"])
+        if row.get("dense_similarity") is not None:
+            current["dense_similarity"] = float(row["dense_similarity"])
         current["reranker_logit"] = round(score, 6)
         current["reranker_sigmoid"] = round(sigmoid(score), 6)
         reranked.append(current)
@@ -224,6 +227,8 @@ def main() -> None:
             "input": str(input_path),
             "backend": payload.get("backend"),
             "database": payload.get("database"),
+            "retrieval": payload.get("retrieval"),
+            "retrieval_stage": payload.get("retrieval_stage"),
             "candidate_count": len(candidates),
         },
         "reranker": {
@@ -265,8 +270,16 @@ def main() -> None:
     )
     for row in results:
         metadata = row.get("metadata") or {}
+        source_ranks = []
+        if row.get("dense_rank") is not None:
+            source_ranks.append(f"dense={row['dense_rank']}")
+        if row.get("bm25_rank") is not None:
+            source_ranks.append(f"bm25={row['bm25_rank']}")
+        if row.get("rrf_rank") is not None:
+            source_ranks.append(f"rrf={row['rrf_rank']}")
         print(
-            f"\n[{row['rank']}] dense={row['dense_rank']}→rerank={row['rerank_rank']} "
+            f"\n[{row['rank']}] {' · '.join(source_ranks)} "
+            f"→ rerank={row['rerank_rank']} "
             f"| score={row['reranker_logit']:.4f}"
         )
         print(

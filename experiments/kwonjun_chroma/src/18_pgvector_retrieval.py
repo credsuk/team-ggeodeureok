@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""pgvector에서 정책 질의의 근거 후보를 검색하고 부모 문맥을 복원한다.
+"""Dense와 BM25를 RRF로 결합해 정책 질의의 근거 후보를 검색한다.
 
-현재 단계는 dense retrieval 기준선이다. 후보 50개를 모두 JSON에 저장하고,
-현재 벡터 점수 상위 10개를 results로 출력한다. 다음 단계의 재순위 모델은
-이 파일이 저장한 candidates를 입력으로 사용한다.
+기본 모드는 Arctic Dense + SQLite FTS5 BM25 + RRF다. 결합 후보를 JSON에
+저장하고 다음 단계의 BGE 재순위 모델이 최종 근거를 선택한다.
 """
 
 from __future__ import annotations
@@ -24,7 +23,10 @@ from council_vector_runtime import (
     atomic_json,
     json_safe,
     parent_contexts,
+    rows_by_chunk_ids,
 )
+from bm25_runtime import BM25Index, reciprocal_rank_fusion
+from search_aliases import committee_alias_values, council_alias_values
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +37,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--query", required=True, help="검색할 정책 또는 현안")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--candidate-k", type=int, default=50)
+    parser.add_argument(
+        "--retrieval-mode", choices=["dense", "hybrid"],
+        default=os.environ.get("COUNCIL_RETRIEVAL_MODE", "hybrid"),
+    )
+    parser.add_argument(
+        "--bm25-index", type=Path,
+        default=Path(os.environ.get(
+            "COUNCIL_BM25_INDEX",
+            PROJECT_ROOT / "data" / "bm25" / "arctic_raw_v1" / "bm25.sqlite3",
+        )),
+    )
+    parser.add_argument("--dense-k", type=int, default=None)
+    parser.add_argument("--bm25-k", type=int, default=None)
+    parser.add_argument("--rrf-k", type=int, default=60)
+    parser.add_argument("--dense-weight", type=float, default=1.0)
+    parser.add_argument("--bm25-weight", type=float, default=1.0)
     parser.add_argument(
         "--max-per-parent", type=int, default=1,
         help="최종 결과에 허용할 동일 부모 청크의 최대 개수",
@@ -80,6 +98,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("max-per-parent는 1 이상이어야 합니다")
     if args.ef_search < args.candidate_k:
         raise ValueError("ef-search는 candidate-k 이상이어야 합니다")
+    if args.rrf_k < 1 or args.dense_weight <= 0 or args.bm25_weight <= 0:
+        raise ValueError("rrf-k는 1 이상, 결합 가중치는 0보다 커야 합니다")
     if not args.dsn:
         raise ValueError("--dsn 또는 PGVECTOR_DSN 환경변수가 필요합니다")
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", args.table):
@@ -91,15 +111,19 @@ def build_statement(args: argparse.Namespace, table: Any) -> tuple[Any, list[Any
 
     conditions = []
     parameters: list[Any] = []
-    if args.council:
-        conditions.append(sql.SQL("council = %s"))
-        parameters.append(args.council)
+    council_values = council_alias_values(args.council)
+    if council_values:
+        conditions.append(sql.SQL("council = ANY(%s)"))
+        parameters.append(list(council_values))
     if args.year is not None:
         conditions.append(sql.SQL("year = %s"))
         parameters.append(args.year)
-    if args.committee:
-        conditions.append(sql.SQL("committee ILIKE %s"))
-        parameters.append(f"%{args.committee}%")
+    committee_values = committee_alias_values(args.committee)
+    if committee_values:
+        conditions.append(sql.SQL("(") + sql.SQL(" OR ").join(
+            sql.SQL("committee ILIKE %s") for _ in committee_values
+        ) + sql.SQL(")"))
+        parameters.extend(f"%{value}%" for value in committee_values)
     if args.date_from:
         conditions.append(sql.SQL("meeting_date >= %s"))
         parameters.append(args.date_from)
@@ -149,11 +173,43 @@ def row_to_candidate(row: tuple[Any, ...], rank: int) -> dict[str, Any]:
             metadata[key] = json_safe(value)
     return {
         "candidate_rank": rank,
+        "dense_rank": rank,
         "chunk_id": str(row[0]),
         "similarity": round(float(row[12]), 6),
+        "dense_similarity": round(float(row[12]), 6),
+        "retrieval_sources": ["dense"],
         "text": str(row[10] or ""),
         "metadata": {key: json_safe(value) for key, value in metadata.items()},
     }
+
+
+def hydrate_bm25_candidates(
+    artifact: EmbeddingArtifact,
+    hits: list[Any],
+) -> list[dict[str, Any]]:
+    ids = [hit.chunk_id for hit in hits]
+    rows = rows_by_chunk_ids(artifact.paths.metadata, ids)
+    result = []
+    for hit in hits:
+        row = rows.get(hit.chunk_id)
+        if not row:
+            continue
+        metadata = {
+            key: json_safe(value)
+            for key, value in row.items()
+            if key not in {"text", "embedding_text"}
+        }
+        result.append({
+            "candidate_rank": hit.rank,
+            "bm25_rank": hit.rank,
+            "chunk_id": hit.chunk_id,
+            "similarity": 0.0,
+            "bm25_score": round(float(hit.score), 6),
+            "retrieval_sources": ["bm25"],
+            "text": str(row.get("text") or ""),
+            "metadata": metadata,
+        })
+    return result
 
 
 def normalized_text_digest(text: str) -> str:
@@ -222,6 +278,12 @@ def main() -> None:
 
     table = sql.Identifier(args.table)
     statement, filter_parameters = build_statement(args, table)
+    dense_k = args.dense_k or (
+        args.candidate_k * 2 if args.retrieval_mode == "hybrid" else args.candidate_k
+    )
+    bm25_k = args.bm25_k or args.candidate_k * 2
+    if args.ef_search < dense_k:
+        raise ValueError("ef-search는 실제 dense-k 이상이어야 합니다")
     connection_started = time.perf_counter()
     with psycopg.connect(args.dsn, autocommit=True) as connection:
         register_vector(connection)
@@ -236,11 +298,38 @@ def main() -> None:
         search_started = time.perf_counter()
         rows = connection.execute(
             statement,
-            [query_vector, *filter_parameters, query_vector, args.candidate_k],
+            [query_vector, *filter_parameters, query_vector, dense_k],
         ).fetchall()
         search_ms = (time.perf_counter() - search_started) * 1000
 
-    candidates = [row_to_candidate(row, rank) for rank, row in enumerate(rows, start=1)]
+    dense_candidates = [
+        row_to_candidate(row, rank) for rank, row in enumerate(rows, start=1)
+    ]
+    bm25_candidates: list[dict[str, Any]] = []
+    bm25_tokens: list[str] = []
+    bm25_ms = 0.0
+    fusion_ms = 0.0
+    if args.retrieval_mode == "hybrid":
+        bm25_started = time.perf_counter()
+        hits, bm25_tokens = BM25Index(args.bm25_index).search(
+            args.query.strip(), bm25_k,
+            council=args.council, year=args.year, committee=args.committee,
+            date_from=args.date_from, date_to=args.date_to,
+            priorities=args.priorities, policy_category=args.policy_category,
+        )
+        bm25_candidates = hydrate_bm25_candidates(artifact, hits)
+        bm25_ms = (time.perf_counter() - bm25_started) * 1000
+        fusion_started = time.perf_counter()
+        candidates = reciprocal_rank_fusion(
+            dense_candidates, bm25_candidates, limit=args.candidate_k,
+            rrf_k=args.rrf_k, dense_weight=args.dense_weight,
+            bm25_weight=args.bm25_weight,
+        )
+        fusion_ms = (time.perf_counter() - fusion_started) * 1000
+        for rank, row in enumerate(candidates, start=1):
+            row["candidate_rank"] = rank
+    else:
+        candidates = dense_candidates[:args.candidate_k]
     selected, deduplication = select_diverse_results(
         candidates, args.top_k, args.max_per_parent,
     )
@@ -269,7 +358,11 @@ def main() -> None:
         "status": "complete",
         "query": args.query.strip(),
         "backend": "postgresql+pgvector",
-        "retrieval_stage": "dense_baseline_before_reranking",
+        "retrieval_stage": (
+            "hybrid_rrf_before_bge_reranking"
+            if args.retrieval_mode == "hybrid"
+            else "dense_baseline_before_bge_reranking"
+        ),
         "model": {
             "name": artifact.model_name,
             "revision": artifact.revision,
@@ -281,6 +374,18 @@ def main() -> None:
             "distance": "cosine",
             "index": "hnsw",
             "ef_search": args.ef_search,
+        },
+        "retrieval": {
+            "mode": args.retrieval_mode,
+            "dense_candidate_count": len(dense_candidates),
+            "bm25_candidate_count": len(bm25_candidates),
+            "fused_candidate_count": len(candidates),
+            "bm25_index": str(args.bm25_index.expanduser().resolve())
+            if args.retrieval_mode == "hybrid" else None,
+            "bm25_tokens": bm25_tokens,
+            "rrf_k": args.rrf_k,
+            "dense_weight": args.dense_weight,
+            "bm25_weight": args.bm25_weight,
         },
         "filters": {
             "council": args.council,
@@ -300,10 +405,12 @@ def main() -> None:
             "query_embedding": round(embedding_ms, 3),
             "connection_setup": round(connection_setup_ms, 3),
             "database_search": round(search_ms, 3),
+            "bm25_search_and_hydration": round(bm25_ms, 3),
+            "rrf_fusion": round(fusion_ms, 3),
         },
         "selection": (
-            "dense similarity + exact-text deduplication + parent diversity; "
-            "reranker not applied yet"
+            f"{args.retrieval_mode} retrieval + exact-text deduplication + "
+            "parent diversity; BGE reranker not applied yet"
         ),
         "results": results,
         "candidates": candidates,
@@ -311,8 +418,12 @@ def main() -> None:
     output = args.output.expanduser().resolve()
     atomic_json(output, report)
 
-    print("\n=== pgvector 근거 후보 검색 완료 ===")
+    print("\n=== Dense/BM25 근거 후보 검색 완료 ===")
     print(f"질의: {args.query.strip()}")
+    print(
+        f"모드: {args.retrieval_mode} | Dense={len(dense_candidates)} | "
+        f"BM25={len(bm25_candidates)} | 결합={len(candidates)}"
+    )
     print(
         f"후보: {len(candidates)} | 최종: {len(results)} | "
         f"ef_search={args.ef_search} | 검색={search_ms:.2f}ms"
@@ -324,8 +435,16 @@ def main() -> None:
     )
     for row in results:
         metadata = row["metadata"]
+        source_ranks = []
+        if row.get("dense_rank") is not None:
+            source_ranks.append(f"dense={row['dense_rank']}")
+        if row.get("bm25_rank") is not None:
+            source_ranks.append(f"bm25={row['bm25_rank']}")
+        if row.get("rrf_rank") is not None:
+            source_ranks.append(f"rrf={row['rrf_rank']}")
         print(
-            f"\n[{row['rank']}] similarity={row['similarity']:.4f} "
+            f"\n[{row['rank']}] {' · '.join(source_ranks)} "
+            f"| dense_similarity={row['similarity']:.4f} "
             f"| {metadata.get('council')} | {metadata.get('meeting_date')}"
         )
         print(

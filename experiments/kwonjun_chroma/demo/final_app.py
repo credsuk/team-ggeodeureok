@@ -56,7 +56,7 @@ def load_payload(path_text: str, modified_ns: int) -> dict[str, Any]:
     return payload
 
 
-@st.cache_resource(show_spinner="Arctic 임베딩과 pgvector를 연결하는 중입니다…")
+@st.cache_resource(show_spinner="Arctic·BM25 하이브리드 검색기를 연결하는 중입니다…")
 def load_search_service() -> CouncilSearchService:
     return CouncilSearchService(
         backend="pgvector",
@@ -71,6 +71,14 @@ def load_search_service() -> CouncilSearchService:
         pg_dsn=os.environ.get("PGVECTOR_DSN"),
         pg_table=os.environ.get("COUNCIL_PG_TABLE", "council_arctic_raw_v1"),
         pg_ef_search=int(os.environ.get("COUNCIL_PG_EF_SEARCH", "200")),
+        retrieval_mode=os.environ.get("COUNCIL_RETRIEVAL_MODE", "hybrid"),
+        bm25_index=Path(os.environ.get(
+            "COUNCIL_BM25_INDEX",
+            PROJECT_ROOT / "data" / "bm25" / "arctic_raw_v1" / "bm25.sqlite3",
+        )).expanduser().resolve(),
+        rrf_k=int(os.environ.get("COUNCIL_RRF_K", "60")),
+        dense_weight=float(os.environ.get("COUNCIL_DENSE_WEIGHT", "1.0")),
+        bm25_weight=float(os.environ.get("COUNCIL_BM25_WEIGHT", "1.0")),
         device=os.environ.get("COUNCIL_DEVICE", "auto"),
         model_cache=Path(os.environ.get(
             "COUNCIL_MODEL_CACHE", PROJECT_ROOT / "models" / "huggingface"
@@ -96,6 +104,60 @@ def stage_label(value: str) -> str:
         "first_observation": "최초 관측", "early_followup_30d": "30일 내 후속",
         "expansion_90d": "90일 내 확장", "later_observation": "후기 관측",
     }.get(value, value)
+
+
+def forecast_interpretation(
+    issue_name: str,
+    single_forecast: dict[str, Any],
+    multi_forecast: dict[str, Any],
+) -> tuple[str, str, float | None]:
+    """예측 수치를 발표·데모에서 읽기 쉬운 조건부 문장으로 바꾼다."""
+    if multi_forecast:
+        probability = float(
+            multi_forecast.get("discussion_active_probability") or 0
+        )
+        predicted = multi_forecast.get("predicted_mention_count")
+        target = str(multi_forecast.get("target_month") or "다음 달")
+        if probability >= 0.70:
+            outlook = (
+                f"‘{issue_name}’ 관련 사업 집행 상황, 예산 반영 여부와 정책 효과를 "
+                "점검하는 후속 논의가 계속될 가능성이 높습니다."
+            )
+        elif probability >= 0.45:
+            outlook = (
+                f"‘{issue_name}’ 논의가 전체 지역으로 빠르게 확산되기보다는 기존 관측 의회를 중심으로 "
+                "후속 질의와 집행 점검 논의가 이어질 가능성이 있습니다."
+            )
+        else:
+            outlook = (
+                f"‘{issue_name}’의 새로운 지역 확산보다는 기존 안건의 정리와 사업 점검 중심으로 "
+                "논의 강도가 낮아질 가능성이 있습니다."
+            )
+        headline = (
+            f"{target}에도 논의가 이어질 확률 {probability:.1%}"
+            + (f" · 예상 언급 {int(predicted)}건" if predicted is not None else "")
+        )
+        return headline, outlook, probability
+
+    if single_forecast.get("status") == "provisional_baseline":
+        direction = direction_label(str(single_forecast.get("direction") or ""))
+        predicted = single_forecast.get("predicted_mention_count")
+        target = str(single_forecast.get("target_month") or "다음 달")
+        direction_text = {
+            "논의 증가": "유사 정책 제안과 후속 점검 논의가 늘어날 가능성이 있습니다.",
+            "논의 지속": "기존 관측 의회를 중심으로 관련 논의가 이어질 가능성이 있습니다.",
+            "관심 약화": "새로운 확산보다는 기존 논의의 정리·점검이 중심이 될 가능성이 있습니다.",
+        }.get(direction, "현재 근거만으로 논의 방향을 단정하기 어렵습니다.")
+        headline = f"{target} 조건부 전망: {direction}"
+        if predicted is not None:
+            headline += f" · 예상 언급 {int(predicted)}건"
+        return headline, direction_text, None
+
+    return (
+        "향후 논의 방향을 계산할 근거가 부족합니다",
+        str(single_forecast.get("reason") or "최소 관측 기간 또는 근거 수가 부족합니다."),
+        None,
+    )
 
 
 def issue_map(payload: dict[str, Any]) -> pdk.Deck:
@@ -209,6 +271,11 @@ st.markdown("""
 .evidence-card{background:#fffdf8;border:1px solid #ded6c5;border-left:4px solid var(--coral);border-radius:12px;padding:1rem;line-height:1.72}
 .evidence-meta{color:#6f7262;font-size:.86rem;margin:.1rem 0 .55rem}
 .forecast{background:linear-gradient(135deg,#fff9ef,#f7d8d1);border:1px solid #efb8ae;border-radius:19px;padding:1.1rem 1.25rem}
+.forecast-spotlight{background:linear-gradient(120deg,#fffaf0 0%,#fde7e1 72%,#f7cbc2 100%);border:2px solid #eb604f;border-radius:22px;padding:1.35rem 1.55rem;margin:.7rem 0 1.25rem;box-shadow:0 14px 30px rgba(171,74,61,.12)}
+.forecast-kicker{font-size:.78rem;font-weight:900;letter-spacing:.12em;color:#a34137;margin-bottom:.35rem}
+.forecast-title{font-size:1.45rem;font-weight:900;color:#3f4534;letter-spacing:-.04em;margin-bottom:.42rem}
+.forecast-copy{font-size:1.02rem;line-height:1.65;color:#4f5146}
+.forecast-note{font-size:.79rem;color:#796f64;margin-top:.55rem}
 div[data-testid="stMetric"]{background:#fffaf2;border:1px solid #ded6c5;border-radius:15px;padding:.8rem 1rem;box-shadow:0 7px 18px rgba(73,78,58,.05)}
 .stProgress>div>div>div>div{background-color:var(--coral)}
 h1,h2,h3{color:#404633;letter-spacing:-.04em}
@@ -242,7 +309,7 @@ with st.sidebar:
     st.caption("2024~2025 광역 지방의회 회의록")
     st.markdown("<span class='badge'>LOCAL ONLY</span><span class='badge'>10 FIXED ISSUES</span>", unsafe_allow_html=True)
     st.divider()
-    st.caption("Arctic · pgvector HNSW · BGE reranker · 검수 군집 · 시간순 예측 · Qwen Agent")
+    st.caption("Arctic Dense + BM25 · RRF · BGE reranker · 검수 군집 · 시간순 예측 · Qwen Agent")
 
 payload = payload_by_id[selected_id]
 issue = payload["issue"]
@@ -258,7 +325,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 tabs = st.tabs([
-    "🏠 10대 이슈", "📍 이슈 레이더", "✨ 자유 이슈 분석",
+    "🏠 10대 이슈", "📍 이슈 레이더",
     "🔎 원문 탐색", "💬 AI Agent", "🧪 모델 설명",
 ])
 
@@ -313,7 +380,7 @@ with tabs[1]:
                 st.session_state["radar_query"] = radar_query.strip()
                 st.session_state["radar_mode"] = "dynamic"
                 st.session_state["radar_log"] = radar_log
-                # 같은 동적 결과를 자유분석 탭과 Agent에서도 바로 재사용한다.
+                # 같은 동적 결과를 Agent에서도 바로 재사용한다.
                 st.session_state["dynamic_issue_payload"] = generated
                 st.session_state["dynamic_issue_log"] = radar_log
                 st.success("자유검색 이슈 레이더가 완성되었습니다.")
@@ -364,157 +431,71 @@ with tabs[1]:
         "예상 언급",
         f"{int(predicted_mentions)}건" if predicted_mentions is not None else "근거 부족",
     )
-    map_col, order_col = st.columns([1.45, 1], gap="large")
-    with map_col:
-        st.subheader("지역별 최초 관측 순서")
-        st.caption("연결선은 시간적 관측 순서이며 정책의 인과적 전달 경로가 아닙니다.")
-        if (radar_payload.get("map") or {}).get("nodes"):
-            st.pydeck_chart(issue_map(radar_payload), use_container_width=True)
-        else:
-            st.info("지도에 표시할 지역별 관측 근거가 부족합니다.")
-    with order_col:
-        st.subheader("의회별 관측 순서")
-        table = pd.DataFrame(radar_payload.get("propagation") or [])
-        if not table.empty:
-            table["시차"] = table["lag_days_from_first"].map(lambda value: f"+{value}일")
-            table["근거"] = table["mention_count"].map(lambda value: f"{value}건")
-            st.dataframe(
-                table[["observation_order", "council", "first_observation_date", "시차", "근거"]].rename(columns={
-                    "observation_order": "순서", "council": "의회",
-                    "first_observation_date": "최초 관측",
-                }), hide_index=True, use_container_width=True, height=430,
-            )
-        else:
-            st.info("의회별 관측 순서를 만들 근거가 부족합니다.")
-    trend_col, forecast_col = st.columns([1.5, 1], gap="large")
-    with trend_col:
-        st.subheader("월별 논의 강도")
-        monthly = pd.DataFrame(radar_payload.get("monthly_series") or [])
-        if not monthly.empty:
-            monthly["month"] = pd.to_datetime(monthly["month"])
-            st.line_chart(monthly.set_index("month")[["mention_count"]], color=["#eb604f"], height=260)
-        else:
-            st.info("월별 시계열 근거가 부족합니다.")
-    with forecast_col:
-        if radar_multi_forecast:
-            probability = float(radar_multi_forecast.get("discussion_active_probability") or 0)
-            st.subheader(f"{radar_multi_forecast.get('target_month')} 다중 이슈 전망")
-            st.markdown(
-                f"<div class='forecast'><b>예상 언급 {radar_multi_forecast.get('predicted_mention_count')}건</b><br>"
-                f"논의 지속 확률 <b>{probability:.1%}</b><br>"
-                f"분류 {radar_multi_forecast.get('selected_classifier')} · 언급량 {radar_multi_forecast.get('selected_count_model')}</div>",
-                unsafe_allow_html=True,
-            )
-            st.progress(max(0.0, min(1.0, probability)))
-            st.caption(
-                f"단일 이슈 보조 전망: {direction_label(radar_single_forecast.get('direction'))} · "
-                f"{radar_single_forecast.get('predicted_mention_count')}건"
-            )
-        elif radar_single_forecast.get("status") == "provisional_baseline":
-            interval = radar_single_forecast.get("prediction_interval_80") or [None, None]
-            st.subheader(f"{radar_single_forecast.get('target_month')} 동적 기준선")
-            st.markdown(
-                f"<div class='forecast'><b>{direction_label(radar_single_forecast.get('direction'))}</b><br>"
-                f"예상 언급 <b>{radar_single_forecast.get('predicted_mention_count')}건</b><br>"
-                f"설명용 구간 {interval[0]}~{interval[1]}건</div>",
-                unsafe_allow_html=True,
-            )
-            st.caption("검수 전 자유검색 결과이므로 공식 고정 이슈 예측과 구분합니다.")
-        else:
-            st.subheader("동적 이슈 전망")
-            st.info(
-                "예측 근거 부족: "
-                + str(radar_single_forecast.get("reason") or "최소 관측 조건 미달")
-            )
+
+    forecast_title, forecast_copy, forecast_probability = forecast_interpretation(
+        str(radar_issue.get("issue_name") or "해당 이슈"),
+        radar_single_forecast,
+        radar_multi_forecast,
+    )
+    forecast_note = (
+        "검수 완료 10대 이슈의 시간순 다중 이슈 모델 결과입니다."
+        if radar_multi_forecast
+        else "검수 전 자유검색 결과에 적용한 조건부 기준선이며 확정적 미래 예측이 아닙니다."
+    )
+    st.markdown(
+        "<div class='forecast-spotlight'>"
+        "<div class='forecast-kicker'>NEXT DISCUSSION · 향후 논의 전망</div>"
+        f"<div class='forecast-title'>{escape(forecast_title)}</div>"
+        f"<div class='forecast-copy'>{escape(forecast_copy)}</div>"
+        f"<div class='forecast-note'>{escape(forecast_note)}</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    if forecast_probability is not None:
+        st.progress(max(0.0, min(1.0, forecast_probability)))
+
+    st.subheader("대한민국 지역별 최초 관측 흐름")
+    st.caption("연결선은 시간적 관측 순서이며 정책의 인과적 전달 경로가 아닙니다.")
+    if (radar_payload.get("map") or {}).get("nodes"):
+        st.pydeck_chart(
+            issue_map(radar_payload), use_container_width=True, height=620
+        )
+    else:
+        st.info("지도에 표시할 지역별 관측 근거가 부족합니다.")
+
+    st.subheader("월별 논의 강도")
+    monthly = pd.DataFrame(radar_payload.get("monthly_series") or [])
+    if not monthly.empty:
+        monthly["month"] = pd.to_datetime(monthly["month"])
+        st.line_chart(
+            monthly.set_index("month")[["mention_count"]],
+            color=["#eb604f"], height=300,
+        )
+    else:
+        st.info("월별 시계열 근거가 부족합니다.")
+
     st.subheader("대표 원문 근거")
     render_evidence(radar_payload.get("evidence") or [])
+
+    st.subheader("의회별 관측 순서")
+    st.caption("지도에 표시된 흐름을 날짜와 시차 기준으로 정리한 표입니다.")
+    table = pd.DataFrame(radar_payload.get("propagation") or [])
+    if not table.empty:
+        table["시차"] = table["lag_days_from_first"].map(lambda value: f"+{value}일")
+        table["근거"] = table["mention_count"].map(lambda value: f"{value}건")
+        st.dataframe(
+            table[["observation_order", "council", "first_observation_date", "시차", "근거"]].rename(columns={
+                "observation_order": "순서", "council": "의회",
+                "first_observation_date": "최초 관측",
+            }), hide_index=True, use_container_width=True,
+        )
+    else:
+        st.info("의회별 관측 순서를 만들 근거가 부족합니다.")
     if radar_mode == "dynamic":
         with st.expander("자유검색 실행 로그"):
             st.code(st.session_state.get("radar_log") or "")
 
 with tabs[2]:
-    st.subheader("원하는 정책어를 즉석에서 전체 분석")
-    st.caption(
-        "검색 → BGE 재순위 → 동적 군집 → 최초 관측 → 의회별 시간순 흐름 → "
-        "이력이 충분할 때 조건부 예측까지 실행합니다. 검수 전 결과는 provisional로 표시합니다."
-    )
-    with st.form("dynamic_issue_form"):
-        dynamic_query = st.text_input(
-            "자유 이슈", placeholder="예: 전기차 지하주차장 화재 안전 대책"
-        )
-        run_dynamic = st.form_submit_button("자유 이슈 전체 분석", type="primary")
-    if run_dynamic and dynamic_query.strip():
-        try:
-            with st.spinner("90만 청크 검색·재순위·군집화를 실행 중입니다. 수 분 걸릴 수 있습니다…"):
-                dynamic_payload, dynamic_log = run_dynamic_analysis(dynamic_query)
-            st.session_state["dynamic_issue_payload"] = dynamic_payload
-            st.session_state["dynamic_issue_log"] = dynamic_log
-            st.success("자유 이슈 분석이 완료되었습니다.")
-        except subprocess.TimeoutExpired:
-            st.error("자유 이슈 분석이 30분 제한을 초과했습니다.")
-        except subprocess.CalledProcessError as error:
-            detail = (error.stderr or error.stdout or str(error))[-4000:]
-            st.error("자유 이슈 분석 실행에 실패했습니다.")
-            st.code(detail)
-        except Exception as error:
-            st.error(f"자유 이슈 분석 실패: {error}")
-    dynamic_payload = st.session_state.get("dynamic_issue_payload")
-    if dynamic_payload:
-        dynamic_issue = dynamic_payload.get("issue") or {}
-        dynamic_summary = dynamic_payload.get("summary") or {}
-        dynamic_forecast = dynamic_payload.get("forecast") or {}
-        st.warning(
-            f"검수 전 동적 결과 · {dynamic_issue.get('issue_name')} · "
-            f"상태 {dynamic_payload.get('status')}"
-        )
-        dm = st.columns(4)
-        dm[0].metric("최초 관측", dynamic_summary.get("first_observation_date"))
-        dm[1].metric(
-            "최초 의회", " · ".join(dynamic_summary.get("first_observation_councils") or [])
-        )
-        dm[2].metric("관측 의회", dynamic_summary.get("council_count"))
-        dm[3].metric("근거 단위", dynamic_summary.get("evidence_unit_count"))
-        propagation = pd.DataFrame(dynamic_payload.get("propagation") or [])
-        if not propagation.empty:
-            propagation["시차"] = propagation["lag_days_from_first"].map(
-                lambda value: f"+{value}일"
-            )
-            st.subheader("동적 이슈의 의회별 최초 관측 순서")
-            st.dataframe(
-                propagation[[
-                    "observation_order", "council", "first_observation_date",
-                    "시차", "mention_count",
-                ]].rename(columns={
-                    "observation_order": "순서", "council": "의회",
-                    "first_observation_date": "최초 관측", "mention_count": "근거 수",
-                }), hide_index=True, use_container_width=True,
-            )
-        series = pd.DataFrame(dynamic_payload.get("monthly_series") or [])
-        if not series.empty:
-            series["month"] = pd.to_datetime(series["month"])
-            st.subheader("동적 이슈 월별 논의량")
-            st.line_chart(
-                series.set_index("month")[["mention_count"]],
-                color=["#eb604f"], height=260,
-            )
-        if dynamic_forecast.get("status") == "provisional_baseline":
-            interval = dynamic_forecast.get("prediction_interval_80") or [None, None]
-            st.markdown(
-                f"<div class='forecast'><b>{dynamic_forecast.get('target_month')} "
-                f"{direction_label(dynamic_forecast.get('direction'))}</b><br>"
-                f"예상 언급 <b>{dynamic_forecast.get('predicted_mention_count')}건</b> · "
-                f"설명용 구간 {interval[0]}~{interval[1]}건<br>"
-                "<small>검수 전 동적 기준선이며 공식 고정 이슈 예측이 아닙니다.</small></div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.info(f"예측 근거 부족: {dynamic_forecast.get('reason', '조건 미달')}")
-        st.subheader("동적 분석 대표 원문")
-        render_evidence(dynamic_payload.get("evidence") or [], expanded=3)
-        with st.expander("실행 로그"):
-            st.code(st.session_state.get("dynamic_issue_log") or "")
-
-with tabs[3]:
     st.subheader("전체 901,358개 청크에서 원문 검색")
     with st.form("final_search"):
         query = st.text_input("정책·현안", value=str(issue["issue_name"]))
@@ -544,7 +525,7 @@ with tabs[3]:
         c.metric("질의 임베딩", f"{result['query_embedding_ms']:.1f} ms")
         render_evidence(result["results"], expanded=3)
 
-with tabs[4]:
+with tabs[3]:
     st.subheader("고정 이슈 자동 연결 + 자유질문 로컬 Agent")
     st.caption("10개 대표 이슈와 연결되면 검수 결과를 사용하고, 그 밖의 질문은 검색 근거만 사용합니다.")
     agent_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
@@ -641,9 +622,14 @@ with tabs[4]:
         with st.expander("Agent 인용 근거", expanded=True):
             render_evidence(response["citations"], expanded=1)
 
-with tabs[5]:
+with tabs[4]:
     selection = model_summary.get("selection") or {}
     metrics = model_summary.get("metrics") or {}
+    required_evaluation = model_summary.get("required_evaluation") or {}
+    rolling_backtest = model_summary.get("rolling_backtest") or {}
+    baseline_comparison = (
+        required_evaluation.get("last_month_persistence_comparison") or {}
+    )
     st.subheader("시간 누수를 막은 예측 모델 선택")
     st.markdown(f"""
 - 검증 방식: `{model_summary.get('method')}`
@@ -652,6 +638,34 @@ with tabs[5]:
 - 학습 행: `{model_summary.get('training_rows')}`
 - 시간순 검증 예측: `{model_summary.get('validation_predictions')}`
     """)
+    if required_evaluation:
+        evaluation_columns = st.columns(5)
+        evaluation_columns[0].metric(
+            "논의 지속 F1",
+            f"{float(required_evaluation.get('discussion_active_f1') or 0):.3f}",
+        )
+        evaluation_columns[1].metric(
+            "언급량 MAE",
+            f"{float(required_evaluation.get('mention_count_mae') or 0):.3f}",
+        )
+        evaluation_columns[2].metric(
+            "언급량 RMSE",
+            f"{float(required_evaluation.get('mention_count_rmse') or 0):.3f}",
+        )
+        evaluation_columns[3].metric(
+            "방향성 정확도",
+            f"{float(required_evaluation.get('directional_accuracy') or 0):.1%}",
+        )
+        evaluation_columns[4].metric(
+            "Rolling folds",
+            int(rolling_backtest.get("fold_count") or 0),
+        )
+        st.caption(
+            "단순 전월 유지 기준선 대비 · "
+            f"F1 Δ {float(baseline_comparison.get('classification_f1_delta') or 0):+.3f} · "
+            f"MAE 개선율 {float(baseline_comparison.get('count_mae_improvement_percent') or 0):+.1f}% · "
+            f"방향성 정확도 Δ {float(baseline_comparison.get('directional_accuracy_delta') or 0):+.3f}"
+        )
     st.json(metrics, expanded=True)
     st.warning("예측은 제공된 2024~2025 회의록에 한정되며, 지역 간 화살표는 인과관계를 뜻하지 않습니다.")
     st.download_button(

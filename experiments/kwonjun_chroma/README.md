@@ -1,71 +1,133 @@
-# 광역 지방의회 벡터 DB 비교 프로젝트
+# 의정이슈레이더
 
-동일한 회의록 청크, metadata, 임베딩을 사용하여 **ChromaDB**와 **PostgreSQL+pgvector**의 검색 정확도·속도·운영성을 비교한다. 기존 FAISS 파이프라인은 삭제하지 않고 exact-search 기준선으로 보존한다.
+광역 지방의회 회의록에서 정책 이슈의 근거를 검색하고, 최초 관측 시점과
+의회별 시간 흐름을 추적하며, 다음 달 논의 지속 여부와 언급량을 예측하는
+로컬 AI 분석 프로젝트입니다.
 
-## 이번 재시작의 핵심
-
-1. 팀 공용 데이터의 열과 품질을 먼저 검사한다.
-2. 고정 `chunk_id`를 가진 canonical corpus를 한 번만 만든다.
-3. 임베딩도 한 번만 생성해 두 DB가 그대로 공유한다.
-4. Chroma와 pgvector에 동일 데이터를 적재한다.
-5. 동일 질의로 정확도, 지연시간, 필터 및 자원 사용량을 비교한다.
-
-## 권장 환경
-
-- Ubuntu 24.04 또는 WSL2 Ubuntu 24.04
-- Python 3.11
-- NVIDIA GPU 및 NVMe SSD
-- WSL 사용 시 프로젝트와 대용량 데이터는 `/mnt/c`가 아닌 `~/projects`에 저장
-- 임베딩은 가장 빠른 GPU 컴퓨터에서 1회만 수행
-- DB 비교는 Chroma와 pgvector를 반드시 같은 컴퓨터에서 수행
-
-## 폴더 구성
+## 핵심 구성
 
 ```text
-config/                     데이터 계약
-data/input/                  팀 공용 입력 데이터(Git 제외)
-data/canonical/              통일 corpus와 임베딩(Git 제외)
-docs/                        기준선과 비교 규칙
-outputs/                     검사·벤치마크 결과(Git 제외)
-scripts/                     환경 점검
-src/                         데이터 및 DB 처리 코드
+원본 회의록·메타데이터
+→ canonical 통합
+→ 부모·자식 청킹
+→ Arctic 한국어 임베딩
+→ pgvector Dense 검색 + BM25
+→ RRF 결합
+→ BGE 재순위
+→ 이슈 확장·그래프 군집화
+→ 최초 관측·의회별 관측 순서
+→ 시간순 예측
+→ Streamlit 지도·로컬 Qwen Agent
 ```
 
-## 1단계: 새 환경 만들기
+## 확정 모델 및 데이터베이스
+
+| 구분 | 선택 |
+|---|---|
+| 임베딩 | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` |
+| 임베딩 차원 | 1,024 |
+| 검색 청크 | 901,358개 |
+| 벡터 DB | PostgreSQL + pgvector HNSW |
+| 키워드 검색 | SQLite FTS5 BM25 |
+| 결합 | Reciprocal Rank Fusion |
+| 재순위 | `BAAI/bge-reranker-v2-m3` |
+| 로컬 Agent | Ollama `qwen3:8b` |
+| 웹 | Streamlit + PyDeck |
+
+## 주요 실험 결과
+
+### 임베딩 입력 및 모델
+
+| 비교 | nDCG@10 |
+|---|---:|
+| Raw | 0.8928 |
+| Enriched | 0.8871 |
+| Arctic | 0.8969 |
+| KURE | 0.8657 |
+
+Raw 입력과 Arctic 모델을 최종 선택했습니다. 메타데이터는 임베딩 텍스트에
+강제로 합치지 않고 필터링, 결과 표시, 이슈 분석에 사용합니다.
+
+### 예측
+
+| 항목 | 결과 |
+|---|---:|
+| 논의 지속 F1 | 0.8814 |
+| 언급량 MAE | 7.1224 |
+| 언급량 RMSE | 10.0425 |
+| 방향성 정확도 | 0.7600 |
+| 전월 유지 대비 MAE 개선 | 29.83% |
+| 전월 유지 대비 RMSE 개선 | 24.31% |
+
+무작위 분할 없이 월 단위 expanding-window rolling backtest를 사용했습니다.
+
+## 실행 환경
+
+- Ubuntu 24.04 / WSL2
+- Python 3.12
+- NVIDIA GPU 및 CUDA 지원 PyTorch
+- Docker Desktop + PostgreSQL/pgvector
+- Ollama
 
 ```bash
-cd ~/projects/council-vector-benchmark
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 pip install -r requirements-base.txt
-python scripts/00_check_environment.py
+pip install -r requirements-enrichment.txt
+pip install -r requirements-vector.txt
+pip install -r requirements-forecast.txt
+pip install -r requirements-app.txt
 ```
 
-PyTorch는 사용 컴퓨터의 CUDA에 맞는 명령을 PyTorch 공식 설치 선택기에서 확인해 별도로 설치한다. 설치 뒤 아래 값이 `True`인지 확인한다.
+PyTorch는 사용하는 CUDA 환경에 맞춰 공식 설치 명령으로 별도 설치합니다.
+
+## 실행
+
+`.env.example`을 복사한 뒤 로컬 비밀번호와 경로를 설정합니다.
 
 ```bash
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+cp .env.example .env
+docker compose up -d pgvector
+bash scripts/run_final_app.sh
 ```
 
-## 2단계: 팀 공용 데이터 배치
+기본 접속 주소는 `http://127.0.0.1:8501`입니다.
 
-팀에서 통일할 Parquet/CSV/JSONL 파일을 `data/input/`에 복사한다. 원문 데이터와 임베딩은 GitHub에 올리지 않는다.
+## 주요 코드
 
-파일명이 `team_chunks.parquet`라고 가정하면 다음처럼 실행한다.
+- `src/18_pgvector_retrieval.py`: Dense·BM25·RRF 후보 검색
+- `src/19_rerank_candidates.py`: BGE Cross-Encoder 재순위
+- `src/20_expand_cluster_issue.py`: 중심 벡터 확장과 유사도 그래프 군집화
+- `src/21_build_issue_timeline.py`: 최초 관측 및 의회별 시간 순서
+- `src/32_train_multi_issue_forecast.py`: 시간순 예측 평가
+- `demo/final_app.py`: 최종 지도·검색·Agent 화면
 
-```bash
-python src/01_inspect_unified_data.py \
-  --input data/input/team_chunks.parquet \
-  --output-dir outputs/inventory
+전체 처리 순서는 `docs/ACTIVE_PIPELINE.md`를 참고합니다.
+
+## 데이터 이용과 보안
+
+- 회의록 원문은 외부 상용 LLM API로 전송하지 않습니다.
+- 임베딩, 검색, 재순위, 군집화와 Agent는 로컬에서 실행합니다.
+- 외부 상용 LLM API를 사용하지 않습니다.
+- GitHub 저장소에는 원본 데이터, 임베딩, 벡터 DB, 원문 검색 결과를 포함하지 않습니다.
+- 예측은 제공된 2024~2025년 회의록 범위만 사용합니다.
+- 지도 연결선은 의회별 최초 관측의 시간 순서이며 인과적 정책 전달을 의미하지 않습니다.
+
+## 대용량 파일
+
+다음 파일은 GitHub에 포함되지 않습니다.
+
+```text
+data/input/
+data/canonical_v3/
+data/embeddings/
+data/bm25/
+data/chroma/
+data/postgres/
+models/huggingface/
+outputs/
 ```
 
-`outputs/inventory/summary.json`과 `schema_quality.csv`에는 원문 문장이 포함되지 않는다. 두 보고서를 비교하여 열 매핑을 확정한 후 canonical corpus를 생성한다.
-
-## 주의
-
-- PostgreSQL만으로 비교하는 것이 아니라 벡터 확장인 **pgvector**를 사용한다.
-- Chroma용과 pgvector용 임베딩을 따로 만들지 않는다.
-- 팀원의 LLM metadata도 `chunk_id`가 일치하는 것만 결합한다.
-- 회의록 원문이나 샘플 문장은 외부 LLM/API로 전송하지 않는다.
+필요한 모델명과 로컬 배치 방법은 `models/README.md`, 데이터 구조는
+`data/README.md`를 참고합니다.
 

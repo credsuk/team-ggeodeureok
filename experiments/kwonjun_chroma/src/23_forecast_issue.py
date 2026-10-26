@@ -87,6 +87,24 @@ def prediction_damped_trend6(history: list[float]) -> float:
     return float(max(0.0, damped))
 
 
+def count_direction(current: float, future: float) -> str:
+    current_rounded = int(round(max(0.0, current)))
+    future_rounded = int(round(max(0.0, future)))
+    if future_rounded > current_rounded:
+        return "growth"
+    if future_rounded < current_rounded:
+        return "attenuation"
+    return "persistence"
+
+
+def binary_f1(actual: list[int], predicted: list[int]) -> float:
+    true_positive = sum(a == 1 and p == 1 for a, p in zip(actual, predicted))
+    false_positive = sum(a == 0 and p == 1 for a, p in zip(actual, predicted))
+    false_negative = sum(a == 1 and p == 0 for a, p in zip(actual, predicted))
+    denominator = 2 * true_positive + false_positive + false_negative
+    return float(2 * true_positive / denominator) if denominator else 0.0
+
+
 MODEL_FUNCTIONS: dict[str, Callable[[list[float]], float]] = {
     "last_value": prediction_last,
     "mean_3m": prediction_mean3,
@@ -135,18 +153,33 @@ def backtest(
     for model_name, predictor in MODEL_FUNCTIONS.items():
         errors = []
         squared_errors = []
+        direction_matches = []
+        actual_active = []
+        predicted_active = []
         for index in range(minimum_history, len(values)):
             prediction = max(0.0, predictor(values[:index]))
             actual = values[index]
+            current = values[index - 1]
             error = actual - prediction
             errors.append(abs(error))
             squared_errors.append(error * error)
+            actual_direction = count_direction(current, actual)
+            predicted_direction = count_direction(current, prediction)
+            direction_matches.append(actual_direction == predicted_direction)
+            actual_active.append(int(actual > 0))
+            predicted_active.append(int(round(prediction) > 0))
             details.append({
                 "model": model_name,
                 "target_month": months[index],
+                "current_count": round(current, 6),
                 "prediction": round(prediction, 6),
                 "actual": round(actual, 6),
                 "absolute_error": round(abs(error), 6),
+                "actual_direction": actual_direction,
+                "predicted_direction": predicted_direction,
+                "direction_correct": int(actual_direction == predicted_direction),
+                "actual_active": int(actual > 0),
+                "predicted_active": int(round(prediction) > 0),
             })
         metrics.append({
             "model": model_name,
@@ -154,6 +187,10 @@ def backtest(
             "mae": round(float(np.mean(errors)), 6),
             "rmse": round(float(np.sqrt(np.mean(squared_errors))), 6),
             "median_absolute_error": round(float(np.median(errors)), 6),
+            "directional_accuracy": round(float(np.mean(direction_matches)), 6),
+            "discussion_active_f1": round(
+                binary_f1(actual_active, predicted_active), 6
+            ),
         })
     metrics.sort(key=lambda row: (row["mae"], row["rmse"], row["model"]))
     return metrics, details
@@ -250,6 +287,9 @@ def main() -> None:
     metrics, details = backtest(months, values, args.minimum_history)
     selected = metrics[0]
     selected_name = selected["model"]
+    last_value_metrics = next(
+        row for row in metrics if row["model"] == "last_value"
+    )
     predicted_count_raw = max(0.0, MODEL_FUNCTIONS[selected_name](values))
 
     selected_errors = [
@@ -285,6 +325,38 @@ def main() -> None:
         },
         "selected_count_baseline": selected,
         "candidate_backtest_metrics": metrics,
+        "required_evaluation": {
+            "rolling_backtest_method": "rolling_origin_single_issue",
+            "mention_count_mae": selected["mae"],
+            "mention_count_rmse": selected["rmse"],
+            "directional_accuracy": selected["directional_accuracy"],
+            "discussion_active_f1": selected["discussion_active_f1"],
+            "last_month_persistence_comparison": {
+                "baseline_model": "last_value",
+                "baseline_mae": last_value_metrics["mae"],
+                "baseline_rmse": last_value_metrics["rmse"],
+                "baseline_directional_accuracy": last_value_metrics[
+                    "directional_accuracy"
+                ],
+                "baseline_discussion_active_f1": last_value_metrics[
+                    "discussion_active_f1"
+                ],
+                "mae_improvement": round(
+                    last_value_metrics["mae"] - selected["mae"], 6
+                ),
+                "rmse_improvement": round(
+                    last_value_metrics["rmse"] - selected["rmse"], 6
+                ),
+                "directional_accuracy_delta": round(
+                    selected["directional_accuracy"]
+                    - last_value_metrics["directional_accuracy"], 6
+                ),
+                "discussion_active_f1_delta": round(
+                    selected["discussion_active_f1"]
+                    - last_value_metrics["discussion_active_f1"], 6
+                ),
+            },
+        },
         "supporting_signals": {
             "current_mention_count": safe_float(current.get("mention_count")),
             "mention_mean_3m": recent_mean,
@@ -339,7 +411,9 @@ def main() -> None:
     print(f"issue_id: {issue_id}")
     print(
         f"선택 기준선: {selected_name} | MAE={selected['mae']:.3f} | "
-        f"RMSE={selected['rmse']:.3f}"
+        f"RMSE={selected['rmse']:.3f} | "
+        f"방향성 정확도={selected['directional_accuracy']:.3f} | "
+        f"논의 지속 F1={selected['discussion_active_f1']:.3f}"
     )
     print(
         f"{report['forecast']['target_month']} 예측: {direction} | "
