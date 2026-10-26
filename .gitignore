@@ -18,3 +18,8 @@ __pycache__/
 
 # 원문 HTML 샘플 제외
 /mini_pj/data/html_samples/
+
+# 최상위에서는 mini_pj와 .gitignore만 허용
+/*
+!/.gitignore
+!/mini_pj/
