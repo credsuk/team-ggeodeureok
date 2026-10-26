@@ -1,10 +1,25 @@
-.vscode/
-.idea/
-data/
-text/
-chroma_db/
-*.zip
-*.tar.gz
+# 전체 파일 제외
+*
+
+# 하위 폴더 탐색 허용
+!*/
+
+# 업로드할 파일만 허용
+!*.py
+!*.html
+!*.htm
+!.gitignore
+!requirements.txt
+
+# 가상환경 및 캐시 제외
+.venv/
+venv/
 __pycache__/
-*.pyc
-.env
+
+# 원문 HTML 샘플 제외
+/mini_pj/data/html_samples/
+
+# 최상위에서는 mini_pj와 .gitignore만 허용
+/*
+!/.gitignore
+!/mini_pj/
