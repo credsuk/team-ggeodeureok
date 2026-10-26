@@ -7,10 +7,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm_engine import LLMEngine
 from retrieval_utils import (
     expand_topic_terms,
-    first_day_and_limited_followups,
-    group_candidates_by_date,
+    first_observation_from_candidates,
     merge_overlapping_chunks,
 )
+
+
+class CandidateTimelineTests(unittest.TestCase):
+    def test_finds_earliest_date_and_caps_later_rows_without_database_access(self):
+        rows = [
+            {"id": "later-b", "metadata": {"date": "2025-01-03"}},
+            {"id": "first-a", "metadata": {"date": "20241230"}},
+            {"id": "later-a", "metadata": {"date": "2025-01-02"}},
+            {"id": "first-b", "metadata": {"date": "2024-12-30"}},
+        ]
+
+        first_date, first_rows, later_rows = first_observation_from_candidates(rows, followup_limit=1)
+
+        self.assertEqual(first_date, "20241230")
+        self.assertEqual({row["id"] for row in first_rows}, {"first-a", "first-b"})
+        self.assertEqual([row["id"] for row in later_rows], ["later-a"])
+
+    def test_returns_empty_timeline_when_candidates_have_no_valid_dates(self):
+        self.assertEqual(
+            first_observation_from_candidates([{"id": "undated", "metadata": {"date": ""}}]),
+            (None, [], []),
+        )
 
 
 class QueryExtractionTests(unittest.TestCase):
@@ -47,48 +68,6 @@ class MergeOverlappingChunksTests(unittest.TestCase):
     def test_handles_chunks_without_overlap(self):
         chunks = [(0, "첫 번째"), (1, "두 번째")]
         self.assertEqual(merge_overlapping_chunks(chunks, overlap=3), "첫 번째두 번째")
-
-
-class DateGroupTests(unittest.TestCase):
-    def test_groups_chunks_by_date_and_deduplicates_source_rows(self):
-        candidates = [
-            {"id": "b-chunk", "metadata": {"date": "2025-01-02", "dataset_key": "b", "row_id": 1}},
-            {"id": "a-chunk-1", "metadata": {"date": "20241230", "dataset_key": "a", "row_id": 4}},
-            {"id": "a-chunk-2", "metadata": {"date": "2024-12-30", "dataset_key": "a", "row_id": 4}},
-        ]
-        groups = group_candidates_by_date(candidates)
-        self.assertEqual([date for date, _ in groups], ["20241230", "20250102"])
-        self.assertEqual(len(groups[0][1]), 1)
-
-    def test_scan_checks_full_first_day_then_limits_followups(self):
-        candidates = [
-            {"id": "later-c", "metadata": {"date": "20250103", "row_id": 3}},
-            {"id": "early-a", "metadata": {"date": "20241230", "row_id": 1}},
-            {"id": "early-b", "metadata": {"date": "20241230", "row_id": 2}},
-            {"id": "later-a", "metadata": {"date": "20250102", "row_id": 4}},
-            {"id": "later-b", "metadata": {"date": "20250102", "row_id": 5}},
-        ]
-        checked = []
-
-        def all_relevant(day):
-            checked.extend(row["id"] for row in day)
-            return day
-
-        date, first, later = first_day_and_limited_followups(candidates, all_relevant, followup_limit=1)
-        self.assertEqual(date, "20241230")
-        self.assertEqual({row["id"] for row in first}, {"early-a", "early-b"})
-        self.assertEqual([row["id"] for row in later], ["later-a", "later-b"])
-        self.assertNotIn("later-c", checked)
-
-    def test_groups_chunks_by_date_and_deduplicates_source_rows(self):
-        candidates = [
-            {"id": "b-chunk", "metadata": {"date": "2025-01-02", "dataset_key": "b", "row_id": 1}},
-            {"id": "a-chunk-1", "metadata": {"date": "20241230", "dataset_key": "a", "row_id": 4}},
-            {"id": "a-chunk-2", "metadata": {"date": "2024-12-30", "dataset_key": "a", "row_id": 4}},
-        ]
-        groups = group_candidates_by_date(candidates)
-        self.assertEqual([date for date, _ in groups], ["20241230", "20250102"])
-        self.assertEqual(len(groups[0][1]), 1)
 
 
 if __name__ == "__main__":

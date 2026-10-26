@@ -13,6 +13,9 @@ from retrieval_utils import normalize_date_key
 from analysis_scope import apply_analysis_period, ANALYSIS_START_YEAR, ANALYSIS_END_YEAR
 from source_reference import reference_metadata
 from output_validation import validate_output_evidence
+from retrieval_utils import first_observation_from_candidates
+
+MAX_EXPANSION_CANDIDATES = 50
 
 
 def _date(meta):
@@ -119,22 +122,37 @@ class LocalRAGPipeline:
         timings["Vector DB 검색"] = time.perf_counter() - step
 
         step = time.perf_counter()
-        reranked = self.reranker.rank_and_filter(params["query"], candidates, top_n=100, min_score=0.0)
+        reranked = self.reranker.rank_and_filter(
+            params["query"], candidates, top_n=MAX_EXPANSION_CANDIDATES, min_score=0.0
+        )
         timings["검색 결과 재정렬"] = time.perf_counter() - step
 
         step = time.perf_counter()
-        expanded = self.retriever.expand_rows(reranked)
+        expanded = self.retriever.expand_rows(reranked[:MAX_EXPANSION_CANDIDATES])
         expanded.sort(key=lambda row: float(row.get("rerank_score", float("-inf"))), reverse=True)
         daily_rows = _daily_representatives(expanded)
         metrics = _metrics(daily_rows)
         timings["근거 확장 및 통계"] = time.perf_counter() - step
 
-        # Keep the language model input bounded while retaining the best evidence from each council-day.
-        prompt_rows = sorted(daily_rows, key=lambda row: float(row.get("rerank_score", 0)), reverse=True)[:30]
+        step = time.perf_counter()
+        _, first_rows, later_rows = first_observation_from_candidates(daily_rows, followup_limit=100)
+        timings["검색 후보 내 최초 관측 및 후속 정리"] = time.perf_counter() - step
+
+        # Prioritize the closest cosine matches; use Cross-Encoder-ranked lexical-only rows as fallback.
+        vector_rows = [row for row in daily_rows if row.get("vector_similarity") is not None]
+        lexical_only_rows = [row for row in daily_rows if row.get("vector_similarity") is None]
+        vector_rows.sort(
+            key=lambda row: (float(row["vector_similarity"]), float(row.get("rerank_score", 0))),
+            reverse=True,
+        )
+        lexical_only_rows.sort(key=lambda row: float(row.get("rerank_score", 0)), reverse=True)
+        prompt_rows = (vector_rows + lexical_only_rows)[:30]
         evidence_payload = [
             {"source_id": reference_metadata(row["metadata"])["sourceId"] or row["id"], "date": _date(row["metadata"]),
              "council": _council(row["metadata"]), "meeting_title": reference_metadata(row["metadata"])["meetingTitle"],
              "agenda_title": _agenda(row["metadata"]),
+             "vector_similarity": row.get("vector_similarity"),
+             "reranker_score": row.get("rerank_score"),
              "excerpt": row.get("text", "")[:1200]}
             for row in prompt_rows
         ]
@@ -142,23 +160,9 @@ class LocalRAGPipeline:
         analysis = self.llm.synthesize_analysis(params, evidence_payload, metrics.model_dump())
         timings["요약 및 전망 LLM"] = time.perf_counter() - step
 
-        # Search explicit topic-term hits chronologically and stop once an earliest relevant day is found.
-        step = time.perf_counter()
-        first_date, first_rows, later_rows = self.retriever.first_observed_and_followup_rows(
-            params, self.reranker, followup_limit=100
-        )
-        timings["Vector DB 주제어 검색 및 최초 관측"] = time.perf_counter() - step
-        step = time.perf_counter()
         first_rows = _daily_representatives(first_rows)
         later_rows = _daily_representatives(later_rows)[:100]
-        if first_date:
-            later_rows = [
-                row for row in later_rows
-                if normalize_date_key(_date(row["metadata"])) > first_date
-            ]
-        reference_rows_by_id = {row["id"]: row for row in [*daily_rows, *first_rows, *later_rows]}
-        all_refs = [_ref(row) for row in reference_rows_by_id.values()]
-        timings["최초 관측 후속 논의 정리"] = time.perf_counter() - step
+        all_refs = [_ref(row) for row in daily_rows]
 
         # Keep forecasts qualitative and visibly uncertain when the retrieved evidence is sparse.
         if len(daily_rows) < 3:
@@ -191,8 +195,8 @@ class LocalRAGPipeline:
                         f"{params['start_year']}–{params['end_year']} (고정 분석 범위 {ANALYSIS_START_YEAR}–{ANALYSIS_END_YEAR}, 색인 DB 내 자료 기준)"),
             dataScope=("특별시·광역시·도 의회 자료만 사용합니다. "
                        "요청한 기간은 분석 범위와 교집합으로 제한하며, 현재 출력은 색인 DB에서 검색된 기록에 한정됩니다. "
-                       "최초 관측은 등록된 명시적 검색 표현을 포함하고 Cross-Encoder 기준을 통과한 DB 자료 중 가장 이른 기록입니다. "
-                       "이는 제공 전체 데이터 또는 의미상 모든 동의어의 최초를 보장하지 않습니다. "
+                       "유사도 0.6 이상인 벡터 후보만 사용하며, 최초 관측·후속 논의·통계는 재랭킹 상위 최대 50개 후보 안에서 정리합니다. "
+                       "따라서 이는 색인 DB 전체에서의 최초 기록을 보장하지 않으며, "
                        "보조 통계는 검색 결과 범위의 참고값이며 시간순 논의는 영향 관계를 뜻하지 않습니다."),
             results=[result],
         )
@@ -210,7 +214,7 @@ def _print_result(output, timings):
     for result in output.get("results", []):
         print(f"\n[분석 주제] {result.get('issueKeyword', '미상')}")
         print(f"\n[요약]\n{result.get('summary', '내용 없음')}")
-        print(f"\n[최초 관측] {len(result.get('firstObserved', []))}건")
+        print(f"\n[검색 후보 내 최초 관측] {len(result.get('firstObserved', []))}건")
         for ref in result.get("firstObserved", [])[:5]:
             print(f"  • {ref.get('date', '')} | {ref.get('council', '')} | {ref.get('meetingTitle', '')} | {ref.get('agendaTitle', '')}")
         if len(result.get("firstObserved", [])) > 5:

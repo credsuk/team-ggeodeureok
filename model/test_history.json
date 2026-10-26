@@ -1,0 +1,1534 @@
+[
+  {
+    "timestamp": "2026-10-26T14:14:22+0900",
+    "input": "장애인 체육시설",
+    "extracted_params": {
+      "topic": "장애인 체육시설",
+      "keyword": "장애인 체육시설",
+      "query": "장애인 체육시설",
+      "include_terms": [
+        "장애인 스포츠 시설",
+        "장애인 체육관",
+        "장애인 복지 체육시설"
+      ],
+      "start_year": "2024",
+      "end_year": "2025",
+      "councils": [],
+      "intent": "현황"
+    },
+    "status": "success",
+    "error": null,
+    "timings_seconds": {
+      "질문 분석 LLM": 13.4095,
+      "Vector DB 검색": 222.4211,
+      "검색 결과 재정렬": 0.5428,
+      "근거 확장 및 통계": 14.1092,
+      "검색 후보 내 최초 관측 및 후속 정리": 0.0,
+      "요약 및 전망 LLM": 9.5841,
+      "전체 처리": 260.067
+    },
+    "output": {
+      "dataPeriod": "2024–2025 (고정 분석 범위 2024–2025, 색인 DB 내 자료 기준)",
+      "dataScope": "특별시·광역시·도 의회 자료만 사용합니다. 요청한 기간은 분석 범위와 교집합으로 제한하며, 현재 출력은 색인 DB에서 검색된 기록에 한정됩니다. 유사도 0.6 이상인 벡터 후보만 사용하며, 최초 관측·후속 논의·통계는 재랭킹 상위 최대 50개 후보 안에서 정리합니다. 따라서 이는 색인 DB 전체에서의 최초 기록을 보장하지 않으며, 보조 통계는 검색 결과 범위의 참고값이며 시간순 논의는 영향 관계를 뜻하지 않습니다.",
+      "results": [
+        {
+          "issueKeyword": "장애인 체육시설",
+          "summary": "충청남도의회는 장애인직업재활시설 운영 활성화 지원 조례안을 논의했으며, 강원특별자치도의회는 장애인 전용 체육관 및 반다비 체육관 확충을 추진하고 있음을 언급했습니다. 경상남도의회는 축구장 및 생활체육 활동 공간에 대해 논의했으며, 제주특별자치도의회는 전국장애인체육대회 경기장 관련 시설에 대해 논의했습니다.",
+          "summaryEvidenceIds": [
+            "2024_gwangyeok__cleaned_2024_충청남도의회:26059",
+            "2024_gwangyeok__cleaned_2024_강원특별자치도의회:29932",
+            "2024_gwangyeok__cleaned_2024_경상남도의회:49996",
+            "2024_gwangyeok__cleaned_2024_제주특별자치도의회:3561"
+          ],
+          "firstObserved": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 3561,
+              "date": "20240226",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "문화관광체육위원회 회의록 제424회(2차)",
+              "agendaTitle": "1. 2024년도 주요업무보고의 건(계속)",
+              "excerpt": "전국장애인체육대회 하는 경기장만 하시겠다는 얘기인가요?",
+              "relevanceScore": 0.03506426513195038
+            }
+          ],
+          "subsequentDiscussions": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청남도의회",
+              "originalRowId": 26059,
+              "date": "20240904",
+              "council": "충청남도의회",
+              "meetingTitle": "복지환경위원회 회의록 제355회(1차)",
+              "agendaTitle": "5. 충청남도 장애인직업재활시설 운영 활성화 지원 조례안(정병인 의원 대표발의)(정병인·김",
+              "excerpt": "그러면 이거 말고 장애인을 위한 시설 중에서 다른 시설은 뭐가 있습니까?",
+              "relevanceScore": 0.29192519187927246
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 29932,
+              "date": "20241111",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "지속적으로 장애인 전용 체육관, 반다비 체육관 확충을 추진하고 있습니다.",
+              "relevanceScore": 0.9679705500602722
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 49996,
+              "date": "20241203",
+              "council": "경상남도의회",
+              "meetingTitle": "건설소방위원회 회의록 제419회(3차)",
+              "agendaTitle": "2. 2025년도 경상남도 예산안(계속)",
+              "excerpt": "축구장하고 생활체육 활동 공간. 생활체육 공간입니다. 축구장하고 생활체육.",
+              "relevanceScore": 0.017665542662143707
+            }
+          ],
+          "supplementaryMetrics": {
+            "label": "검색 및 관련성 검증을 통과한 결과 범위의 참고값",
+            "retrievedCouncilDays": 4,
+            "councilsDiscussing": 4,
+            "yearBreakdown": {
+              "2024": 4
+            },
+            "topCouncil": "제주특별자치도의회",
+            "topCouncilSharePercent": 25.0
+          },
+          "forecast": {
+            "text": "다양한 지역 의회에서 장애인직업재활시설 지원, 전용 체육관 확충, 생활체육 공간 확보, 그리고 전국장애인체육대회 경기장 관련 시설 등에 대한 논의가 이루어지고 있습니다.",
+            "status": "supported",
+            "confidence": "medium",
+            "evidenceIds": [
+              "2024_gwangyeok__cleaned_2024_충청남도의회:26059",
+              "2024_gwangyeok__cleaned_2024_강원특별자치도의회:29932",
+              "2024_gwangyeok__cleaned_2024_경상남도의회:49996",
+              "2024_gwangyeok__cleaned_2024_제주특별자치도의회:3561"
+            ]
+          },
+          "evidence": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 3561,
+              "date": "20240226",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "문화관광체육위원회 회의록 제424회(2차)",
+              "agendaTitle": "1. 2024년도 주요업무보고의 건(계속)",
+              "excerpt": "전국장애인체육대회 하는 경기장만 하시겠다는 얘기인가요?",
+              "relevanceScore": 0.03506426513195038
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청남도의회",
+              "originalRowId": 26059,
+              "date": "20240904",
+              "council": "충청남도의회",
+              "meetingTitle": "복지환경위원회 회의록 제355회(1차)",
+              "agendaTitle": "5. 충청남도 장애인직업재활시설 운영 활성화 지원 조례안(정병인 의원 대표발의)(정병인·김",
+              "excerpt": "그러면 이거 말고 장애인을 위한 시설 중에서 다른 시설은 뭐가 있습니까?",
+              "relevanceScore": 0.29192519187927246
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 29932,
+              "date": "20241111",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "지속적으로 장애인 전용 체육관, 반다비 체육관 확충을 추진하고 있습니다.",
+              "relevanceScore": 0.9679705500602722
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 49996,
+              "date": "20241203",
+              "council": "경상남도의회",
+              "meetingTitle": "건설소방위원회 회의록 제419회(3차)",
+              "agendaTitle": "2. 2025년도 경상남도 예산안(계속)",
+              "excerpt": "축구장하고 생활체육 활동 공간. 생활체육 공간입니다. 축구장하고 생활체육.",
+              "relevanceScore": 0.017665542662143707
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-26T14:23:07+0900",
+    "input": "신혼부부 주거문제",
+    "extracted_params": {
+      "topic": "신혼부부 주거 문제",
+      "keyword": "신혼부부 주거 문제",
+      "query": "신혼부부 주거 문제 해결 방안",
+      "include_terms": [
+        "신혼부부",
+        "주거 문제",
+        "주거 지원",
+        "내 집 마련",
+        "전세자금"
+      ],
+      "start_year": "2024",
+      "end_year": "2025",
+      "councils": [],
+      "intent": "현황"
+    },
+    "status": "success",
+    "error": null,
+    "timings_seconds": {
+      "질문 분석 LLM": 5.4121,
+      "Vector DB 검색": 417.6306,
+      "검색 결과 재정렬": 0.4475,
+      "근거 확장 및 통계": 51.5169,
+      "검색 후보 내 최초 관측 및 후속 정리": 0.0001,
+      "요약 및 전망 LLM": 21.5333,
+      "전체 처리": 496.5409
+    },
+    "output": {
+      "dataPeriod": "2024–2025 (고정 분석 범위 2024–2025, 색인 DB 내 자료 기준)",
+      "dataScope": "특별시·광역시·도 의회 자료만 사용합니다. 요청한 기간은 분석 범위와 교집합으로 제한하며, 현재 출력은 색인 DB에서 검색된 기록에 한정됩니다. 유사도 0.6 이상인 벡터 후보만 사용하며, 최초 관측·후속 논의·통계는 재랭킹 상위 최대 50개 후보 안에서 정리합니다. 따라서 이는 색인 DB 전체에서의 최초 기록을 보장하지 않으며, 보조 통계는 검색 결과 범위의 참고값이며 시간순 논의는 영향 관계를 뜻하지 않습니다.",
+      "results": [
+        {
+          "issueKeyword": "신혼부부 주거 문제",
+          "summary": "주거 문제는 여러 의회에서 주요 논의 주제로 다루어지고 있으며, 특히 신혼부부 및 청년에 대한 주거 지원 계획에 대한 구체적인 질문이 제기되고 있음. 일부 의회에서는 주거 문제가 일자리보다도 큰 문제로 언급되기도 함.",
+          "summaryEvidenceIds": [
+            "2024_gwangyeok__cleaned_2024_제주특별자치도의회:43928",
+            "2024_gwangyeok__cleaned_2024_서울특별시의회:44774",
+            "2024_gwangyeok__cleaned_2024_부산광역시의회:41771",
+            "2025_gwangyeok__cleaned_2025_충청남도의회:54093"
+          ],
+          "firstObserved": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 1783,
+              "date": "20240227",
+              "council": "경상북도의회",
+              "meetingTitle": "행정보건복지위원회 회의록 제345회(1차)",
+              "agendaTitle": "3. 경상북도 공무원 주거안정기금 설치 및 운용 조례 일부개정조례안(박영서 의원 대표발의)",
+              "excerpt": "전세자금 같은 경우에 있어서는 보통 5000만 원 정도까지 저희들이 최대 해 주려고 합니다, 100% 정도 지원하는 것으로. 옛날 같은 경우는 1억에서 5000만 원 이하, 5000만 원 이하 이렇게 나눠서 했는데, 이번에는 한 5000만 원 정도 이하로 해서 100% 대부를 해 주려고 합니다.",
+              "relevanceScore": 0.0004410569672472775
+            }
+          ],
+          "subsequentDiscussions": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 44774,
+              "date": "20241106",
+              "council": "서울특별시의회",
+              "meetingTitle": "보건복지위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "제가 어디 언론에 봤을 때는 제일 큰 문제가 주거로 나오던데요, 일자리보다도?",
+              "relevanceScore": 0.00015544680354651064
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 15891,
+              "date": "20241107",
+              "council": "대구광역시의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "사실 전세자금 대출은 은행에 자료 들어가는 것과 맞물려서 6월 말, 11월 말 이렇게.",
+              "relevanceScore": 1.7609727365197614e-05
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 43928,
+              "date": "20241120",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제433회(4차)",
+              "agendaTitle": "2. 2025년도 제주특별자치도 기금운용계획안(제주특별자치도지사 제출)(계속)",
+              "excerpt": "주거에 대한 문제가 가장 크지 않나 생각하고 있습니다. 주거, 직장, 그런 부분이 아닌가 생각합니다.",
+              "relevanceScore": 0.0022080526687204838
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 41771,
+              "date": "20241122",
+              "council": "부산광역시의회",
+              "meetingTitle": "특별위원회 회의록 제325회(2차)",
+              "agendaTitle": "1. 부산도시공사 사장 후보자 인사청문의 건",
+              "excerpt": "예, 그럼 혹시 청년 또 신혼부부에 대한 주거지원계획은 어떤 계획을 가지고 계십니까?",
+              "relevanceScore": 0.6224382519721985
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청남도의회",
+              "originalRowId": 46897,
+              "date": "20241202",
+              "council": "충청남도의회",
+              "meetingTitle": "건설소방위원회 회의록 제356회(1차)",
+              "agendaTitle": "2. 2025년도 충청남도 예산안(도지사 제출)",
+              "excerpt": "아무래도 주거복지 관련된 사업이기 때문에 특히 노인 주거 문제는 또 다른 사회문제가 될수 있는 부분이라서…….",
+              "relevanceScore": 0.0009536752477288246
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 54093,
+              "date": "20251110",
+              "council": "충청남도의회",
+              "meetingTitle": "보건복지환경위원회 회의록 제0회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그러니까 그 문제의 공감대를 형성하고 계시는 걸로 이해는 되는데요, 지금 출산 정책이나 주거 지원 이런 것들이 다 신혼부부에 맞춰져 있거든요. 그러면 추후에라도 이런 부분에 있어서 안정적으로 주거를 지원할 수 있는 방향 정책들이 나와야 된다고 생각하거든요.",
+              "relevanceScore": 0.8821592926979065
+            }
+          ],
+          "supplementaryMetrics": {
+            "label": "검색 및 관련성 검증을 통과한 결과 범위의 참고값",
+            "retrievedCouncilDays": 7,
+            "councilsDiscussing": 6,
+            "yearBreakdown": {
+              "2024": 6,
+              "2025": 1
+            },
+            "topCouncil": "충청남도의회",
+            "topCouncilSharePercent": 28.6
+          },
+          "forecast": {
+            "text": "신혼부부에게 안정적으로 주거를 지원할 수 있는 방향의 정책 마련에 대한 논의가 지속될 가능성이 있음. 현재 출산 정책이나 주거 지원이 신혼부부에 맞춰져 있으므로, 추후 안정적인 주거 지원 정책에 대한 논의가 필요하다는 의견이 제시됨.",
+            "status": "supported",
+            "confidence": "medium",
+            "evidenceIds": [
+              "2025_gwangyeok__cleaned_2025_충청남도의회:54093"
+            ]
+          },
+          "evidence": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 1783,
+              "date": "20240227",
+              "council": "경상북도의회",
+              "meetingTitle": "행정보건복지위원회 회의록 제345회(1차)",
+              "agendaTitle": "3. 경상북도 공무원 주거안정기금 설치 및 운용 조례 일부개정조례안(박영서 의원 대표발의)",
+              "excerpt": "전세자금 같은 경우에 있어서는 보통 5000만 원 정도까지 저희들이 최대 해 주려고 합니다, 100% 정도 지원하는 것으로. 옛날 같은 경우는 1억에서 5000만 원 이하, 5000만 원 이하 이렇게 나눠서 했는데, 이번에는 한 5000만 원 정도 이하로 해서 100% 대부를 해 주려고 합니다.",
+              "relevanceScore": 0.0004410569672472775
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 44774,
+              "date": "20241106",
+              "council": "서울특별시의회",
+              "meetingTitle": "보건복지위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "제가 어디 언론에 봤을 때는 제일 큰 문제가 주거로 나오던데요, 일자리보다도?",
+              "relevanceScore": 0.00015544680354651064
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 15891,
+              "date": "20241107",
+              "council": "대구광역시의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "사실 전세자금 대출은 은행에 자료 들어가는 것과 맞물려서 6월 말, 11월 말 이렇게.",
+              "relevanceScore": 1.7609727365197614e-05
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 43928,
+              "date": "20241120",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제433회(4차)",
+              "agendaTitle": "2. 2025년도 제주특별자치도 기금운용계획안(제주특별자치도지사 제출)(계속)",
+              "excerpt": "주거에 대한 문제가 가장 크지 않나 생각하고 있습니다. 주거, 직장, 그런 부분이 아닌가 생각합니다.",
+              "relevanceScore": 0.0022080526687204838
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 41771,
+              "date": "20241122",
+              "council": "부산광역시의회",
+              "meetingTitle": "특별위원회 회의록 제325회(2차)",
+              "agendaTitle": "1. 부산도시공사 사장 후보자 인사청문의 건",
+              "excerpt": "예, 그럼 혹시 청년 또 신혼부부에 대한 주거지원계획은 어떤 계획을 가지고 계십니까?",
+              "relevanceScore": 0.6224382519721985
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청남도의회",
+              "originalRowId": 46897,
+              "date": "20241202",
+              "council": "충청남도의회",
+              "meetingTitle": "건설소방위원회 회의록 제356회(1차)",
+              "agendaTitle": "2. 2025년도 충청남도 예산안(도지사 제출)",
+              "excerpt": "아무래도 주거복지 관련된 사업이기 때문에 특히 노인 주거 문제는 또 다른 사회문제가 될수 있는 부분이라서…….",
+              "relevanceScore": 0.0009536752477288246
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 54093,
+              "date": "20251110",
+              "council": "충청남도의회",
+              "meetingTitle": "보건복지환경위원회 회의록 제0회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그러니까 그 문제의 공감대를 형성하고 계시는 걸로 이해는 되는데요, 지금 출산 정책이나 주거 지원 이런 것들이 다 신혼부부에 맞춰져 있거든요. 그러면 추후에라도 이런 부분에 있어서 안정적으로 주거를 지원할 수 있는 방향 정책들이 나와야 된다고 생각하거든요.",
+              "relevanceScore": 0.8821592926979065
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-26T14:39:56+0900",
+    "input": "인구감소에 대한 대책",
+    "extracted_params": {
+      "topic": "인구감소 대책",
+      "keyword": "인구감소 대책",
+      "query": "인구감소 대책 방안",
+      "include_terms": [
+        "인구 감소",
+        "저출산 대책",
+        "인구 정책",
+        "인구 구조 변화"
+      ],
+      "start_year": "2024",
+      "end_year": "2025",
+      "councils": [],
+      "intent": "현황"
+    },
+    "status": "success",
+    "error": null,
+    "timings_seconds": {
+      "질문 분석 LLM": 15.0419,
+      "Vector DB 검색": 101.186,
+      "검색 결과 재정렬": 0.4627,
+      "근거 확장 및 통계": 45.8662,
+      "검색 후보 내 최초 관측 및 후속 정리": 0.0,
+      "요약 및 전망 LLM": 3.6672,
+      "전체 처리": 166.2243
+    },
+    "output": {
+      "dataPeriod": "2024–2025 (고정 분석 범위 2024–2025, 색인 DB 내 자료 기준)",
+      "dataScope": "특별시·광역시·도 의회 자료만 사용합니다. 요청한 기간은 분석 범위와 교집합으로 제한하며, 현재 출력은 색인 DB에서 검색된 기록에 한정됩니다. 유사도 0.6 이상인 벡터 후보만 사용하며, 최초 관측·후속 논의·통계는 재랭킹 상위 최대 50개 후보 안에서 정리합니다. 따라서 이는 색인 DB 전체에서의 최초 기록을 보장하지 않으며, 보조 통계는 검색 결과 범위의 참고값이며 시간순 논의는 영향 관계를 뜻하지 않습니다.",
+      "results": [
+        {
+          "issueKeyword": "인구감소 대책",
+          "summary": "요약 문장에 연결되는 근거 ID가 없어 원문 근거를 확인해 주세요.",
+          "summaryEvidenceIds": [],
+          "firstObserved": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청북도의회",
+              "originalRowId": 707,
+              "date": "20240124",
+              "council": "충청북도의회",
+              "meetingTitle": "교육위원회 회의록 제414회(1차)",
+              "agendaTitle": "5. 2024년도 주요업무계획 보고",
+              "excerpt": "지금 보면 계속 인구가 줄고 있잖아요. 지금 이렇게 해 가지고는 큰 효과가 없는 걸로 알고 있는데 다른 개선책 이런 거는 준비하는 게 있어요?",
+              "relevanceScore": 0.0120968297123909
+            }
+          ],
+          "subsequentDiscussions": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 6587,
+              "date": "20240424",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제327회(4차)",
+              "agendaTitle": "1. 2024년도 제1차 도정 및 교육행정에 관한 질문(이한영ㆍ강정호ㆍ박길선ㆍ유순옥 의원)",
+              "excerpt": "말 그대로 강원도정의 전반적인 컨트롤타워 역할을 한다 이렇게 보면 될것 같습니다. 제가 오늘 기획조정실장님과 나누고 싶은 대화는 유휴 공공시설입니다. 물론 행정적인 업무는 행정국 소관이지만 제가 기획조정실장님과 함께하고 싶었던 이유는 방금 말씀하신 대로, 그냥 단순하게 강원도 내 유휴시설이 얼마나 있고 추진상황이 어떻게 되느냐 이런 것보다는 앞으로 발생될 수 있는 미래 지향적인 부분에 대해서 함께 의논하고자 제가 실장님을 불렀다는 말씀을, 이해해 주시기를 부탁드리겠습니다. 2021년 10월에 89개 자치단체에 대한 인구감소지역을 지정했습니다. 강원도도 18개 시군 중에 12개 시군, 즉 66.7%에 이르는 지역이 지정되었습니다. 추세적으로는 이런 인구소멸지역이 조금 더 늘어날 것으로 저는 판단하고 있습니다. 물론 인구의 급격한 감소 원인은 저출산뿐만 아니라 지역 핵심 산업의 쇠퇴, 그리고 대도시로의 청년 유출, 그리고 기후변화, 환경적인 요인, 이런 다양한 요인이 있겠지만 인구 절벽으로 인한 도시의 축소가 가장 큰 원인이 아닐까 저는 그렇게 생각하고 있습니다. 제가 실장님께 질문 하나 드리겠습니다. 과거 성장을 이루었던 지역에서 인구가 현저히 감소될 때 공통적으로 나타나는 현상들에 대해서 혹시 고민해 보신 적이 있으신지요?",
+              "relevanceScore": 0.011758290231227875
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 5228,
+              "date": "20240430",
+              "council": "경상북도의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제346회(1차)",
+              "agendaTitle": "1. 2024년도 경상북도 제1회 추가경정 예산안",
+              "excerpt": "진행하는 건 아닌데 이게 저출생 대책으로 지금 이번 예산에 들어간 거잖아요, 출산 장려로?",
+              "relevanceScore": 0.0013051305431872606
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 17132,
+              "date": "20240614",
+              "council": "서울특별시의회",
+              "meetingTitle": "문화체육관광위원회 회의록 제324회(2차)",
+              "agendaTitle": "2. 2024년도 제1회 문화본부 소관 추가경정예산안(서울특별시장 제출)",
+              "excerpt": "그런 말은 없는데 미혼 남녀들에 대한 결혼 장려책을 이렇게 활성화시켜서 그러한 것들이 결국은 저출산 대책…….",
+              "relevanceScore": 0.02293209545314312
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 15028,
+              "date": "20240619",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제329회(4차)",
+              "agendaTitle": "1. 2024년도 제2차 도정 및 교육행정에 관한 질문(이지영ㆍ원제용ㆍ원미희 의원)(계속)",
+              "excerpt": "우리 도의 인구소멸 대책은 어떤 것이 있는지 간략하게 말씀해 주실 수 있나요?",
+              "relevanceScore": 0.4291246235370636
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 27457,
+              "date": "20240902",
+              "council": "서울특별시의회",
+              "meetingTitle": "보건복지위원회 회의록 제326회(1차)",
+              "agendaTitle": "10. 간주처리예산 내역 보고",
+              "excerpt": "지금 서울시 저출산 대응 사업 예산이 어느 정도 돼요?",
+              "relevanceScore": 0.0050664860755205154
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 26314,
+              "date": "20241008",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이 부분은 저출산 대책에 의해서 저희들도 적극 장려를 하고 있습니다.",
+              "relevanceScore": 0.016706913709640503
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 31955,
+              "date": "20241108",
+              "council": "부산광역시의회",
+              "meetingTitle": "행정사무감사 회의록 제325회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그래서 이게 인구 정책의 가장 큰 제가 생각할 때도 가장 큰 맹점이 위원님이 말씀하신 그 부분이라고 생각하는데…",
+              "relevanceScore": 0.005651895422488451
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 25690,
+              "date": "20241128",
+              "council": "경상북도의회",
+              "meetingTitle": "농수산위원회 회의록 제351회(2차)",
+              "agendaTitle": "1. 2025년도 경상북도 예산안(해양수산국 소관)",
+              "excerpt": "이것은 기본적으로 저출생 극복 대책의 일환으로 저희들이 개발해서 하는…",
+              "relevanceScore": 0.04777676984667778
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 4951,
+              "date": "20250114",
+              "council": "경상남도의회",
+              "meetingTitle": "문화복지위원회 회의록 제420회(2차)",
+              "agendaTitle": "1. 2025년도 주요업무보고(계속)",
+              "excerpt": "저희들 정책으로 박사님들이 인구 그것을 한번더 정책을 발표하도록 연구를 하면 되겠죠. 그렇게 하도록 하겠습니다.",
+              "relevanceScore": 0.012453634291887283
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 5082,
+              "date": "20250210",
+              "council": "충청남도의회",
+              "meetingTitle": "교육위원회 회의록 제357회(3차)",
+              "agendaTitle": "12. 2025년도 주요업무 계획 보고",
+              "excerpt": "인구통계 자료에 보시면 딱히 어디가 감소된다고, 지금 여기서 있는 자료로 말씀드리면…….",
+              "relevanceScore": 0.009690365754067898
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 5229,
+              "date": "20250219",
+              "council": "경상남도의회",
+              "meetingTitle": "지역소멸대응특별위원회 회의록 제420회(2차)",
+              "agendaTitle": "2. 지역소멸 대응 관련 업무보고의 건",
+              "excerpt": "부작용을 최소화하면서 우리 사회에 도움이 되는 쪽으로 인구 정책을 만들어 가도록 노력하도록 하겠습니다.",
+              "relevanceScore": 0.06776417046785355
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 9918,
+              "date": "20250416",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제437회(1차)",
+              "agendaTitle": "20. 서귀포시 장기미집행 도시계획시설 단계별 집행계획(안) 보고",
+              "excerpt": "이 정책은 인구정책이기 때문에 인구와 관련되지 않으면 안 되지 않을까 생각은 하고 있습니다마는.",
+              "relevanceScore": 0.0062380339950323105
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 9491,
+              "date": "20250514",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제423회(1차)",
+              "agendaTitle": "9. 2025년도 경상남도 제1회 추가경정예산안",
+              "excerpt": "저희가 인구 종합 대책을 작년 하반기에 수립을 했습니다. 그래서 저출생, 크게 보면 저출생 분야, 그리고 청년 유출 대응 분야, 그리고,",
+              "relevanceScore": 0.17762520909309387
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청북도의회",
+              "originalRowId": 13286,
+              "date": "20250717",
+              "council": "충청북도의회",
+              "meetingTitle": "충청북도청주의료원원장임용후보자인사청문특별위원회 회의록 제427회(1차)",
+              "agendaTitle": "1. 충청북도 청주의료원 원장 임용후보자 인사청문의 건(충청북도지사 제출)",
+              "excerpt": "제가 구체적인 자료를 못 드려서 죄송한데 저희가 인구가 한 75%가 줄었습니다, 지역의.",
+              "relevanceScore": 0.0025495695881545544
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 82740,
+              "date": "20251125",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제342회(5차)",
+              "agendaTitle": "8. 복지보건국 소관 2026년도 강원특별자치도 예산안 및 기금운용계획안(강원특별자치도지사",
+              "excerpt": "지금 저희 국에서 저출산을 위해서 하고 있는 사업들을 말씀하시는 거나요?",
+              "relevanceScore": 0.0029263575561344624
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 44037,
+              "date": "20251202",
+              "council": "경상남도의회",
+              "meetingTitle": "농해양수산위원회 회의록 제428회(3차)",
+              "agendaTitle": "2. 2026년도 경상남도 기금운용계획안(경상남도지사 제출)(계속)",
+              "excerpt": "저는 이 정책을 떠나서 인구 감소 지역에 인구 증가는 시키지 못하더라도 너무 급격하게 인구가 소멸하고 있으니까 특단의 대책이 필요하다는 입장입니다.",
+              "relevanceScore": 0.06876740604639053
+            }
+          ],
+          "supplementaryMetrics": {
+            "label": "검색 및 관련성 검증을 통과한 결과 범위의 참고값",
+            "retrievedCouncilDays": 17,
+            "councilsDiscussing": 8,
+            "yearBreakdown": {
+              "2024": 9,
+              "2025": 8
+            },
+            "topCouncil": "경상남도의회",
+            "topCouncilSharePercent": 23.5
+          },
+          "forecast": {
+            "text": "검색 근거와 연결되는 향후 의제를 제시하기 어려워 전망 신뢰도가 낮습니다.",
+            "status": "insufficient_evidence",
+            "confidence": "low",
+            "evidenceIds": []
+          },
+          "evidence": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청북도의회",
+              "originalRowId": 707,
+              "date": "20240124",
+              "council": "충청북도의회",
+              "meetingTitle": "교육위원회 회의록 제414회(1차)",
+              "agendaTitle": "5. 2024년도 주요업무계획 보고",
+              "excerpt": "지금 보면 계속 인구가 줄고 있잖아요. 지금 이렇게 해 가지고는 큰 효과가 없는 걸로 알고 있는데 다른 개선책 이런 거는 준비하는 게 있어요?",
+              "relevanceScore": 0.0120968297123909
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 6587,
+              "date": "20240424",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제327회(4차)",
+              "agendaTitle": "1. 2024년도 제1차 도정 및 교육행정에 관한 질문(이한영ㆍ강정호ㆍ박길선ㆍ유순옥 의원)",
+              "excerpt": "말 그대로 강원도정의 전반적인 컨트롤타워 역할을 한다 이렇게 보면 될것 같습니다. 제가 오늘 기획조정실장님과 나누고 싶은 대화는 유휴 공공시설입니다. 물론 행정적인 업무는 행정국 소관이지만 제가 기획조정실장님과 함께하고 싶었던 이유는 방금 말씀하신 대로, 그냥 단순하게 강원도 내 유휴시설이 얼마나 있고 추진상황이 어떻게 되느냐 이런 것보다는 앞으로 발생될 수 있는 미래 지향적인 부분에 대해서 함께 의논하고자 제가 실장님을 불렀다는 말씀을, 이해해 주시기를 부탁드리겠습니다. 2021년 10월에 89개 자치단체에 대한 인구감소지역을 지정했습니다. 강원도도 18개 시군 중에 12개 시군, 즉 66.7%에 이르는 지역이 지정되었습니다. 추세적으로는 이런 인구소멸지역이 조금 더 늘어날 것으로 저는 판단하고 있습니다. 물론 인구의 급격한 감소 원인은 저출산뿐만 아니라 지역 핵심 산업의 쇠퇴, 그리고 대도시로의 청년 유출, 그리고 기후변화, 환경적인 요인, 이런 다양한 요인이 있겠지만 인구 절벽으로 인한 도시의 축소가 가장 큰 원인이 아닐까 저는 그렇게 생각하고 있습니다. 제가 실장님께 질문 하나 드리겠습니다. 과거 성장을 이루었던 지역에서 인구가 현저히 감소될 때 공통적으로 나타나는 현상들에 대해서 혹시 고민해 보신 적이 있으신지요?",
+              "relevanceScore": 0.011758290231227875
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 5228,
+              "date": "20240430",
+              "council": "경상북도의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제346회(1차)",
+              "agendaTitle": "1. 2024년도 경상북도 제1회 추가경정 예산안",
+              "excerpt": "진행하는 건 아닌데 이게 저출생 대책으로 지금 이번 예산에 들어간 거잖아요, 출산 장려로?",
+              "relevanceScore": 0.0013051305431872606
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 17132,
+              "date": "20240614",
+              "council": "서울특별시의회",
+              "meetingTitle": "문화체육관광위원회 회의록 제324회(2차)",
+              "agendaTitle": "2. 2024년도 제1회 문화본부 소관 추가경정예산안(서울특별시장 제출)",
+              "excerpt": "그런 말은 없는데 미혼 남녀들에 대한 결혼 장려책을 이렇게 활성화시켜서 그러한 것들이 결국은 저출산 대책…….",
+              "relevanceScore": 0.02293209545314312
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 15028,
+              "date": "20240619",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제329회(4차)",
+              "agendaTitle": "1. 2024년도 제2차 도정 및 교육행정에 관한 질문(이지영ㆍ원제용ㆍ원미희 의원)(계속)",
+              "excerpt": "우리 도의 인구소멸 대책은 어떤 것이 있는지 간략하게 말씀해 주실 수 있나요?",
+              "relevanceScore": 0.4291246235370636
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 27457,
+              "date": "20240902",
+              "council": "서울특별시의회",
+              "meetingTitle": "보건복지위원회 회의록 제326회(1차)",
+              "agendaTitle": "10. 간주처리예산 내역 보고",
+              "excerpt": "지금 서울시 저출산 대응 사업 예산이 어느 정도 돼요?",
+              "relevanceScore": 0.0050664860755205154
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 26314,
+              "date": "20241008",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이 부분은 저출산 대책에 의해서 저희들도 적극 장려를 하고 있습니다.",
+              "relevanceScore": 0.016706913709640503
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 31955,
+              "date": "20241108",
+              "council": "부산광역시의회",
+              "meetingTitle": "행정사무감사 회의록 제325회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그래서 이게 인구 정책의 가장 큰 제가 생각할 때도 가장 큰 맹점이 위원님이 말씀하신 그 부분이라고 생각하는데…",
+              "relevanceScore": 0.005651895422488451
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 25690,
+              "date": "20241128",
+              "council": "경상북도의회",
+              "meetingTitle": "농수산위원회 회의록 제351회(2차)",
+              "agendaTitle": "1. 2025년도 경상북도 예산안(해양수산국 소관)",
+              "excerpt": "이것은 기본적으로 저출생 극복 대책의 일환으로 저희들이 개발해서 하는…",
+              "relevanceScore": 0.04777676984667778
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 4951,
+              "date": "20250114",
+              "council": "경상남도의회",
+              "meetingTitle": "문화복지위원회 회의록 제420회(2차)",
+              "agendaTitle": "1. 2025년도 주요업무보고(계속)",
+              "excerpt": "저희들 정책으로 박사님들이 인구 그것을 한번더 정책을 발표하도록 연구를 하면 되겠죠. 그렇게 하도록 하겠습니다.",
+              "relevanceScore": 0.012453634291887283
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 5082,
+              "date": "20250210",
+              "council": "충청남도의회",
+              "meetingTitle": "교육위원회 회의록 제357회(3차)",
+              "agendaTitle": "12. 2025년도 주요업무 계획 보고",
+              "excerpt": "인구통계 자료에 보시면 딱히 어디가 감소된다고, 지금 여기서 있는 자료로 말씀드리면…….",
+              "relevanceScore": 0.009690365754067898
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 5229,
+              "date": "20250219",
+              "council": "경상남도의회",
+              "meetingTitle": "지역소멸대응특별위원회 회의록 제420회(2차)",
+              "agendaTitle": "2. 지역소멸 대응 관련 업무보고의 건",
+              "excerpt": "부작용을 최소화하면서 우리 사회에 도움이 되는 쪽으로 인구 정책을 만들어 가도록 노력하도록 하겠습니다.",
+              "relevanceScore": 0.06776417046785355
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 9918,
+              "date": "20250416",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제437회(1차)",
+              "agendaTitle": "20. 서귀포시 장기미집행 도시계획시설 단계별 집행계획(안) 보고",
+              "excerpt": "이 정책은 인구정책이기 때문에 인구와 관련되지 않으면 안 되지 않을까 생각은 하고 있습니다마는.",
+              "relevanceScore": 0.0062380339950323105
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 9491,
+              "date": "20250514",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제423회(1차)",
+              "agendaTitle": "9. 2025년도 경상남도 제1회 추가경정예산안",
+              "excerpt": "저희가 인구 종합 대책을 작년 하반기에 수립을 했습니다. 그래서 저출생, 크게 보면 저출생 분야, 그리고 청년 유출 대응 분야, 그리고,",
+              "relevanceScore": 0.17762520909309387
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청북도의회",
+              "originalRowId": 13286,
+              "date": "20250717",
+              "council": "충청북도의회",
+              "meetingTitle": "충청북도청주의료원원장임용후보자인사청문특별위원회 회의록 제427회(1차)",
+              "agendaTitle": "1. 충청북도 청주의료원 원장 임용후보자 인사청문의 건(충청북도지사 제출)",
+              "excerpt": "제가 구체적인 자료를 못 드려서 죄송한데 저희가 인구가 한 75%가 줄었습니다, 지역의.",
+              "relevanceScore": 0.0025495695881545544
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 82740,
+              "date": "20251125",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제342회(5차)",
+              "agendaTitle": "8. 복지보건국 소관 2026년도 강원특별자치도 예산안 및 기금운용계획안(강원특별자치도지사",
+              "excerpt": "지금 저희 국에서 저출산을 위해서 하고 있는 사업들을 말씀하시는 거나요?",
+              "relevanceScore": 0.0029263575561344624
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 44037,
+              "date": "20251202",
+              "council": "경상남도의회",
+              "meetingTitle": "농해양수산위원회 회의록 제428회(3차)",
+              "agendaTitle": "2. 2026년도 경상남도 기금운용계획안(경상남도지사 제출)(계속)",
+              "excerpt": "저는 이 정책을 떠나서 인구 감소 지역에 인구 증가는 시키지 못하더라도 너무 급격하게 인구가 소멸하고 있으니까 특단의 대책이 필요하다는 입장입니다.",
+              "relevanceScore": 0.06876740604639053
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-26T16:07:54+0900",
+    "input": "초고령 사회 해결방안",
+    "extracted_params": {
+      "topic": "초고령 사회",
+      "keyword": "초고령 사회",
+      "query": "초고령 사회 해결방안",
+      "include_terms": [
+        "초고령 사회",
+        "해결방안"
+      ],
+      "start_year": "2024",
+      "end_year": "2025",
+      "councils": [],
+      "intent": "현황"
+    },
+    "status": "success",
+    "error": null,
+    "timings_seconds": {
+      "질문 분석 LLM": 13.1041,
+      "Vector DB 검색": 345.258,
+      "검색 결과 재정렬": 1.5045,
+      "근거 확장 및 통계": 329.727,
+      "검색 후보 내 최초 관측 및 후속 정리": 0.0001,
+      "요약 및 전망 LLM": 25.4074,
+      "전체 처리": 715.0045
+    },
+    "output": {
+      "dataPeriod": "2024–2025 (고정 분석 범위 2024–2025, 색인 DB 내 자료 기준)",
+      "dataScope": "특별시·광역시·도 의회 자료만 사용합니다. 요청한 기간은 분석 범위와 교집합으로 제한하며, 현재 출력은 색인 DB에서 검색된 기록에 한정됩니다. 유사도 0.6 이상인 벡터 후보만 사용하며, 최초 관측·후속 논의·통계는 재랭킹 상위 최대 50개 후보 안에서 정리합니다. 따라서 이는 색인 DB 전체에서의 최초 기록을 보장하지 않으며, 보조 통계는 검색 결과 범위의 참고값이며 시간순 논의는 영향 관계를 뜻하지 않습니다.",
+      "results": [
+        {
+          "issueKeyword": "초고령 사회",
+          "summary": "검색된 회의록 발언 (20251121 · 강원특별자치도의회): “그러면 그것을 해결할 수 있는, 풀수 있는 방안을 검토를 하셔야 되겠네요.”",
+          "summaryEvidenceIds": [
+            "2025_gwangyeok__cleaned_2025_강원특별자치도의회:73899"
+          ],
+          "firstObserved": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 77,
+              "date": "20240124",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제318회(1차)",
+              "agendaTitle": "가. 의회사무처",
+              "excerpt": "이 부분이 결국 사실은 인력을 통해서밖에 해결이 안 되는 것 같습니다.",
+              "relevanceScore": 0.006484904792159796
+            }
+          ],
+          "subsequentDiscussions": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 3719,
+              "date": "20240131",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제318회(4차)",
+              "agendaTitle": "가. 도시계획국",
+              "excerpt": "앞으로 이러한 문제를 어떻게 해결해 나가실지 그 말씀도 해 주십시오.",
+              "relevanceScore": 0.006897793151438236
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 1522,
+              "date": "20240221",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "행정자치위원회 회의록 제424회(1차)",
+              "agendaTitle": "8. 2023년 제주특별자치도 시민고충처리위원회 운영상황 보고",
+              "excerpt": "알겠습니다. 잘 점검해서 해결 방안을 찾도록 하겠습니다.",
+              "relevanceScore": 0.0069305733777582645
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 3946,
+              "date": "20240222",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제325회(1차)",
+              "agendaTitle": "2. 강원특별자치도 추진현황 보고",
+              "excerpt": "지금 말씀하신 그런 부분을 고려해 가지고 개선책을 한번 고민해 보겠습니다.",
+              "relevanceScore": 0.0035193441435694695
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 4659,
+              "date": "20240227",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "농수축경제위원회 회의록 제424회(4차)",
+              "agendaTitle": "4. 제주 지역특화 임대형 스마트팜 조성 예비사업계획 수립 연구용역 완료 보고",
+              "excerpt": "제가 한번 봤거든요, 자료를. 연차별로 거의 25억에서 32억까지 투자를 할 것이라고 되어 있는데, ’16년도에 26억 9000만 원인데 반영이 2억 4000만 원, 8.9%. 쭉 보시면 그나마 2020년도에는, 5년 차 때는 27억을 투입하겠다고 해서 4억 6000만 원의 예산이 반영됐어요, 14.7%. 이렇게 되어 있는데 가면 갈수록 낮아집니다. 특히 올해죠. 중간에도 7.3%의 반영률을 보였는데 올해 보니까 예산 반영이 과연 밭담의 중장기 계획을 추진함에 있어서 하려는 의지가 있는지에 대해서 고민스러워요. 올해는 예산이 어느 정도 반영된 것 같아요? 이거는 축제 관련인데 지금 말하는 건 제주밭담 중장기 계획 중에 국비를 매칭시켰던 때가 연도별로 많이 있는데요. 올해는 전혀 없습니다. 올해는 가장 중요한 10주년 행사를 하는 해거든요. 제주밭담이 세계중요농업유산으로 등재된 지 10주년인데 하려는 의지가 전혀 보이지 않아서 굉장히 문제가 있다. 그래서 여기에 대해서 대책이 있는지 말씀 좀 부탁드릴게요.",
+              "relevanceScore": 0.016857584938406944
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 16492,
+              "date": "20240618",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "교육위원회 회의록 제428회(1차)",
+              "agendaTitle": "21. 도교육감 소속 공무원 복지 증진을 위한 업무협약(롯데시네마 연동점)",
+              "excerpt": "솔직히 완전 해결은 어렵다고 보고요. 이런 문제점이 최소화되도록 하겠습니다.",
+              "relevanceScore": 0.010494873858988285
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 16645,
+              "date": "20240715",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제323회(1차)",
+              "agendaTitle": "가. 교육지원청",
+              "excerpt": "근본적으로 해결할 수 있는 방안들은 지금 연구된 게 없습니까?",
+              "relevanceScore": 0.005651750601828098
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 25229,
+              "date": "20240905",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제417회(2차)",
+              "agendaTitle": "1. 경남연구원장 임용후보자(오동호) 인사검증의 건",
+              "excerpt": "그러면 그 해결책을, 방안에 대해서 짧게 어떠한 의견을 가지고 계십니까?",
+              "relevanceScore": 0.005901337135583162
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 35673,
+              "date": "20240909",
+              "council": "서울특별시의회",
+              "meetingTitle": "행정자치위원회 회의록 제326회(4차)",
+              "agendaTitle": "5. 재무국 소관 주요 업무보고",
+              "excerpt": "그러면 이에 대한 대책이 마련이 돼야 하지 않겠습니까?",
+              "relevanceScore": 0.0049159470945596695
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 23620,
+              "date": "20241014",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제332회(2차)",
+              "agendaTitle": "2. 2024년도 제3차 도정 및 교육행정에 관한 질문(조성운ㆍ김용래ㆍ김왕규ㆍ최승순 의원)",
+              "excerpt": "기본적으로는 입법으로 풀어야되는 문제가 있고요, 지금 말씀하신 대로…….",
+              "relevanceScore": 0.004115366842597723
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 27512,
+              "date": "20241106",
+              "council": "부산광역시의회",
+              "meetingTitle": "행정사무감사 회의록 제325회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그러면 초고령사회에 맞춰서 이렇게 계획을 짜셔야 되는 거 아니에요?",
+              "relevanceScore": 0.16922320425510406
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청북도의회",
+              "originalRowId": 19665,
+              "date": "20241106",
+              "council": "충청북도의회",
+              "meetingTitle": "교육위원회 회의록 제0회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이것을 어떻게 하면 해결할 수 있을까. 알겠습니다. 고맙습니다.",
+              "relevanceScore": 0.006623532623052597
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 46866,
+              "date": "20241107",
+              "council": "서울특별시의회",
+              "meetingTitle": "기획경제위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "말씀하신 것처럼 개선방안을 한번 찾아보도록 하겠습니다.",
+              "relevanceScore": 0.006163185462355614
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 17160,
+              "date": "20241108",
+              "council": "대구광역시의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "다음은 학교폭력의 저연령화 관련해서 질의를 간략히 드리겠습니다. 학교폭력 실태조사와 행정사무감사자료에 따르면 학교폭력심의위원회 심의 건수가 매년 증가하고 있으며 특히 초등학생의 증가 폭이 큰 것으로 나타나고 있습니다. 현재 초등학생들이 상급학교로 진학할 경우 학교폭력이 더욱 증가할 가능성이 있어 우려가 되고 있습니다. 행정사무감사자료 239쪽에 학교폭력대책심의위원회 심의 건수에서 2022년과 2023년을 비교해 보면 대구 전체에서 고등학생 및 특수학교의 심의 건수는 각각 33건과 2건이 감소하였으나 중학생의 심의 건수는 2022년 471건에서 2023년 511건으로 40건, 8.5% 증가하였으며, 초등학생의 심의 건수는 2022년 220건에서 2023년 262건으로 42건, 19.1%가 증가함으로써 초등학생 학교폭력 증가가 심각한 수준에 이르고 있습니다. 초등학생의 심의 건수가 늘어남에 따라 이들이 상급학교로 진학할 경우 학교폭력이 더욱 증가할 것으로 예측됩니다. 이에 대한 대책이 마련되어 있습니까?",
+              "relevanceScore": 0.025960111990571022
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 52218,
+              "date": "20241108",
+              "council": "서울특별시의회",
+              "meetingTitle": "도시안전건설위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이거에 대한 근본적인 대책이 좀 있어야 되지 않겠어요?",
+              "relevanceScore": 0.003013747278600931
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 17813,
+              "date": "20241111",
+              "council": "대구광역시의회",
+              "meetingTitle": "경제환경위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "잘 알겠습니다. 그 문제점에 대해서 개선 방안을 마련해 보도록 하겠습니다.",
+              "relevanceScore": 0.003917517140507698
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 38897,
+              "date": "20241125",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제333회(5차)",
+              "agendaTitle": "1. (주)강원중도개발공사 출자 동의안(강원특별자치도지사 제출)",
+              "excerpt": "그 대응책으로 강구해 놓은 것이 있으면 말씀해 주십시오.",
+              "relevanceScore": 0.014983792789280415
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 47416,
+              "date": "20241202",
+              "council": "경상남도의회",
+              "meetingTitle": "문화복지위원회 회의록 제419회(2차)",
+              "agendaTitle": "3. 2025년도 경상남도예산안",
+              "excerpt": "그런 부분에 대해서는 조금 더 고민해서 대안을 한번 마련,",
+              "relevanceScore": 0.0067231133580207825
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 27823,
+              "date": "20241204",
+              "council": "경상북도의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제351회(3차)",
+              "agendaTitle": "2. 2025년도 경상북도 예산안 및 기금운용계획안(계속)",
+              "excerpt": "그러면 해결방법은, 그것을 해소하는 것이 해결방법이잖아요.",
+              "relevanceScore": 0.012512203305959702
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 50293,
+              "date": "20241206",
+              "council": "부산광역시의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제325회(2차)",
+              "agendaTitle": "4. 부산광역시 2024년도 제2회 기금운용계획 변경안(계속)",
+              "excerpt": "첫째, 우리 지역이 다른 지역에 비해서 도시의 어떤 구조적인 문제도 있지만 우리 초고령사회에 노인 인구가 많은 것이 그것도 하나의 큰 원인으로 보고 있습니다.",
+              "relevanceScore": 0.0407126322388649
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 2233,
+              "date": "20250224",
+              "council": "서울특별시의회",
+              "meetingTitle": "교육위원회 회의록 제328회(1차)",
+              "agendaTitle": "1. 2025년도 서울특별시교육청 주요업무 보고(교육감 신년 정책방향 보고)",
+              "excerpt": "그걸 해결하기 위해서 학교를 더 키우든지 다른 대안을 세우셔야죠.",
+              "relevanceScore": 0.00888197310268879
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_전라남도의회",
+              "originalRowId": 22512,
+              "date": "20250416",
+              "council": "전라남도의회",
+              "meetingTitle": "교육위원회 회의록 제389회(1차)",
+              "agendaTitle": "9. 전라남도교육비특별회계 2025년도 제1회 추가경정예산안(교육감 제출)",
+              "excerpt": "위원장 김정 희서로 다름을 인정하는 IB 교육에 대한 질의를 하려고 합니다. IB 교육은 교육도 교육이지만 채점 위원회에 대한 이슈도 꾸준히 지금 제기된 걸로 알고 있습니다. 본 위원이 IB에 관련해서 선생님들과 미팅을 해 보니까 선생님들 또한 이 문제에 대해서 의견들이 분분합니다. 그래서 이제 타 시도의 사례들을 좀 찾아봤어요. 경기도, 대구, 전북 등에서는 AI 기반 논술형 평가 시스템을 지금 구축하고 있더라고요. 저희들은 하고 있습니까? 위원장 김정 희이게 IB 교육이 이제 국장님도 잘 아시겠지만 일본 같은 데는 도입을 해서 실패를 했습니다. 그리고 우리나라는 그나마 수시 대학 입학이 있기 때문에 성공할 확률은 좀 있겠다라는 생각을 갖고 있습니다.그리고 이 교육의 방향성은 미래 교육의 방향성이기 때문에 틀리지 않다라고 말씀을 드리고 싶습니다. 그러나 이게 교육의 가치에 있어서 다양성과 채점에 대한 신뢰성, 두 가지 아주 큰 가치의 충돌이 일어납니다. 이 부분을 어떻게 해결하실 것인가에 대해서 간단하게 설명 좀해 주시기 바랍니다.",
+              "relevanceScore": 0.002823772607371211
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 11982,
+              "date": "20250612",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제439회(1차)",
+              "agendaTitle": "21. 제주특별자치도 공공하수처리시설 기후위기 적응대책 학술용역 보고",
+              "excerpt": "충분히 대화하고 소통하면서 해결해 나가도록 하겠습니다.",
+              "relevanceScore": 0.023553453385829926
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 29677,
+              "date": "20250618",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제338회(3차)",
+              "agendaTitle": "1. 2025년도 제2차 도정 및 교육행정에 관한 질문(양숙희ㆍ최재석ㆍ류인출ㆍ김희철 의원)",
+              "excerpt": "그렇죠, 그러면 대안을 제시하고 반영해야 될 텐데 방법이 있습니까?",
+              "relevanceScore": 0.002874569268897176
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 28795,
+              "date": "20250619",
+              "council": "서울특별시의회",
+              "meetingTitle": "교통위원회 회의록 제331회(3차)",
+              "agendaTitle": "1. 서울교통공사 현안업무 보고",
+              "excerpt": "그거에 대한 대책이나 무슨 고민해 보신 게 있으신가요?",
+              "relevanceScore": 0.0033830886241048574
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 28638,
+              "date": "20250718",
+              "council": "충청남도의회",
+              "meetingTitle": "교육위원회 회의록 제360회(2차)",
+              "agendaTitle": "1. 2025년도 주요업무 추진상황 보고",
+              "excerpt": "거기에서 제일 중요한 핵심이 IB학교를 받아들이려고 하면 그 학교 선생님들의 60% 이상이 찬성해야 되는 걸로 알고 있거든요. 그런 요건이 갖추어지지 않아서 무산된 학교도 몇 학교 있는 걸로 제가 알고 있거든요. 그래서 학부모님들이 요구함에도 불구하고 학교 선생님들의 의욕이라든지 그런 것들이 다 모아지지 않아서 교육과정 자체를 하지 못하는 경우가 있는데 그런 경우에는 좌우지간 리더십을 잘 발휘해 주셔서 그런 것들을 학교에서 설치 좀해 줘야 되겠다 그런 말씀을 드리고 싶습니다. 더 깊이 있는…… 그냥 그 정도로 질문을 드리도록 하겠습니다. 그다음에 두 번째는요, 현장체험학습에 대해서 어느 분이 답변을 해 주실 수 있나요? 지금 현장체험학습이 있거든요. 현장체험학습은 수학여행도 있고 아니면 단일 현장체험학습도 있고 그러는데, 현장체험학습이 지난번에 강원도 춘천의 판례에 의해서 학교 현장에 있는 선생님들이 100% 또는 굉장히 적극적으로 현장체험학습을 하지 않으려고 하는 현장도 있는 것으로 알고 있거든요. 이런 부분 조사는 어느 정도 되셨죠, 초중고? 그런데 저는 질문을 드리고 싶은 게 학부형님하고 학생들은 굉장히 희망을 하는데 그럼에도 불구하고 학교 선생님들이 이거를 원치 않아서 무산되는 경우가 있는 것 같아요, 제가 보면. 그래서 선생님들의 그런 문제 때문에 학교안전사고 예방 및 보상에 관한 법률이 6월 20일 날부터 시행이 됐잖아요. 그게 시행이 되고 그것을 보완하기 위해서 충남에서는 조례도 제정했고요. 그럼에도 불구하고 학교 현장에서는 이 현장체험학습이, 선생님들이 “그거는 완전한 보장이 아니다” 이렇게 해서 학부모님들과 학생들이 희망함에도 그 부분을 받아들이지 못하는 경우가 있더라고요. 그래서 그 부분을 지금 어떤 방법으로 해결 방안을 하고 계시는지 말씀 좀해 주시면 감사하겠습니다.",
+              "relevanceScore": 0.005634823814034462
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 21467,
+              "date": "20250731",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제425회(2차)",
+              "agendaTitle": "1.경상남도인재평생교육진흥원 원장 임용후보자(황태수) 인사청문 실시의 건",
+              "excerpt": "알겠고요, 진흥원 같은 경우는 어쨌든 교육에 관련된 일을 하는 곳이기 때문에 이거는 그냥 제가 부탁 말씀을 하나 드리겠습니다. 직원들의 임기나 이런 부분들이 너무 짧아도 곤란하다고 생각하거든요. 사업 자체가 한번 시작하면 몇 년씩 가는 사업들이잖아요. 그래서 그런 연속성이 될수 있는, 지속적으로 그 사업이 잘갈수 있게 같이 움직일 수 있는 그런 정도의 직원들 운영에 대한 그런 방안도 한번 후보자님께서 꼭 찾아주시고요. 평생교육에 대해서는 많은 이야기를 하셨으니까 제가 한 가지만, 제가 다른 데서도 이야기 많이 합니다만 평생교육 바우처 사업이 있잖아요, 이거 아시죠? 어쨌든 인증된 기관으로 정해져 있습니다. 경남에 인증된 기관의 대부분이 창원·양산·김해·진주 이렇게 큰 도시 위주로 되어 있다는 사실을 알고 계시죠? 그런데 바우처 사업은 18개 시군 전체에 합니다. 그죠? 물리적으로, 지리적으로 멀리 있는 그런 지역은 바우처를 받아도 쓰기가 오히려 힘듭니다. 여기에 대한 문제점도 해결방안을 꼭 한번 고민해 주시면 고맙겠습니다.",
+              "relevanceScore": 0.004580590408295393
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_부산광역시의회",
+              "originalRowId": 23302,
+              "date": "20250901",
+              "council": "부산광역시의회",
+              "meetingTitle": "본회의 회의록 제331회(2차)",
+              "agendaTitle": "일반안건",
+              "excerpt": "지금 일단 원인을 밝혀보고 그런 여러 가지 방안을 강구해 보겠습니다.",
+              "relevanceScore": 0.006279937922954559
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 39167,
+              "date": "20250904",
+              "council": "서울특별시의회",
+              "meetingTitle": "문화체육관광위원회 회의록 제332회(2차)",
+              "agendaTitle": "18. 서울관광재단 소관 예비비 사용 보고",
+              "excerpt": "그렇죠. 그리고 다음 한 가지는 지난주 보도된 한류 관광 기사를 제가 이제 (전문위원실 관계자에게) 틀어 주세요. 몇 가지를 봤는데요 혹시 보셨는지 모르겠네요. 아무튼, 듣는 중간에, 지금 아시다시피 오늘도 뉴스에 넷플릭스에서 1위를 차지하고 있는 케이팝 데몬 헌터스 인기가 폭발적이더라고요. 그래서 이 기사들에서 보시는 대로 콘텐츠 덕분인지 아무튼 외국인들이 한국에 많이 방문하고 있다는 내용이에요. 그래서 실제로 아까 낙산공원, 서울타워, 뚝섬한강공원 장면에서 나왔던 명소에 가서 외국인들이 이제……. 인증사진도 찍고 되게 홍보가 잘 되고 있나 봐요. 그래서 7월 기준을 보니까 작년 대비 23%가 증가됐다고 나와 있고 7개월 누적 1,000만 명을 돌파했다고 나와 있고, 아무튼 한류 효과가 상당한 상황인 것 같아요. 그런데 지금 국립중앙박물관 같은 경우에는 거기 사례가 몇 가지 나와 있는데 거기는 주차나 편의시설 부족 등으로 불편한 점이 많다고 나와 있어요. 이거에 대해서 대책이 뭐가 있나요?",
+              "relevanceScore": 0.05526657775044441
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 109873,
+              "date": "20251114",
+              "council": "서울특별시의회",
+              "meetingTitle": "교육위원회 회의록 제333회",
+              "agendaTitle": "일반안건",
+              "excerpt": "알겠습니다. 그 어려움을 해소하기 위한 방안을 같이 찾아 나갔으면 좋겠습니다.",
+              "relevanceScore": 0.0062521048821508884
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 48599,
+              "date": "20251117",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "본회의 회의록 제444회(4차)",
+              "agendaTitle": "1. 제주특별자치도 교육행정에 관한 질문(박호형·고의숙·한권·고태민·김기환·강하영 의원)",
+              "excerpt": "대책이 뭐가 있겠습니까? 있으면 좀 말씀해 주시면 좋겠습니다.",
+              "relevanceScore": 0.035562913864851
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 73899,
+              "date": "20251121",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제342회(3차)",
+              "agendaTitle": "2. 관광국 소관 2025년도 제3회 강원특별자치도 추가경정예산안(강원특별자치도지사 제출)",
+              "excerpt": "그러면 그것을 해결할 수 있는, 풀수 있는 방안을 검토를 하셔야 되겠네요.",
+              "relevanceScore": 0.018418410792946815
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 142732,
+              "date": "20251127",
+              "council": "서울특별시의회",
+              "meetingTitle": "교통위원회 회의록 제333회(3차)",
+              "agendaTitle": "5. 2026년도 교통실 소관 예산안(서울특별시장 제출)",
+              "excerpt": "하여튼 저희가 할수 있는 방법을 찾아보도록 하겠습니다.",
+              "relevanceScore": 0.007752623874694109
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_대구광역시의회",
+              "originalRowId": 43983,
+              "date": "20251209",
+              "council": "대구광역시의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제321회(4차)",
+              "agendaTitle": "2. 2026년도 대구광역시 기금운용계획안",
+              "excerpt": "한 51만 명 넘어서 저희가 21.8%, 초고령사회로 진입했습니다.",
+              "relevanceScore": 0.009590202942490578
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_울산광역시의회",
+              "originalRowId": 43406,
+              "date": "20251215",
+              "council": "울산광역시의회",
+              "meetingTitle": "교육위원회 회의록 제260회(7차)",
+              "agendaTitle": "7. 울산광역시교육청 기초학력 보장을 위한 교육환경 지원 조례 전부개정조례안(의안번호 제1",
+              "excerpt": "고민은 하고 있으나 해법이 명확하게 나오지 않은 면도 없지 않아 있습니다.",
+              "relevanceScore": 0.0038091614842414856
+            }
+          ],
+          "supplementaryMetrics": {
+            "label": "검색 및 관련성 검증을 통과한 결과 범위의 참고값",
+            "retrievedCouncilDays": 35,
+            "councilsDiscussing": 11,
+            "yearBreakdown": {
+              "2024": 20,
+              "2025": 15
+            },
+            "topCouncil": "서울특별시의회",
+            "topCouncilSharePercent": 22.9
+          },
+          "forecast": {
+            "text": "검색 근거와 연결되는 향후 의제를 제시하기 어려워 전망 신뢰도가 낮습니다.",
+            "status": "insufficient_evidence",
+            "confidence": "low",
+            "evidenceIds": []
+          },
+          "evidence": [
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 77,
+              "date": "20240124",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제318회(1차)",
+              "agendaTitle": "가. 의회사무처",
+              "excerpt": "이 부분이 결국 사실은 인력을 통해서밖에 해결이 안 되는 것 같습니다.",
+              "relevanceScore": 0.006484904792159796
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 3719,
+              "date": "20240131",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제318회(4차)",
+              "agendaTitle": "가. 도시계획국",
+              "excerpt": "앞으로 이러한 문제를 어떻게 해결해 나가실지 그 말씀도 해 주십시오.",
+              "relevanceScore": 0.006897793151438236
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 1522,
+              "date": "20240221",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "행정자치위원회 회의록 제424회(1차)",
+              "agendaTitle": "8. 2023년 제주특별자치도 시민고충처리위원회 운영상황 보고",
+              "excerpt": "알겠습니다. 잘 점검해서 해결 방안을 찾도록 하겠습니다.",
+              "relevanceScore": 0.0069305733777582645
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 3946,
+              "date": "20240222",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제325회(1차)",
+              "agendaTitle": "2. 강원특별자치도 추진현황 보고",
+              "excerpt": "지금 말씀하신 그런 부분을 고려해 가지고 개선책을 한번 고민해 보겠습니다.",
+              "relevanceScore": 0.0035193441435694695
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 4659,
+              "date": "20240227",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "농수축경제위원회 회의록 제424회(4차)",
+              "agendaTitle": "4. 제주 지역특화 임대형 스마트팜 조성 예비사업계획 수립 연구용역 완료 보고",
+              "excerpt": "제가 한번 봤거든요, 자료를. 연차별로 거의 25억에서 32억까지 투자를 할 것이라고 되어 있는데, ’16년도에 26억 9000만 원인데 반영이 2억 4000만 원, 8.9%. 쭉 보시면 그나마 2020년도에는, 5년 차 때는 27억을 투입하겠다고 해서 4억 6000만 원의 예산이 반영됐어요, 14.7%. 이렇게 되어 있는데 가면 갈수록 낮아집니다. 특히 올해죠. 중간에도 7.3%의 반영률을 보였는데 올해 보니까 예산 반영이 과연 밭담의 중장기 계획을 추진함에 있어서 하려는 의지가 있는지에 대해서 고민스러워요. 올해는 예산이 어느 정도 반영된 것 같아요? 이거는 축제 관련인데 지금 말하는 건 제주밭담 중장기 계획 중에 국비를 매칭시켰던 때가 연도별로 많이 있는데요. 올해는 전혀 없습니다. 올해는 가장 중요한 10주년 행사를 하는 해거든요. 제주밭담이 세계중요농업유산으로 등재된 지 10주년인데 하려는 의지가 전혀 보이지 않아서 굉장히 문제가 있다. 그래서 여기에 대해서 대책이 있는지 말씀 좀 부탁드릴게요.",
+              "relevanceScore": 0.016857584938406944
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_제주특별자치도의회",
+              "originalRowId": 16492,
+              "date": "20240618",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "교육위원회 회의록 제428회(1차)",
+              "agendaTitle": "21. 도교육감 소속 공무원 복지 증진을 위한 업무협약(롯데시네마 연동점)",
+              "excerpt": "솔직히 완전 해결은 어렵다고 보고요. 이런 문제점이 최소화되도록 하겠습니다.",
+              "relevanceScore": 0.010494873858988285
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 16645,
+              "date": "20240715",
+              "council": "부산광역시의회",
+              "meetingTitle": "상임위원회 회의록 제323회(1차)",
+              "agendaTitle": "가. 교육지원청",
+              "excerpt": "근본적으로 해결할 수 있는 방안들은 지금 연구된 게 없습니까?",
+              "relevanceScore": 0.005651750601828098
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 25229,
+              "date": "20240905",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제417회(2차)",
+              "agendaTitle": "1. 경남연구원장 임용후보자(오동호) 인사검증의 건",
+              "excerpt": "그러면 그 해결책을, 방안에 대해서 짧게 어떠한 의견을 가지고 계십니까?",
+              "relevanceScore": 0.005901337135583162
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 35673,
+              "date": "20240909",
+              "council": "서울특별시의회",
+              "meetingTitle": "행정자치위원회 회의록 제326회(4차)",
+              "agendaTitle": "5. 재무국 소관 주요 업무보고",
+              "excerpt": "그러면 이에 대한 대책이 마련이 돼야 하지 않겠습니까?",
+              "relevanceScore": 0.0049159470945596695
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 23620,
+              "date": "20241014",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제332회(2차)",
+              "agendaTitle": "2. 2024년도 제3차 도정 및 교육행정에 관한 질문(조성운ㆍ김용래ㆍ김왕규ㆍ최승순 의원)",
+              "excerpt": "기본적으로는 입법으로 풀어야되는 문제가 있고요, 지금 말씀하신 대로…….",
+              "relevanceScore": 0.004115366842597723
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 27512,
+              "date": "20241106",
+              "council": "부산광역시의회",
+              "meetingTitle": "행정사무감사 회의록 제325회",
+              "agendaTitle": "일반안건",
+              "excerpt": "그러면 초고령사회에 맞춰서 이렇게 계획을 짜셔야 되는 거 아니에요?",
+              "relevanceScore": 0.16922320425510406
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_충청북도의회",
+              "originalRowId": 19665,
+              "date": "20241106",
+              "council": "충청북도의회",
+              "meetingTitle": "교육위원회 회의록 제0회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이것을 어떻게 하면 해결할 수 있을까. 알겠습니다. 고맙습니다.",
+              "relevanceScore": 0.006623532623052597
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 46866,
+              "date": "20241107",
+              "council": "서울특별시의회",
+              "meetingTitle": "기획경제위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "말씀하신 것처럼 개선방안을 한번 찾아보도록 하겠습니다.",
+              "relevanceScore": 0.006163185462355614
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 17160,
+              "date": "20241108",
+              "council": "대구광역시의회",
+              "meetingTitle": "교육위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "다음은 학교폭력의 저연령화 관련해서 질의를 간략히 드리겠습니다. 학교폭력 실태조사와 행정사무감사자료에 따르면 학교폭력심의위원회 심의 건수가 매년 증가하고 있으며 특히 초등학생의 증가 폭이 큰 것으로 나타나고 있습니다. 현재 초등학생들이 상급학교로 진학할 경우 학교폭력이 더욱 증가할 가능성이 있어 우려가 되고 있습니다. 행정사무감사자료 239쪽에 학교폭력대책심의위원회 심의 건수에서 2022년과 2023년을 비교해 보면 대구 전체에서 고등학생 및 특수학교의 심의 건수는 각각 33건과 2건이 감소하였으나 중학생의 심의 건수는 2022년 471건에서 2023년 511건으로 40건, 8.5% 증가하였으며, 초등학생의 심의 건수는 2022년 220건에서 2023년 262건으로 42건, 19.1%가 증가함으로써 초등학생 학교폭력 증가가 심각한 수준에 이르고 있습니다. 초등학생의 심의 건수가 늘어남에 따라 이들이 상급학교로 진학할 경우 학교폭력이 더욱 증가할 것으로 예측됩니다. 이에 대한 대책이 마련되어 있습니까?",
+              "relevanceScore": 0.025960111990571022
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_서울특별시의회",
+              "originalRowId": 52218,
+              "date": "20241108",
+              "council": "서울특별시의회",
+              "meetingTitle": "도시안전건설위원회 회의록 제327회",
+              "agendaTitle": "일반안건",
+              "excerpt": "이거에 대한 근본적인 대책이 좀 있어야 되지 않겠어요?",
+              "relevanceScore": 0.003013747278600931
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_대구광역시의회",
+              "originalRowId": 17813,
+              "date": "20241111",
+              "council": "대구광역시의회",
+              "meetingTitle": "경제환경위원회 회의록 제회",
+              "agendaTitle": "일반안건",
+              "excerpt": "잘 알겠습니다. 그 문제점에 대해서 개선 방안을 마련해 보도록 하겠습니다.",
+              "relevanceScore": 0.003917517140507698
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_강원특별자치도의회",
+              "originalRowId": 38897,
+              "date": "20241125",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제333회(5차)",
+              "agendaTitle": "1. (주)강원중도개발공사 출자 동의안(강원특별자치도지사 제출)",
+              "excerpt": "그 대응책으로 강구해 놓은 것이 있으면 말씀해 주십시오.",
+              "relevanceScore": 0.014983792789280415
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상남도의회",
+              "originalRowId": 47416,
+              "date": "20241202",
+              "council": "경상남도의회",
+              "meetingTitle": "문화복지위원회 회의록 제419회(2차)",
+              "agendaTitle": "3. 2025년도 경상남도예산안",
+              "excerpt": "그런 부분에 대해서는 조금 더 고민해서 대안을 한번 마련,",
+              "relevanceScore": 0.0067231133580207825
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_경상북도의회",
+              "originalRowId": 27823,
+              "date": "20241204",
+              "council": "경상북도의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제351회(3차)",
+              "agendaTitle": "2. 2025년도 경상북도 예산안 및 기금운용계획안(계속)",
+              "excerpt": "그러면 해결방법은, 그것을 해소하는 것이 해결방법이잖아요.",
+              "relevanceScore": 0.012512203305959702
+            },
+            {
+              "datasetKey": "2024_gwangyeok__cleaned_2024_부산광역시의회",
+              "originalRowId": 50293,
+              "date": "20241206",
+              "council": "부산광역시의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제325회(2차)",
+              "agendaTitle": "4. 부산광역시 2024년도 제2회 기금운용계획 변경안(계속)",
+              "excerpt": "첫째, 우리 지역이 다른 지역에 비해서 도시의 어떤 구조적인 문제도 있지만 우리 초고령사회에 노인 인구가 많은 것이 그것도 하나의 큰 원인으로 보고 있습니다.",
+              "relevanceScore": 0.0407126322388649
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 2233,
+              "date": "20250224",
+              "council": "서울특별시의회",
+              "meetingTitle": "교육위원회 회의록 제328회(1차)",
+              "agendaTitle": "1. 2025년도 서울특별시교육청 주요업무 보고(교육감 신년 정책방향 보고)",
+              "excerpt": "그걸 해결하기 위해서 학교를 더 키우든지 다른 대안을 세우셔야죠.",
+              "relevanceScore": 0.00888197310268879
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_전라남도의회",
+              "originalRowId": 22512,
+              "date": "20250416",
+              "council": "전라남도의회",
+              "meetingTitle": "교육위원회 회의록 제389회(1차)",
+              "agendaTitle": "9. 전라남도교육비특별회계 2025년도 제1회 추가경정예산안(교육감 제출)",
+              "excerpt": "위원장 김정 희서로 다름을 인정하는 IB 교육에 대한 질의를 하려고 합니다. IB 교육은 교육도 교육이지만 채점 위원회에 대한 이슈도 꾸준히 지금 제기된 걸로 알고 있습니다. 본 위원이 IB에 관련해서 선생님들과 미팅을 해 보니까 선생님들 또한 이 문제에 대해서 의견들이 분분합니다. 그래서 이제 타 시도의 사례들을 좀 찾아봤어요. 경기도, 대구, 전북 등에서는 AI 기반 논술형 평가 시스템을 지금 구축하고 있더라고요. 저희들은 하고 있습니까? 위원장 김정 희이게 IB 교육이 이제 국장님도 잘 아시겠지만 일본 같은 데는 도입을 해서 실패를 했습니다. 그리고 우리나라는 그나마 수시 대학 입학이 있기 때문에 성공할 확률은 좀 있겠다라는 생각을 갖고 있습니다.그리고 이 교육의 방향성은 미래 교육의 방향성이기 때문에 틀리지 않다라고 말씀을 드리고 싶습니다. 그러나 이게 교육의 가치에 있어서 다양성과 채점에 대한 신뢰성, 두 가지 아주 큰 가치의 충돌이 일어납니다. 이 부분을 어떻게 해결하실 것인가에 대해서 간단하게 설명 좀해 주시기 바랍니다.",
+              "relevanceScore": 0.002823772607371211
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 11982,
+              "date": "20250612",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "환경도시위원회 회의록 제439회(1차)",
+              "agendaTitle": "21. 제주특별자치도 공공하수처리시설 기후위기 적응대책 학술용역 보고",
+              "excerpt": "충분히 대화하고 소통하면서 해결해 나가도록 하겠습니다.",
+              "relevanceScore": 0.023553453385829926
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 29677,
+              "date": "20250618",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제338회(3차)",
+              "agendaTitle": "1. 2025년도 제2차 도정 및 교육행정에 관한 질문(양숙희ㆍ최재석ㆍ류인출ㆍ김희철 의원)",
+              "excerpt": "그렇죠, 그러면 대안을 제시하고 반영해야 될 텐데 방법이 있습니까?",
+              "relevanceScore": 0.002874569268897176
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 28795,
+              "date": "20250619",
+              "council": "서울특별시의회",
+              "meetingTitle": "교통위원회 회의록 제331회(3차)",
+              "agendaTitle": "1. 서울교통공사 현안업무 보고",
+              "excerpt": "그거에 대한 대책이나 무슨 고민해 보신 게 있으신가요?",
+              "relevanceScore": 0.0033830886241048574
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_충청남도의회",
+              "originalRowId": 28638,
+              "date": "20250718",
+              "council": "충청남도의회",
+              "meetingTitle": "교육위원회 회의록 제360회(2차)",
+              "agendaTitle": "1. 2025년도 주요업무 추진상황 보고",
+              "excerpt": "거기에서 제일 중요한 핵심이 IB학교를 받아들이려고 하면 그 학교 선생님들의 60% 이상이 찬성해야 되는 걸로 알고 있거든요. 그런 요건이 갖추어지지 않아서 무산된 학교도 몇 학교 있는 걸로 제가 알고 있거든요. 그래서 학부모님들이 요구함에도 불구하고 학교 선생님들의 의욕이라든지 그런 것들이 다 모아지지 않아서 교육과정 자체를 하지 못하는 경우가 있는데 그런 경우에는 좌우지간 리더십을 잘 발휘해 주셔서 그런 것들을 학교에서 설치 좀해 줘야 되겠다 그런 말씀을 드리고 싶습니다. 더 깊이 있는…… 그냥 그 정도로 질문을 드리도록 하겠습니다. 그다음에 두 번째는요, 현장체험학습에 대해서 어느 분이 답변을 해 주실 수 있나요? 지금 현장체험학습이 있거든요. 현장체험학습은 수학여행도 있고 아니면 단일 현장체험학습도 있고 그러는데, 현장체험학습이 지난번에 강원도 춘천의 판례에 의해서 학교 현장에 있는 선생님들이 100% 또는 굉장히 적극적으로 현장체험학습을 하지 않으려고 하는 현장도 있는 것으로 알고 있거든요. 이런 부분 조사는 어느 정도 되셨죠, 초중고? 그런데 저는 질문을 드리고 싶은 게 학부형님하고 학생들은 굉장히 희망을 하는데 그럼에도 불구하고 학교 선생님들이 이거를 원치 않아서 무산되는 경우가 있는 것 같아요, 제가 보면. 그래서 선생님들의 그런 문제 때문에 학교안전사고 예방 및 보상에 관한 법률이 6월 20일 날부터 시행이 됐잖아요. 그게 시행이 되고 그것을 보완하기 위해서 충남에서는 조례도 제정했고요. 그럼에도 불구하고 학교 현장에서는 이 현장체험학습이, 선생님들이 “그거는 완전한 보장이 아니다” 이렇게 해서 학부모님들과 학생들이 희망함에도 그 부분을 받아들이지 못하는 경우가 있더라고요. 그래서 그 부분을 지금 어떤 방법으로 해결 방안을 하고 계시는지 말씀 좀해 주시면 감사하겠습니다.",
+              "relevanceScore": 0.005634823814034462
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_경상남도의회",
+              "originalRowId": 21467,
+              "date": "20250731",
+              "council": "경상남도의회",
+              "meetingTitle": "기획행정위원회 회의록 제425회(2차)",
+              "agendaTitle": "1.경상남도인재평생교육진흥원 원장 임용후보자(황태수) 인사청문 실시의 건",
+              "excerpt": "알겠고요, 진흥원 같은 경우는 어쨌든 교육에 관련된 일을 하는 곳이기 때문에 이거는 그냥 제가 부탁 말씀을 하나 드리겠습니다. 직원들의 임기나 이런 부분들이 너무 짧아도 곤란하다고 생각하거든요. 사업 자체가 한번 시작하면 몇 년씩 가는 사업들이잖아요. 그래서 그런 연속성이 될수 있는, 지속적으로 그 사업이 잘갈수 있게 같이 움직일 수 있는 그런 정도의 직원들 운영에 대한 그런 방안도 한번 후보자님께서 꼭 찾아주시고요. 평생교육에 대해서는 많은 이야기를 하셨으니까 제가 한 가지만, 제가 다른 데서도 이야기 많이 합니다만 평생교육 바우처 사업이 있잖아요, 이거 아시죠? 어쨌든 인증된 기관으로 정해져 있습니다. 경남에 인증된 기관의 대부분이 창원·양산·김해·진주 이렇게 큰 도시 위주로 되어 있다는 사실을 알고 계시죠? 그런데 바우처 사업은 18개 시군 전체에 합니다. 그죠? 물리적으로, 지리적으로 멀리 있는 그런 지역은 바우처를 받아도 쓰기가 오히려 힘듭니다. 여기에 대한 문제점도 해결방안을 꼭 한번 고민해 주시면 고맙겠습니다.",
+              "relevanceScore": 0.004580590408295393
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_부산광역시의회",
+              "originalRowId": 23302,
+              "date": "20250901",
+              "council": "부산광역시의회",
+              "meetingTitle": "본회의 회의록 제331회(2차)",
+              "agendaTitle": "일반안건",
+              "excerpt": "지금 일단 원인을 밝혀보고 그런 여러 가지 방안을 강구해 보겠습니다.",
+              "relevanceScore": 0.006279937922954559
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 39167,
+              "date": "20250904",
+              "council": "서울특별시의회",
+              "meetingTitle": "문화체육관광위원회 회의록 제332회(2차)",
+              "agendaTitle": "18. 서울관광재단 소관 예비비 사용 보고",
+              "excerpt": "그렇죠. 그리고 다음 한 가지는 지난주 보도된 한류 관광 기사를 제가 이제 (전문위원실 관계자에게) 틀어 주세요. 몇 가지를 봤는데요 혹시 보셨는지 모르겠네요. 아무튼, 듣는 중간에, 지금 아시다시피 오늘도 뉴스에 넷플릭스에서 1위를 차지하고 있는 케이팝 데몬 헌터스 인기가 폭발적이더라고요. 그래서 이 기사들에서 보시는 대로 콘텐츠 덕분인지 아무튼 외국인들이 한국에 많이 방문하고 있다는 내용이에요. 그래서 실제로 아까 낙산공원, 서울타워, 뚝섬한강공원 장면에서 나왔던 명소에 가서 외국인들이 이제……. 인증사진도 찍고 되게 홍보가 잘 되고 있나 봐요. 그래서 7월 기준을 보니까 작년 대비 23%가 증가됐다고 나와 있고 7개월 누적 1,000만 명을 돌파했다고 나와 있고, 아무튼 한류 효과가 상당한 상황인 것 같아요. 그런데 지금 국립중앙박물관 같은 경우에는 거기 사례가 몇 가지 나와 있는데 거기는 주차나 편의시설 부족 등으로 불편한 점이 많다고 나와 있어요. 이거에 대해서 대책이 뭐가 있나요?",
+              "relevanceScore": 0.05526657775044441
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 109873,
+              "date": "20251114",
+              "council": "서울특별시의회",
+              "meetingTitle": "교육위원회 회의록 제333회",
+              "agendaTitle": "일반안건",
+              "excerpt": "알겠습니다. 그 어려움을 해소하기 위한 방안을 같이 찾아 나갔으면 좋겠습니다.",
+              "relevanceScore": 0.0062521048821508884
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_제주특별자치도의회",
+              "originalRowId": 48599,
+              "date": "20251117",
+              "council": "제주특별자치도의회",
+              "meetingTitle": "본회의 회의록 제444회(4차)",
+              "agendaTitle": "1. 제주특별자치도 교육행정에 관한 질문(박호형·고의숙·한권·고태민·김기환·강하영 의원)",
+              "excerpt": "대책이 뭐가 있겠습니까? 있으면 좀 말씀해 주시면 좋겠습니다.",
+              "relevanceScore": 0.035562913864851
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_강원특별자치도의회",
+              "originalRowId": 73899,
+              "date": "20251121",
+              "council": "강원특별자치도의회",
+              "meetingTitle": "기타 회의록 제342회(3차)",
+              "agendaTitle": "2. 관광국 소관 2025년도 제3회 강원특별자치도 추가경정예산안(강원특별자치도지사 제출)",
+              "excerpt": "그러면 그것을 해결할 수 있는, 풀수 있는 방안을 검토를 하셔야 되겠네요.",
+              "relevanceScore": 0.018418410792946815
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_서울특별시의회",
+              "originalRowId": 142732,
+              "date": "20251127",
+              "council": "서울특별시의회",
+              "meetingTitle": "교통위원회 회의록 제333회(3차)",
+              "agendaTitle": "5. 2026년도 교통실 소관 예산안(서울특별시장 제출)",
+              "excerpt": "하여튼 저희가 할수 있는 방법을 찾아보도록 하겠습니다.",
+              "relevanceScore": 0.007752623874694109
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_대구광역시의회",
+              "originalRowId": 43983,
+              "date": "20251209",
+              "council": "대구광역시의회",
+              "meetingTitle": "예산결산특별위원회 회의록 제321회(4차)",
+              "agendaTitle": "2. 2026년도 대구광역시 기금운용계획안",
+              "excerpt": "한 51만 명 넘어서 저희가 21.8%, 초고령사회로 진입했습니다.",
+              "relevanceScore": 0.009590202942490578
+            },
+            {
+              "datasetKey": "2025_gwangyeok__cleaned_2025_울산광역시의회",
+              "originalRowId": 43406,
+              "date": "20251215",
+              "council": "울산광역시의회",
+              "meetingTitle": "교육위원회 회의록 제260회(7차)",
+              "agendaTitle": "7. 울산광역시교육청 기초학력 보장을 위한 교육환경 지원 조례 전부개정조례안(의안번호 제1",
+              "excerpt": "고민은 하고 있으나 해법이 명확하게 나오지 않은 면도 없지 않아 있습니다.",
+              "relevanceScore": 0.0038091614842414856
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

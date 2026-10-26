@@ -84,6 +84,121 @@ class HistoryLoggingTests(unittest.TestCase):
         self.assertIn("전체 처리", pipeline.last_timings)
         self.assertIn("test retrieval failure", pipeline.last_error)
 
+    def test_first_observation_uses_ranked_candidates_without_a_second_retriever_scan(self):
+        pipeline = main.LocalRAGPipeline.__new__(main.LocalRAGPipeline)
+
+        class QueryLLM:
+            def __init__(self):
+                self.evidence = None
+
+            def extract_search_params(self, _query):
+                return {
+                    "topic": "정책 변화", "query": "정책 변화", "include_terms": [],
+                    "start_year": None, "end_year": None, "councils": [], "intent": "현황",
+                }
+
+            def synthesize_analysis(self, _params, evidence, _metrics):
+                self.evidence = evidence
+                return {
+                    "summary": "요약", "summary_evidence_ids": [], "forecast": "",
+                    "forecast_evidence_ids": [], "forecast_status": "insufficient_evidence",
+                }
+
+        class CandidateRetriever:
+            def __init__(self):
+                self.rows = [
+                    {"id": "late", "text": "후속 발언", "metadata": {
+                        "dataset_key": "d", "row_id": 2, "date": "20250201",
+                        "assembly": "서울특별시의회", "agenda_title": "안건", "MINTS_NM": "회의록",
+                    }, "chunk_ids": ["late-chunk"], "vector_similarity": 0.96},
+                    {"id": "early", "text": "초기 발언", "metadata": {
+                        "dataset_key": "d", "row_id": 1, "date": "20240102",
+                        "assembly": "서울특별시의회", "agenda_title": "안건", "MINTS_NM": "회의록",
+                    }, "chunk_ids": ["early-chunk"], "vector_similarity": 0.70},
+                ]
+                self.search_calls = 0
+
+            def search(self, *_args, **_kwargs):
+                self.search_calls += 1
+                return self.rows
+
+            def expand_rows(self, candidates):
+                return candidates
+
+        class CandidateReranker:
+            def rank_and_filter(self, _query, candidates, **_kwargs):
+                return [dict(row, rerank_score=0.95 if row["id"] == "early" else 0.6) for row in candidates]
+
+        retriever = CandidateRetriever()
+        llm = QueryLLM()
+        pipeline.llm = llm
+        pipeline.retriever = retriever
+        pipeline.reranker = CandidateReranker()
+
+        output = pipeline.run("정책 변화")
+        result = output["results"][0]
+
+        self.assertEqual(retriever.search_calls, 1)
+        self.assertEqual([row["date"] for row in result["firstObserved"]], ["20240102"])
+        self.assertEqual([row["date"] for row in result["subsequentDiscussions"]], ["20250201"])
+        self.assertNotIn("Vector DB 주제어 검색 및 최초 관측", pipeline.last_timings)
+        self.assertEqual([row["source_id"] for row in llm.evidence], ["d:2", "d:1"])
+        self.assertEqual([row["vector_similarity"] for row in llm.evidence], [0.96, 0.70])
+        self.assertEqual([row["reranker_score"] for row in llm.evidence], [0.6, 0.95])
+
+    def test_expands_at_most_50_top_reranked_candidates(self):
+        pipeline = main.LocalRAGPipeline.__new__(main.LocalRAGPipeline)
+
+        class QueryLLM:
+            def extract_search_params(self, _query):
+                return {
+                    "topic": "주택", "query": "주택", "include_terms": [],
+                    "start_year": None, "end_year": None, "councils": [], "intent": "현황",
+                }
+
+            def synthesize_analysis(self, _params, _evidence, _metrics):
+                return {
+                    "summary": "요약", "summary_evidence_ids": [], "forecast": "전망",
+                    "forecast_evidence_ids": [], "forecast_status": "insufficient_evidence",
+                }
+
+        class CandidateRetriever:
+            def __init__(self):
+                self.rows = [
+                    {"id": f"d:{i}", "text": f"발언 {i}", "vector_similarity": 0.7,
+                     "metadata": {"dataset_key": "d", "row_id": i, "date": "20240101",
+                                  "assembly": f"의회{i}", "agenda_title": "안건", "MINTS_NM": "회의록"},
+                     "chunk_ids": []}
+                    for i in range(1, 76)
+                ]
+                self.expanded_count = None
+
+            def search(self, *_args, **_kwargs):
+                return self.rows
+
+            def expand_rows(self, candidates):
+                self.expanded_count = len(candidates)
+                return candidates
+
+        class CandidateReranker:
+            def __init__(self):
+                self.requested_top_n = None
+
+            def rank_and_filter(self, _query, candidates, **kwargs):
+                self.requested_top_n = kwargs.get("top_n")
+                return [dict(row, rerank_score=float(100 - i)) for i, row in enumerate(candidates)]
+
+        retriever = CandidateRetriever()
+        reranker = CandidateReranker()
+        pipeline.llm = QueryLLM()
+        pipeline.retriever = retriever
+        pipeline.reranker = reranker
+
+        pipeline.run("주택 정책")
+
+        self.assertEqual(reranker.requested_top_n, 50)
+        self.assertEqual(retriever.expanded_count, 50)
+
 
 if __name__ == "__main__":
     unittest.main()

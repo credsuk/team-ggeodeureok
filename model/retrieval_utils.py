@@ -1,5 +1,4 @@
-"""Small pure helpers for reconstructing chunked rows and ordered date scans."""
-from collections import defaultdict
+"""Pure helpers for reconstructing chunks and deriving ranked-candidate timelines."""
 
 TOPIC_TERMS = ("지역 소멸", "지방소멸", "지방소멸대응기금")
 
@@ -49,34 +48,20 @@ def normalize_date_key(value):
     return _date_key(str(value or ""))
 
 
-def group_candidates_by_date(candidates):
-    """Group lexical chunks by normalized date and deduplicate to source rows."""
-    grouped = defaultdict(dict)
-    for candidate in candidates:
-        metadata = candidate.get("metadata") or {}
-        date = _date_key(str(metadata.get("date") or metadata.get("MTG_DE") or ""))
-        if not date:
-            continue
-        row_id = metadata.get("row_id")
-        dataset_key = metadata.get("dataset_key")
-        key = (str(dataset_key), str(row_id)) if row_id not in (None, "") else ("id", str(candidate.get("id")))
-        grouped[date].setdefault(key, candidate)
-    return [(date, list(rows.values())) for date, rows in sorted(grouped.items())]
+def first_observation_from_candidates(rows, followup_limit=100):
+    """Derive timeline rows from already retrieved/reranked source rows; never access DB."""
+    dated_rows = []
+    for row in rows or []:
+        metadata = row.get("metadata") or {}
+        date = normalize_date_key(str(metadata.get("date") or metadata.get("MTG_DE") or ""))
+        if date:
+            dated_rows.append((date, row))
+    dated_rows.sort(key=lambda item: item[0])
+    if not dated_rows:
+        return None, [], []
 
-
-def first_day_and_limited_followups(candidates, check_day, followup_limit=100):
-    """Find the first relevant day and collect bounded relevant rows after it."""
-    first_date = None
-    first_rows = []
-    later_rows = []
-    for date, day_candidates in group_candidates_by_date(candidates):
-        relevant = check_day(day_candidates)
-        if not relevant:
-            continue
-        if first_date is None:
-            first_date, first_rows = date, relevant
-            continue
-        later_rows.extend(relevant)
-        if len(later_rows) >= followup_limit:
-            break
+    first_date = dated_rows[0][0]
+    first_rows = [row for date, row in dated_rows if date == first_date]
+    limit = max(0, int(followup_limit))
+    later_rows = [row for date, row in dated_rows if date > first_date][:limit]
     return first_date, first_rows, later_rows

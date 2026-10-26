@@ -74,7 +74,7 @@ EMBEDDING_MODEL = "dragonkue/snowflake-arctic-embed-l-v2.0-ko"
 RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
 LLM_BASE_URL = "http://localhost:11434/v1"
 LLM_API_KEY = "not-needed"
-LLM_MODEL_NAME = "gemma4:12b"
+LLM_MODEL_NAME = "gemma4:e2b"
 
 
 # RecursiveCharacterTextSplitter measures characters, not model tokens.

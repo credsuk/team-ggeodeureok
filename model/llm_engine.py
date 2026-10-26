@@ -22,6 +22,33 @@ class LLMEngine:
         return json.loads(response.choices[0].message.content or "{}")
 
     @staticmethod
+    def _fallback_summary_from_evidence(evidence, preferred_ids=()):
+        """Use a short verbatim excerpt when the model omits usable summary citations."""
+        preferred_ids = set(preferred_ids)
+        candidates = []
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            source_id = item.get("source_id")
+            excerpt = item.get("excerpt")
+            if not isinstance(source_id, str) or not source_id.strip():
+                continue
+            if not isinstance(excerpt, str) or not excerpt.strip():
+                continue
+            candidates.append((item, source_id, excerpt))
+        candidates.sort(key=lambda candidate: candidate[1] not in preferred_ids)
+        for item, source_id, excerpt in candidates:
+            excerpt = excerpt.strip()
+            clipped = excerpt[:320].rstrip()
+            if len(excerpt) > len(clipped):
+                clipped += "…"
+            context = [str(item.get(key) or "").strip() for key in ("date", "council")]
+            context = [value for value in context if value]
+            label = f" ({' · '.join(context)})" if context else ""
+            return f"검색된 회의록 발언{label}: “{clipped}”", source_id
+        return None
+
+    @staticmethod
     def _year(value):
         value = str(value) if value is not None else ""
         return value if re.fullmatch(r"20\d{2}", value) else None
@@ -75,13 +102,19 @@ class LLMEngine:
             "자료에 없는 사실, 현재 상황, 인과관계, 수치 예측을 만들지 않는다. 시간순 논의를 영향 관계로 "
             "해석하지 않는다. 고정 기간이나 확률을 예측하지 않는다. 향후 의제 전망은 근거를 인용한 "
             "정성적 가능성으로만 작성한다. 근거가 부족하면 그 사실을 명시하고 confidence를 low로 둔다. "
-            "evidence_ids는 입력에 있는 source_id만 사용한다. "
+            "요약의 각 주장에는 이를 뒷받침하는 입력 source_id를 summary_evidence_ids에 포함한다. "
+            "근거가 없으면 내용을 추정하거나 ID를 만들지 않는다. "
+            "vector_similarity와 reranker_score는 검색 순위를 위한 참고값일 뿐 사실성이나 근거의 강도를 뜻하지 않는다. "
+            "점수 자체를 근거로 주장하지 말고 발언 발췌와 source_id에만 근거한다. evidence_ids는 입력에 있는 source_id만 사용한다. "
             'JSON 객체만 반환: {"summary":"현황 요약","forecast":"향후 논의 가능 의제 또는 자료 부족 설명",'
             '"forecast_status":"supported 또는 insufficient_evidence", "forecast_confidence":"low, medium, high 중 하나",'
             '"summary_evidence_ids":["source_id"],"forecast_evidence_ids":["source_id"]}',
             {"question": params.get("query"), "topic": params.get("topic"), "metrics": metrics, "evidence": evidence},
         )
-        allowed_ids = {item["source_id"] for item in evidence}
+        allowed_ids = {
+            item.get("source_id") for item in evidence
+            if isinstance(item, dict) and isinstance(item.get("source_id"), str) and item.get("source_id")
+        }
         raw_summary_ids = data.get("summary_evidence_ids", [])
         raw_forecast_ids = data.get("forecast_evidence_ids", [])
         if not isinstance(raw_summary_ids, list):
@@ -101,11 +134,19 @@ class LLMEngine:
             forecast = "자료에서 확인된 논의 근거가 부족해 구체적인 향후 의제를 제시하기 어렵습니다."
             status, confidence = "insufficient_evidence", "low"
         summary = data.get("summary")
-        if not isinstance(summary, str) or not summary.strip():
-            summary = "검색된 회의록 근거를 확인해 주세요."
-        if not summary_ids:
-            summary = "요약 문장에 연결되는 근거 ID가 없어 원문 근거를 확인해 주세요."
-        summary = summary.strip().replace("확산", "다른 지역의 후속 논의")
+        summary_is_verbatim_fallback = False
+        if not isinstance(summary, str) or not summary.strip() or not summary_ids:
+            fallback = self._fallback_summary_from_evidence(evidence, summary_ids)
+            if fallback:
+                summary, fallback_id = fallback
+                summary_ids = [fallback_id]
+                summary_is_verbatim_fallback = True
+            else:
+                summary_ids = []
+                summary = "검색된 자료는 있지만 연결 가능한 유효한 출처 ID와 발언 발췌가 없습니다."
+        summary = summary.strip()
+        if not summary_is_verbatim_fallback:
+            summary = summary.replace("확산", "다른 지역의 후속 논의")
         forecast = forecast.strip().replace("확산", "다른 지역의 후속 논의")
         return {
             "summary": summary.strip(),

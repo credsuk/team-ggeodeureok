@@ -8,13 +8,15 @@ from chromadb.utils import embedding_functions
 
 from _constant import CHROMA_PATH, COLLECTION_NAME, EMBEDDING_MODEL, CHUNK_OVERLAP
 from analysis_scope import in_analysis_scope
-from retrieval_utils import first_day_and_limited_followups, merge_overlapping_chunks
+from retrieval_utils import merge_overlapping_chunks
 
 DENSE_TOP_K = 40
 LEXICAL_TOP_K = 40
 LEXICAL_PAGE_SIZE = 500
 LEXICAL_SCAN_CAP = 5000
 RRF_K = 60
+MIN_VECTOR_SIMILARITY = 0.6
+
 
 
 def _norm(value):
@@ -56,35 +58,52 @@ class HybridRetriever:
             self.collection = self.client.get_collection(COLLECTION_NAME, embedding_function=embedding)
         except Exception as exc:
             raise RuntimeError(f"Chroma 컬렉션 '{COLLECTION_NAME}'을 열 수 없습니다. 색인 완료 여부를 확인하세요.") from exc
+        collection_metadata = self.collection.metadata or {}
+        self.distance_metric = str(collection_metadata.get("hnsw:space") or "l2").lower()
 
     def _matches_filters(self, meta, params):
         return in_analysis_scope(meta, params)
 
     def _dense_candidates(self, queries, limit, params):
         found = {}
+        queries = list(dict.fromkeys(str(query).strip() for query in queries if str(query).strip()))
+        if not queries:
+            return found
         count = self.collection.count()
         if count < 1:
             raise RuntimeError("Chroma 컬렉션이 비어 있습니다. 색인 완료 후 실행하세요.")
         n_results = min(limit, count)
-        for query in queries:
-            if not query.strip():
-                continue
-            result = self.collection.query(query_texts=[query], n_results=n_results,
-                                           include=["documents", "metadatas", "distances"])
-            ids = (result.get("ids") or [[]])[0]
-            docs = (result.get("documents") or [[]])[0]
-            metas = (result.get("metadatas") or [[]])[0]
-            distances = (result.get("distances") or [[]])[0]
+        result = self.collection.query(query_texts=queries, n_results=n_results,
+                                       include=["documents", "metadatas", "distances"])
+        all_ids = result.get("ids") or []
+        all_docs = result.get("documents") or []
+        all_metas = result.get("metadatas") or []
+        all_distances = result.get("distances") or []
+        for query_index in range(len(queries)):
+            ids = all_ids[query_index] if query_index < len(all_ids) else []
+            docs = all_docs[query_index] if query_index < len(all_docs) else []
+            metas = all_metas[query_index] if query_index < len(all_metas) else []
+            distances = all_distances[query_index] if query_index < len(all_distances) else []
             for rank, (doc_id, doc, meta) in enumerate(zip(ids, docs, metas), 1):
                 meta = normalize_metadata(meta)
                 if not self._matches_filters(meta, params):
                     continue
                 item = found.setdefault(doc_id, {"id": doc_id, "text": doc or "", "metadata": meta,
-                                                  "rrf": 0.0, "retrieval_sources": []})
+                                                  "rrf": 0.0, "retrieval_sources": [],
+                                                  "distance": None, "vector_similarity": None})
                 item["rrf"] += 1.0 / (RRF_K + rank)
                 item["retrieval_sources"].append("dense")
-                if rank <= n_results and distances:
-                    item["distance"] = float(distances[rank - 1])
+                if rank <= n_results and rank <= len(distances):
+                    raw_distance = distances[rank - 1]
+                    if raw_distance is not None:
+                        distance = float(raw_distance)
+                        if self.distance_metric == "cosine":
+                            similarity = 1.0 - distance
+                            if item["vector_similarity"] is None or similarity > item["vector_similarity"]:
+                                item["vector_similarity"] = similarity
+                                item["distance"] = distance
+                        elif item["distance"] is None or distance < item["distance"]:
+                            item["distance"] = distance
         return found
 
     def _lexical_candidates(self, terms, params):
@@ -150,87 +169,22 @@ class HybridRetriever:
                                       *params.get("include_terms", [])]))
         terms = list(dict.fromkeys([params.get("topic", ""), *params.get("include_terms", [])]))
         dense = self._dense_candidates(queries, max(DENSE_TOP_K, top_k), params)
+        # Keep only cosine-scored vector candidates meeting the requested floor.
+        # Lexical-only rows have no vector similarity and therefore cannot pass this filter.
+        candidates = {
+            doc_id: item for doc_id, item in dense.items()
+            if item.get("vector_similarity") is not None
+            and item["vector_similarity"] >= MIN_VECTOR_SIMILARITY
+        }
+        if not candidates:
+            return []
         lexical = self._lexical_candidates(terms, params)
-        candidates = dense
         for doc_id, item in lexical.items():
             if doc_id in candidates:
                 candidates[doc_id]["rrf"] += item["rrf"]
                 candidates[doc_id]["retrieval_sources"].extend(item["retrieval_sources"])
-            else:
-                candidates[doc_id] = item
         ordered = sorted(candidates.values(), key=lambda item: item["rrf"], reverse=True)[:max(top_k, 1)]
         return ordered
-
-    def scan_all_lexical(self, params):
-        """Exhaustively collect Chroma chunks containing the query's explicit topic terms."""
-        terms = list(dict.fromkeys([params.get("topic", ""), *params.get("include_terms", [])]))
-        found = {}
-        for term in terms:
-            term = str(term).strip()
-            if len(_norm(term)) < 2:
-                continue
-            offset = 0
-            while True:
-                page = self.collection.get(
-                    where_document={"$contains": term}, limit=LEXICAL_PAGE_SIZE, offset=offset,
-                    include=["documents", "metadatas"],
-                )
-                ids = page.get("ids") or []
-                docs = page.get("documents") or []
-                metas = page.get("metadatas") or []
-                if not ids:
-                    break
-                for doc_id, doc, meta in zip(ids, docs, metas):
-                    meta = normalize_metadata(meta)
-                    if self._matches_filters(meta, params):
-                        found.setdefault(doc_id, {"id": doc_id, "text": doc or "", "metadata": meta,
-                                                  "rrf": 0.0, "retrieval_sources": ["exact_topic_scan"]})
-                offset += len(ids)
-                if len(ids) < LEXICAL_PAGE_SIZE:
-                    break
-        return list(found.values())
-
-    def first_observed_and_followup_rows(self, params, reranker, followup_limit=100):
-        """Return earliest relevant rows and up to the follow-up limit in date order."""
-        terms = list(dict.fromkeys([params.get("topic", ""), *params.get("include_terms", [])]))
-        candidates_by_id = {}
-        for raw_term in terms:
-            term = str(raw_term).strip()
-            if len(_norm(term)) < 2:
-                continue
-            offset = 0
-            while True:
-                page = self.collection.get(
-                    where_document={"$contains": term}, limit=LEXICAL_PAGE_SIZE, offset=offset,
-                    include=["metadatas"],
-                )
-                ids = page.get("ids") or []
-                metadatas = page.get("metadatas") or []
-                if not ids:
-                    break
-                for doc_id, raw_meta in zip(ids, metadatas):
-                    meta = normalize_metadata(raw_meta)
-                    if self._matches_filters(meta, params):
-                        candidates_by_id.setdefault(doc_id, {
-                            "id": doc_id, "text": "", "metadata": meta,
-                            "rrf": 0.0, "retrieval_sources": ["exact_topic_scan"],
-                        })
-                offset += len(ids)
-                if len(ids) < LEXICAL_PAGE_SIZE:
-                    break
-
-        candidates = list(candidates_by_id.values())
-
-        def check_day(day_candidates):
-            expanded = self.expand_rows(day_candidates)
-            return reranker.rank_and_filter(
-                params["query"], expanded, top_n=None, min_score=0.0
-            )
-
-        first_date, first_rows, later_rows = first_day_and_limited_followups(
-            candidates, check_day, followup_limit=followup_limit
-        )
-        return first_date, first_rows, later_rows
 
     def expand_rows(self, candidates):
         """Rebuild each source utterance from all its Chroma chunks, in bounded DB reads."""
@@ -244,9 +198,17 @@ class HybridRetriever:
             current = source_rows.setdefault(key, {
                 "id": f"{dataset_key}:{row_id}", "metadata": meta, "chunks": [],
                 "rrf": candidate.get("rrf", 0.0), "rerank_score": candidate.get("rerank_score"),
+                "vector_similarity": candidate.get("vector_similarity"),
+                "distance": candidate.get("distance"),
                 "retrieval_sources": set(),
             })
             current["rrf"] = max(current["rrf"], candidate.get("rrf", 0.0))
+            similarity = candidate.get("vector_similarity")
+            if similarity is not None and (
+                current["vector_similarity"] is None or similarity > current["vector_similarity"]
+            ):
+                current["vector_similarity"] = similarity
+                current["distance"] = candidate.get("distance")
             if candidate.get("rerank_score") is not None:
                 previous = current.get("rerank_score")
                 current["rerank_score"] = candidate["rerank_score"] if previous is None else max(previous, candidate["rerank_score"])
