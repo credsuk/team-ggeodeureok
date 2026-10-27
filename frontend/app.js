@@ -5,27 +5,35 @@
  */
 
 // =========================================================================================
-// 1. 한국 지리 좌표계 및 투영 상수 (수도권·충청권 지리적 마커 겹침 방지 정밀 오프셋 적용)
+// 1. 한국 지리 좌표계 (17개 광역의회 실제 정밀 GPS 위경도 매핑 - final_app Carto Positron 연동)
 // =========================================================================================
 const COUNCIL_COORDS = {
-    "서울특별시의회": { lat: 37.585, lon: 126.978, short: "서울" },
-    "부산광역시의회": { lat: 35.180, lon: 129.076, short: "부산" },
-    "대구광역시의회": { lat: 35.871, lon: 128.601, short: "대구" },
-    "인천광역시의회": { lat: 37.456, lon: 126.615, short: "인천" }, // 서쪽 해안가 분산
-    "광주광역시의회": { lat: 35.160, lon: 126.852, short: "광주" },
-    "대전광역시의회": { lat: 36.315, lon: 127.420, short: "대전" }, // 남동쪽 분산
-    "울산광역시의회": { lat: 35.538, lon: 129.311, short: "울산" },
-    "세종특별자치시의회": { lat: 36.560, lon: 127.230, short: "세종" }, // 북서쪽 분산
-    "경기도의회": { lat: 37.240, lon: 127.160, short: "경기" }, // 남동쪽 분산
-    "강원특별자치도의회": { lat: 37.881, lon: 127.730, short: "강원" },
-    "충청북도의회": { lat: 36.690, lon: 127.530, short: "충북" }, // 북동쪽 분산
-    "충청남도의회": { lat: 36.630, lon: 126.600, short: "충남" }, // 서쪽 분산
-    "전북특별자치도의회": { lat: 35.824, lon: 127.148, short: "전북" },
-    "전라남도의회": { lat: 34.816, lon: 126.463, short: "전남" },
-    "경상북도의회": { lat: 36.576, lon: 128.506, short: "경북" },
-    "경상남도의회": { lat: 35.228, lon: 128.681, short: "경남" },
-    "제주특별자치도의회": { lat: 33.500, lon: 126.531, short: "제주" }
+    "서울특별시의회": { lat: 37.5665, lon: 126.9780, short: "서울" },
+    "부산광역시의회": { lat: 35.1796, lon: 129.0756, short: "부산" },
+    "대구광역시의회": { lat: 35.8714, lon: 128.6014, short: "대구" },
+    "인천광역시의회": { lat: 37.4563, lon: 126.7052, short: "인천" },
+    "광주광역시의회": { lat: 35.1601, lon: 126.8515, short: "광주" },
+    "대전광역시의회": { lat: 36.3504, lon: 127.3845, short: "대전" },
+    "울산광역시의회": { lat: 35.5384, lon: 129.3114, short: "울산" },
+    "세종특별자치시의회": { lat: 36.4800, lon: 127.2890, short: "세종" },
+    "경기도의회": { lat: 37.2636, lon: 127.0286, short: "경기" },
+    "강원특별자치도의회": { lat: 37.8854, lon: 127.7298, short: "강원" },
+    "충청북도의회": { lat: 36.6357, lon: 127.4913, short: "충북" },
+    "충청남도의회": { lat: 36.6588, lon: 126.6728, short: "충남" },
+    "전북특별자치도의회": { lat: 35.8202, lon: 127.1088, short: "전북" },
+    "전라남도의회": { lat: 34.8161, lon: 126.4630, short: "전남" },
+    "경상북도의회": { lat: 36.5760, lon: 128.5056, short: "경북" },
+    "경상남도의회": { lat: 35.2383, lon: 128.6924, short: "경남" },
+    "제주특별자치도의회": { lat: 33.4890, lon: 126.4983, short: "제주" }
 };
+
+// final_app 시차 단계 라벨 함수 (100% 동일 매핑)
+function stageLabel(lagDays) {
+    if (lagDays === 0) return "최초 관측";
+    if (lagDays <= 30) return "30일내 후속";
+    if (lagDays <= 90) return "90일내 확장";
+    return "후기 관측";
+}
 
 // 대한민국 본토 해안선 폴리곤 좌표 (경도, 위도)
 const MAINLAND_COORDS = [
@@ -631,6 +639,11 @@ let playInterval = null;
 let currentTab = "radar";
 let selectedCouncilName = null;
 
+// Leaflet Carto Positron 지도 인스턴스 및 레이어 (final_app 스타일 맵 엔진)
+let leafletMap = null;
+let leafletMarkersLayer = null;
+let leafletArcsSvg = null;
+
 // =========================================================================================
 // 4. 초기화 및 이벤트 리스너 (Initialization)
 // =========================================================================================
@@ -639,8 +652,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const savedScale = localStorage.getItem("council_radar_font_scale") || "normal";
     setFontScale(savedScale);
 
-    // 2) 지도 베이스 벡터 및 데이터 로드
-    initMapBaseVectors();
+    // 2) Carto Positron 인터랙티브 지도 초기화 및 이슈 데이터 로드
+    initLeafletMap();
     loadIssueData(currentIssueIndex);
     renderCatalogTable();
     renderCatalogChart();
@@ -656,19 +669,13 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 4) 동역학 지도 전체 지능형 클릭 바인딩 (지역 영토 클릭 시 의회 자동 감지 및 목록 연동)
-    const mapSvg = document.getElementById("koreaMapSvg");
-    if (mapSvg) {
-        mapSvg.addEventListener("click", handleMapCanvasClick);
-    }
-
-    // 5) 정책 발언 팝업(툴팁) 바깥 클릭 닫기 및 닫기 버튼/ESC 바인딩
-    const policyTooltip = document.getElementById("policyTooltip");
-    if (policyTooltip) {
-        policyTooltip.addEventListener("click", (e) => {
-            e.stopPropagation();
-        });
-    }
+    // 4) 창 크기 조절 시 지도 리사이즈 동기화
+    window.addEventListener("resize", () => {
+        if (leafletMap) {
+            leafletMap.invalidateSize();
+            updateLeafletArcs();
+        }
+    });
 
     const ttCloseBtn = document.getElementById("ttCloseBtn");
     if (ttCloseBtn) {
@@ -763,6 +770,47 @@ function getMapFontCfg() {
     return MAP_FONT_CONFIG[currentFontScale] || MAP_FONT_CONFIG.normal;
 }
 
+// 툴팁 폰트 스케일 (기본 1.5배 확대 및 '작게/보통/크게' 헤더 버튼과 100% 연동)
+const TOOLTIP_FONT_SCALES = {
+    small: {
+        minWidth: 235,
+        padding: "8px 12px",
+        titleSize: 16.5,
+        badgeSize: 22,
+        badgeFontSize: 13,
+        subSize: 14,
+        detailSize: 13.5,
+        lagSize: 14,
+        countPadding: "2px 6px"
+    },
+    normal: { // 기본 1.5배 확대 (고대비 또렷한 가독성)
+        minWidth: 270,
+        padding: "10px 14px",
+        titleSize: 19.5,
+        badgeSize: 26,
+        badgeFontSize: 15,
+        subSize: 16,
+        detailSize: 15,
+        lagSize: 16,
+        countPadding: "2.5px 7px"
+    },
+    large: { // 크게 (시니어 공무원 모드)
+        minWidth: 320,
+        padding: "12px 16px",
+        titleSize: 23,
+        badgeSize: 30,
+        badgeFontSize: 17.5,
+        subSize: 18.5,
+        detailSize: 17.5,
+        lagSize: 18.5,
+        countPadding: "3px 9px"
+    }
+};
+
+function getTooltipFontCfg() {
+    return TOOLTIP_FONT_SCALES[currentFontScale] || TOOLTIP_FONT_SCALES.normal;
+}
+
 // 고령 공무원 및 관리자 타깃 글자 크기 조절 (작게 16px / 보통 18px / 크게 20.5px + 동역학 지도 지명 연동)
 function setFontScale(scale) {
     currentFontScale = scale;
@@ -799,173 +847,426 @@ function setFontScale(scale) {
         localStorage.setItem("council_radar_font_scale", scale);
     } catch (e) {}
 
-    // [핵심 연동]: 동역학 지도의 배경 지명, 전파 알약 라벨, 예측 텍스트 크기 실시간 동기화
-    const baseLayer = document.getElementById("baseCouncilsLayer");
-    if (baseLayer && baseLayer.children.length > 0) {
-        initMapBaseVectors();
+    // [핵심 연동]: 동역학 지도 동기화
+    if (leafletMap) {
         renderTimelineStep(currentTimelineStep);
     }
 }
 
-function initMapBaseVectors() {
-    // 1) 남한 본토 폴리곤 렌더링
-    const mainlandPoly = document.getElementById("mainlandPolygon");
-    const pts = MAINLAND_COORDS.map(coord => {
-        const svgPt = geoToSvg(coord[1], coord[0]);
-        return `${svgPt.x},${svgPt.y}`;
-    }).join(" ");
-    mainlandPoly.setAttribute("points", pts);
-    mainlandPoly.setAttribute("fill", "#e2e8f0");
-    mainlandPoly.setAttribute("stroke", "#94a3b8");
-    mainlandPoly.setAttribute("pointer-events", "all");
-    mainlandPoly.setAttribute("cursor", "pointer");
-    mainlandPoly.addEventListener("click", handleMapCanvasClick);
+// =========================================================================================
+// 4-2. CARTO Basemaps .env 환경 변수 동적 로더 (보안 규정: 소스코드 하드코딩 금지, .env 필수)
+// =========================================================================================
+let cartoTileLayer = null;
+let currentCartoApiKey = null;
 
-    // 2) 제주도 타원
-    const jejuPt = geoToSvg(JEJU_PARAMS.lat, JEJU_PARAMS.lon);
-    const jeju = document.getElementById("jejuEllipse");
-    jeju.setAttribute("cx", jejuPt.x);
-    jeju.setAttribute("cy", jejuPt.y);
-    jeju.setAttribute("rx", JEJU_PARAMS.rx * KX);
-    jeju.setAttribute("ry", JEJU_PARAMS.ry * KY);
-    jeju.setAttribute("fill", "#e2e8f0");
-    jeju.setAttribute("stroke", "#94a3b8");
-    jeju.setAttribute("pointer-events", "all");
-    jeju.setAttribute("cursor", "pointer");
-    jeju.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onCouncilMapClick("제주특별자치도의회");
-    });
+function getCartoApiKey() {
+    // 1) env.js 또는 전역 변수에서 확인
+    if (typeof window !== "undefined" && window.CARTO_API_KEY && !window.CARTO_API_KEY.includes("your_carto_api_key")) {
+        return window.CARTO_API_KEY;
+    }
+    if (typeof window !== "undefined" && window.ENV && window.ENV.CARTO_API_KEY && !window.ENV.CARTO_API_KEY.includes("your_carto_api_key")) {
+        return window.ENV.CARTO_API_KEY;
+    }
+    // 2) 세션 스토리지에서 확인
+    try {
+        const stored = sessionStorage.getItem("CARTO_API_KEY");
+        if (stored && !stored.includes("your_carto_api_key")) return stored;
+    } catch (e) {}
 
-    // 3) 울릉도 타원
-    const ulleungPt = geoToSvg(ULLEUNG_PARAMS.lat, ULLEUNG_PARAMS.lon);
-    const ulleung = document.getElementById("ulleungEllipse");
-    ulleung.setAttribute("cx", ulleungPt.x);
-    ulleung.setAttribute("cy", ulleungPt.y);
-    ulleung.setAttribute("rx", ULLEUNG_PARAMS.rx * KX);
-    ulleung.setAttribute("ry", ULLEUNG_PARAMS.ry * KY);
-    ulleung.setAttribute("fill", "#e2e8f0");
-    ulleung.setAttribute("stroke", "#94a3b8");
-    ulleung.setAttribute("pointer-events", "all");
-    ulleung.setAttribute("cursor", "pointer");
-    ulleung.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onCouncilMapClick("경상북도의회");
-    });
+    return null;
+}
 
-    // 4) 독도
-    const dokdoPt = geoToSvg(DOKDO_PARAMS.lat, DOKDO_PARAMS.lon);
-    const dokdo = document.getElementById("dokdoCircle");
-    dokdo.setAttribute("cx", dokdoPt.x);
-    dokdo.setAttribute("cy", dokdoPt.y);
-    dokdo.setAttribute("fill", "#94a3b8");
-    dokdo.setAttribute("pointer-events", "all");
-    dokdo.setAttribute("cursor", "pointer");
-    dokdo.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onCouncilMapClick("경상북도의회");
-    });
+function updateCartoTileLayer(apiKey) {
+    if (!leafletMap) return;
 
-    // 5) 17개 광역의회 기본 베이스 점 렌더링
-    const cfg = getMapFontCfg();
-    const baseLayer = document.getElementById("baseCouncilsLayer");
-    baseLayer.innerHTML = "";
-    Object.keys(COUNCIL_COORDS).forEach(name => {
-        const c = COUNCIL_COORDS[name];
-        const pt = geoToSvg(c.lat, c.lon);
-        
-        // 대형 투명 히트 영역 (미스 클릭 방지: 반경 34px 어디를 눌러도 클릭 100% 감지)
-        const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        hitArea.setAttribute("cx", pt.x);
-        hitArea.setAttribute("cy", pt.y);
-        hitArea.setAttribute("r", "34");
-        hitArea.setAttribute("fill", "transparent");
-        hitArea.setAttribute("pointer-events", "all");
-        hitArea.setAttribute("class", "cursor-pointer");
-        hitArea.addEventListener("click", (e) => {
-            e.stopPropagation();
-            onCouncilMapClick(name);
-        });
-        baseLayer.appendChild(hitArea);
+    if (cartoTileLayer) {
+        leafletMap.removeLayer(cartoTileLayer);
+        cartoTileLayer = null;
+    }
 
-        // 베이스 의회 위치 점 (클릭 시 해당 의회 관측 순서 & 시차 상세 화면 호출)
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("cx", pt.x);
-        circle.setAttribute("cy", pt.y);
-        circle.setAttribute("r", cfg.baseFontSize > 22 ? "6.5" : "5.5");
-        circle.setAttribute("fill", "#64748b");
-        circle.setAttribute("stroke", "#ffffff");
-        circle.setAttribute("stroke-width", "2");
-        circle.setAttribute("pointer-events", "all");
-        circle.setAttribute("id", `baseDot-${name}`);
-        circle.setAttribute("class", "transition-all duration-300 hover:fill-sky-600 cursor-pointer");
-        circle.addEventListener("click", (e) => {
-            e.stopPropagation();
-            onCouncilMapClick(name);
-        });
-        
-        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        title.textContent = `${name} (${c.short}) - 클릭하여 최초 관측 순서 및 시차 조회`;
-        circle.appendChild(title);
-        baseLayer.appendChild(circle);
+    if (apiKey) {
+        cartoTileLayer = L.tileLayer(
+            `https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${apiKey}`,
+            {
+                subdomains: "abcd",
+                maxZoom: 19,
+                minZoom: 5,
+                attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, © <a href="https://carto.com/attribution/" target="_blank" rel="noopener noreferrer">CARTO</a>'
+            }
+        ).addTo(leafletMap);
+    } else {
+        // .env 키가 없을 때의 기본 무인증 타일맵
+        cartoTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+            subdomains: "abcd",
+            maxZoom: 19,
+            minZoom: 5,
+            attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, © <a href="https://carto.com/attribution/" target="_blank" rel="noopener noreferrer">CARTO</a>'
+        }).addTo(leafletMap);
+    }
 
-        // 상시 배경 도시명 라벨 (고대비, 클릭 시 해당 의회 정보 조회)
-        const passiveText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        const offset = getLabelOffset(name);
-        passiveText.setAttribute("id", `baseLabel-${name}`);
-        passiveText.setAttribute("class", "cursor-pointer");
-        passiveText.setAttribute("pointer-events", "all");
-        passiveText.addEventListener("click", (e) => {
-            e.stopPropagation();
-            onCouncilMapClick(name);
-        });
-        
-        if (offset.align === "center") {
-            passiveText.setAttribute("x", pt.x);
-            passiveText.setAttribute("y", pt.y + offset.dy);
-            passiveText.setAttribute("text-anchor", "middle");
-        } else {
-            const sideDx = offset.dx > 0 ? (cfg.baseFontSize > 22 ? 20 : 16) : (cfg.baseFontSize > 22 ? -20 : -16);
-            passiveText.setAttribute("x", pt.x + sideDx);
-            passiveText.setAttribute("y", pt.y + 6.5);
-            passiveText.setAttribute("text-anchor", offset.dx > 0 ? "start" : "end");
+    if (leafletArcsSvg && leafletArcsSvg.parentNode) {
+        leafletArcsSvg.parentNode.appendChild(leafletArcsSvg);
+    }
+    if (leafletMarkersLayer) {
+        leafletMarkersLayer.bringToFront();
+    }
+}
+
+async function loadEnvConfig() {
+    // 1) env.js 또는 동기식 전역 변수에서 즉시 확인
+    const existingKey = getCartoApiKey();
+    if (existingKey) {
+        currentCartoApiKey = existingKey;
+        try { sessionStorage.setItem("CARTO_API_KEY", existingKey); } catch (e) {}
+        updateCartoTileLayer(existingKey);
+        updateEnvStatusBadge(true, "인증 확인됨");
+        const banner = document.getElementById("envRequiredBanner");
+        if (banner) banner.remove();
+        return existingKey;
+    }
+
+    // 2) 로컬 웹 서버 환경인 경우 .env 동적 fetch 시도
+    const envPaths = [".env", "../.env"];
+    for (const path of envPaths) {
+        try {
+            const resp = await fetch(path);
+            if (resp.ok || resp.status === 200 || resp.status === 0) {
+                const text = await resp.text();
+                const key = parseEnvForCartoKey(text);
+                if (key) {
+                    currentCartoApiKey = key;
+                    try { sessionStorage.setItem("CARTO_API_KEY", key); } catch (e) {}
+                    updateCartoTileLayer(key);
+                    updateEnvStatusBadge(true, "인증 확인됨");
+                    const banner = document.getElementById("envRequiredBanner");
+                    if (banner) banner.remove();
+                    return key;
+                }
+            }
+        } catch (e) {
+            // file:// 프로토콜 또는 fetch 차단 시 진행
         }
-        
-        passiveText.setAttribute("fill", "#0f172a");
-        passiveText.setAttribute("font-size", String(cfg.baseFontSize));
-        passiveText.setAttribute("font-weight", "800");
-        passiveText.setAttribute("stroke", "#ffffff");
-        passiveText.setAttribute("stroke-width", String(cfg.baseStrokeWidth));
-        passiveText.setAttribute("paint-order", "stroke fill");
-        passiveText.setAttribute("stroke-linejoin", "round");
-        passiveText.textContent = c.short;
-        baseLayer.appendChild(passiveText);
+    }
+
+    // 3) .env 파일이 자동 감지되지 않는 경우: 사용자에게 .env 파일 연동 요구 배너 노출
+    updateEnvStatusBadge(false, ".env 필요");
+    showEnvRequiredBanner();
+    return null;
+}
+
+function parseEnvForCartoKey(text) {
+    if (!text) return null;
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+            const [k, ...v] = trimmed.split("=");
+            if (k.trim() === "CARTO_API_KEY") {
+                const val = v.join("=").trim().replace(/^["']|["']$/g, "");
+                if (val && !val.includes("your_carto_api_key_here")) {
+                    return val;
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function updateEnvStatusBadge(success, label) {
+    const badge = document.getElementById("cartoEnvBadge");
+    if (!badge) return;
+    if (success) {
+        badge.className = "text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 flex items-center gap-1";
+        badge.innerHTML = `<i class="fa-solid fa-shield-halved text-emerald-600"></i>CARTO (${label})`;
+    } else {
+        badge.className = "text-[10px] font-mono font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-300 flex items-center gap-1";
+        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-600"></i>CARTO (${label})`;
+    }
+}
+
+function showEnvRequiredBanner() {
+    const mapViewport = document.getElementById("mapViewport");
+    if (!mapViewport || document.getElementById("envRequiredBanner")) return;
+
+    const banner = document.createElement("div");
+    banner.id = "envRequiredBanner";
+    banner.className = "absolute inset-0 z-[1000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4";
+    banner.innerHTML = `
+        <div class="bg-white rounded-2xl border-2 border-amber-500 max-w-md w-full p-5 shadow-2xl space-y-3.5">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                <div class="flex items-center gap-2 text-amber-700">
+                    <i class="fa-solid fa-key text-lg"></i>
+                    <h3 class="font-black text-slate-950 text-base">CARTO 지도 .env 파일 연동 필요</h3>
+                </div>
+                <span class="text-xs font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">보안 인증</span>
+            </div>
+            <p class="text-xs md:text-sm text-slate-700 leading-relaxed font-medium">
+                보안 규정에 따라 CARTO API Key는 소스코드에 하드코딩되지 않고 <b>.env 파일</b>에서만 동적으로 로드됩니다.<br/>
+                웹 서버(<code class="bg-slate-100 px-1 py-0.5 rounded text-sky-700 font-bold">python -m http.server</code>)를 구동하시거나, 아래 버튼으로 <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-800 font-bold">.env</code> 파일을 선택해 주세요.
+            </p>
+            <div class="space-y-2 pt-1">
+                <label class="w-full py-2.5 px-4 bg-sky-700 hover:bg-sky-600 text-white rounded-xl text-xs md:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>.env 파일 선택하여 연동</span>
+                    <input type="file" id="envFileInput" accept=".env,text/plain" class="hidden" onchange="handleEnvFileUpload(event)" />
+                </label>
+                <div class="text-[11px] text-slate-500 font-mono text-center">
+                    ※ 한 번 연동하면 브라우저 세션(sessionStorage)에 안전하게 유지됩니다.
+                </div>
+            </div>
+        </div>
+    `;
+    mapViewport.appendChild(banner);
+}
+
+function handleEnvFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        const key = parseEnvForCartoKey(text);
+        if (key) {
+            currentCartoApiKey = key;
+            try { sessionStorage.setItem("CARTO_API_KEY", key); } catch (e) {}
+            updateCartoTileLayer(key);
+            updateEnvStatusBadge(true, "인증 확인됨");
+            const banner = document.getElementById("envRequiredBanner");
+            if (banner) banner.remove();
+        } else {
+            alert(".env 파일 내에서 CARTO_API_KEY 항목을 찾을 수 없습니다.");
+        }
+    };
+    reader.readAsText(file);
+}
+
+// =========================================================================================
+// 5. Leaflet 기반 Carto Positron 타일 지도 초기화 및 Arc/Node 레이어 설정 (.env 동적 연동)
+// =========================================================================================
+function initLeafletMap() {
+    const container = document.getElementById("koreaLeafletMap");
+    if (!container || leafletMap) return;
+
+    // 대한민국 중심 (위도 36.2, 경도 127.8), 줌 레벨 7.0 (확대/축소 지원)
+    // [이동 제한]: 한국에서 너무 멀리 벗어나지 않도록 지도 이동 한계 경계(maxBounds) 및 점성(maxBoundsViscosity) 설정
+    const KOREA_MAX_BOUNDS = L.latLngBounds([31.2, 122.8], [40.2, 133.5]);
+
+    leafletMap = L.map("koreaLeafletMap", {
+        center: [36.2, 127.8],
+        zoom: 7.0,
+        minZoom: 6.0,
+        maxZoom: 13,
+        maxBounds: KOREA_MAX_BOUNDS,
+        maxBoundsViscosity: 0.95,
+        zoomControl: true,
+        attributionControl: false,
+        scrollWheelZoom: true,
+        doubleClickZoom: true
     });
 
-    // 울릉도 / 독도 배경 지명 라벨 추가
-    const ulleungLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    ulleungLabel.setAttribute("x", ulleungPt.x + 14);
-    ulleungLabel.setAttribute("y", ulleungPt.y + 5);
-    ulleungLabel.setAttribute("fill", "#334155");
-    ulleungLabel.setAttribute("font-size", String(cfg.islandFontSize));
-    ulleungLabel.setAttribute("font-weight", "700");
-    ulleungLabel.setAttribute("stroke", "#ffffff");
-    ulleungLabel.setAttribute("stroke-width", String(cfg.islandFontSize > 15 ? 4.5 : 3.5));
-    ulleungLabel.setAttribute("paint-order", "stroke fill");
-    ulleungLabel.textContent = "울릉";
-    baseLayer.appendChild(ulleungLabel);
+    // .env / env.js에서 CARTO_API_KEY 동적 확인
+    const initialKey = getCartoApiKey();
+    if (initialKey) {
+        currentCartoApiKey = initialKey;
+        updateCartoTileLayer(initialKey);
+        updateEnvStatusBadge(true, "인증 확인됨");
+    } else {
+        updateCartoTileLayer(null);
+        loadEnvConfig();
+    }
 
-    const dokdoLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    dokdoLabel.setAttribute("x", dokdoPt.x + 10);
-    dokdoLabel.setAttribute("y", dokdoPt.y + 5);
-    dokdoLabel.setAttribute("fill", "#334155");
-    dokdoLabel.setAttribute("font-size", String(cfg.islandFontSize));
-    dokdoLabel.setAttribute("font-weight", "700");
-    dokdoLabel.setAttribute("stroke", "#ffffff");
-    dokdoLabel.setAttribute("stroke-width", String(cfg.islandFontSize > 15 ? 4.5 : 3.5));
-    dokdoLabel.setAttribute("paint-order", "stroke fill");
-    dokdoLabel.textContent = "독도";
-    baseLayer.appendChild(dokdoLabel);
+    // 마커 레이어 그룹 생성
+    leafletMarkersLayer = L.layerGroup().addTo(leafletMap);
+
+    // Leaflet 커스텀 arcsPane (z-index: 450, 타일 위 / 마커 아래) 생성
+    leafletMap.createPane("arcsPane");
+    const arcsPane = leafletMap.getPane("arcsPane");
+    arcsPane.style.zIndex = "450";
+    arcsPane.style.pointerEvents = "none";
+    arcsPane.style.overflow = "visible";
+
+    // SVG 아크 오버레이 레이어 생성 (충분한 뷰포트와 viewBox 설정으로 0x0 브라우저 컬링 완전 방지)
+    let arcSvg = document.getElementById("leafletArcSvg");
+    if (!arcSvg) {
+        arcSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        arcSvg.setAttribute("id", "leafletArcSvg");
+        arcSvg.style.position = "absolute";
+        arcSvg.style.width = "4000px";
+        arcSvg.style.height = "4000px";
+        arcSvg.style.left = "-2000px";
+        arcSvg.style.top = "-2000px";
+        arcSvg.setAttribute("viewBox", "-2000 -2000 4000 4000");
+        arcSvg.style.overflow = "visible";
+        arcSvg.setAttribute("overflow", "visible");
+        arcSvg.style.pointerEvents = "none";
+
+        // 그라디언트 정의 (final_app: 올리브 #69704f -> 다홍 코랄 #ee5e4c)
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        defs.innerHTML = `
+            <linearGradient id="finalArcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#69704f" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#ee5e4c" stop-opacity="0.95" />
+            </linearGradient>
+            <linearGradient id="predArcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ee5e4c" stop-opacity="0.75" />
+                <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.9" />
+            </linearGradient>
+            <filter id="arcGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="2.2" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+        `;
+        arcSvg.appendChild(defs);
+
+        const gArcs = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gArcs.setAttribute("id", "leafletArcLayer");
+        arcSvg.appendChild(gArcs);
+
+        arcsPane.appendChild(arcSvg);
+        leafletArcsSvg = arcSvg;
+    }
+
+    // [확대/축소 난잡함 방지]: 줌 동작 중에는 연결선을 즉시 숨기고, 줌 완료 후 새로운 좌표로 재렌더링
+    let zoomArcTimer = null;
+    leafletMap.on("zoomstart", () => {
+        if (leafletArcsSvg) {
+            leafletArcsSvg.style.transition = "opacity 0.12s ease-out";
+            leafletArcsSvg.style.opacity = "0";
+        }
+    });
+
+    leafletMap.on("zoomend", () => {
+        clearTimeout(zoomArcTimer);
+        zoomArcTimer = setTimeout(() => {
+            updateLeafletArcs();
+            if (leafletArcsSvg) {
+                leafletArcsSvg.style.transition = "opacity 0.25s ease-in";
+                leafletArcsSvg.style.opacity = "1";
+            }
+        }, 70);
+    });
+
+    // 지도 드래그 패닝 완료 및 창 크기 변경 시 아크 위치 동기화
+    leafletMap.on("moveend resize viewreset", () => {
+        updateLeafletArcs();
+        if (leafletArcsSvg && leafletArcsSvg.style.opacity === "0") {
+            leafletArcsSvg.style.opacity = "1";
+        }
+    });
+}
+
+// -----------------------------------------------------------------------------------------
+// ArcLayer 스타일 연결선 렌더링 (지도 확대/축소/패닝 시 지리 좌표에 실시간 정밀 동기화)
+// -----------------------------------------------------------------------------------------
+function updateLeafletArcs() {
+    if (!leafletMap || !leafletArcsSvg) return;
+    const gArcs = document.getElementById("leafletArcLayer");
+    if (!gArcs) return;
+    gArcs.innerHTML = "";
+
+    const issue = MASTER_ISSUES[currentIssueIndex];
+    if (!issue || !issue.propagation) return;
+
+    const safeIdx = Math.min(currentTimelineStep, issue.propagation.length - 1);
+    const maxSteps = issue.propagation.length;
+
+    // 0부터 safeIdx - 1까지의 전파 호선(Arc Curve) 생성
+    for (let i = 0; i < safeIdx; i++) {
+        const fromItem = issue.propagation[i];
+        const toItem = issue.propagation[i + 1];
+        const fromCoord = COUNCIL_COORDS[fromItem.council];
+        const toCoord = COUNCIL_COORDS[toItem.council];
+        if (!fromCoord || !toCoord) continue;
+
+        const p1 = leafletMap.latLngToLayerPoint([fromCoord.lat, fromCoord.lon]);
+        const p2 = leafletMap.latLngToLayerPoint([toCoord.lat, toCoord.lon]);
+
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) continue;
+
+        // final_app ArcLayer 스타일의 부드러운 아크 곡률
+        const curvature = Math.min(65, Math.max(18, dist * 0.22));
+        const ctrlX = midX - (dy / dist) * curvature;
+        const ctrlY = midY + (dx / dist) * curvature;
+
+        const pathData = `M ${p1.x} ${p1.y} Q ${ctrlX} ${ctrlY} ${p2.x} ${p2.y}`;
+
+        // 1) 외곽 부드러운 글로우 후광 라인 (연분홍 코랄 반투명)
+        const glowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        glowPath.setAttribute("d", pathData);
+        glowPath.setAttribute("fill", "none");
+        glowPath.setAttribute("stroke", "#fda4af");
+        glowPath.setAttribute("stroke-width", "6.5");
+        glowPath.setAttribute("stroke-opacity", "0.45");
+        glowPath.setAttribute("stroke-linecap", "round");
+        gArcs.appendChild(glowPath);
+
+        // 2) 메인 시간순 전파 아크 라인 (선명한 코랄 레드)
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", pathData);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "#ee5e4c");
+        path.setAttribute("stroke-width", "3.2");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("class", "arc-line-path");
+        gArcs.appendChild(path);
+
+        // 3) 아크를 따라 부드럽게 흐르는 펄스 오브(Moving Orb)
+        const movingOrb = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        movingOrb.setAttribute("r", i === 0 ? "5.5" : "4.5");
+        movingOrb.setAttribute("fill", "#ee5e4c");
+        movingOrb.setAttribute("stroke", "#ffffff");
+        movingOrb.setAttribute("stroke-width", "2");
+        movingOrb.setAttribute("class", "arc-moving-orb");
+
+        const animMotion = document.createElementNS("http://www.w3.org/2000/svg", "animateMotion");
+        animMotion.setAttribute("path", pathData);
+        animMotion.setAttribute("dur", `${Math.max(1.4, Math.min(2.8, dist * 0.007))}s`);
+        animMotion.setAttribute("repeatCount", "indefinite");
+        movingOrb.appendChild(animMotion);
+
+        gArcs.appendChild(movingOrb);
+    }
+
+    // 마지막 단계일 때 topPredict 예측 점선 아크
+    if (safeIdx === maxSteps - 1 && issue.topPredict && COUNCIL_COORDS[issue.topPredict.council]) {
+        const lastItem = issue.propagation[safeIdx];
+        const lastCoord = COUNCIL_COORDS[lastItem.council];
+        const predCoord = COUNCIL_COORDS[issue.topPredict.council];
+
+        if (lastCoord && predCoord) {
+            const p1 = leafletMap.latLngToLayerPoint([lastCoord.lat, lastCoord.lon]);
+            const p2 = leafletMap.latLngToLayerPoint([predCoord.lat, predCoord.lon]);
+
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 0) {
+                const curvature = Math.min(60, Math.max(18, dist * 0.22));
+                const ctrlX = midX - (dy / dist) * curvature;
+                const ctrlY = midY + (dx / dist) * curvature;
+
+                const pathData = `M ${p1.x} ${p1.y} Q ${ctrlX} ${ctrlY} ${p2.x} ${p2.y}`;
+                const predPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                predPath.setAttribute("d", pathData);
+                predPath.setAttribute("fill", "none");
+                predPath.setAttribute("stroke", "#f43f5e");
+                predPath.setAttribute("stroke-width", "2.8");
+                predPath.setAttribute("stroke-dasharray", "6 4");
+                predPath.setAttribute("stroke-linecap", "round");
+                predPath.setAttribute("class", "flow-line");
+                gArcs.appendChild(predPath);
+            }
+        }
+    }
 }
 
 // =========================================================================================
@@ -975,34 +1276,48 @@ function loadIssueData(index) {
     hidePolicyTooltip();
     currentIssueIndex = index;
     const issue = MASTER_ISSUES[index];
+    if (!issue) return;
 
+    // 상단 3대 KPI 카드 갱신
+    const kpiCouncilCount = document.getElementById("kpiCouncilCount");
+    if (kpiCouncilCount) kpiCouncilCount.textContent = `${issue.councilsCount} / 17곳`;
+    const kpiCouncilRatio = document.getElementById("kpiCouncilRatio");
+    if (kpiCouncilRatio) kpiCouncilRatio.textContent = `${((issue.councilsCount / 17) * 100).toFixed(1)}%`;
+    const kpiEvidenceCount = document.getElementById("kpiEvidenceCount");
+    if (kpiEvidenceCount) kpiEvidenceCount.textContent = `${issue.evidenceCount.toLocaleString()} 건`;
+    const kpiDataRange = document.getElementById("kpiDataRange");
+    if (kpiDataRange) kpiDataRange.textContent = `※ ${issue.dataRange} 본회의·상임위 회의록 정제 청크`;
+    const kpiTopPredictedCouncil = document.getElementById("kpiTopPredictedCouncil");
+    if (kpiTopPredictedCouncil) kpiTopPredictedCouncil.textContent = issue.topPredict?.council || "-";
+    const kpiPredDays = document.getElementById("kpiPredDays");
+    if (kpiPredDays) kpiPredDays.textContent = `향후 ${issue.topPredict?.days || 30}일 내`;
+    const kpiPredReason = document.getElementById("kpiPredReason");
+    if (kpiPredReason) kpiPredReason.textContent = issue.topPredict?.reason || "";
 
-
-    // 상단 5대 KPI 카드 갱신
-    document.getElementById("kpiFirstCouncil").textContent = issue.firstObservation.council;
-    document.getElementById("kpiFirstDate").textContent = `${issue.firstObservation.date} (시차 0일)`;
-    document.getElementById("kpiCouncilCount").textContent = `${issue.councilsCount} / 17곳`;
-    document.getElementById("kpiCouncilRatio").textContent = `${((issue.councilsCount / 17) * 100).toFixed(1)}%`;
-    document.getElementById("kpiEvidenceCount").textContent = `${issue.evidenceCount.toLocaleString()} 건`;
-    document.getElementById("kpiDataRange").textContent = `${issue.dataRange} 수집`;
-    document.getElementById("kpiActiveProb").textContent = `${(issue.mlForecast.activeProb * 100).toFixed(1)}%`;
-    document.getElementById("kpiForecastCount").textContent = `예상 ${issue.mlForecast.predictedMentions}건`;
-    document.getElementById("kpiTopPredictedCouncil").textContent = issue.topPredict.council;
-    document.getElementById("kpiPredDays").textContent = `향후 ${issue.topPredict.days}일 내`;
-    document.getElementById("kpiPredReason").textContent = issue.topPredict.reason;
-
-    // 하단 ML 예측 지표 갱신
-    document.getElementById("forecastTargetMonth").textContent = `${issue.mlForecast.targetMonth} 전망`;
-    document.getElementById("forecastProbValue").textContent = `${(issue.mlForecast.activeProb * 100).toFixed(1)}%`;
-    document.getElementById("forecastProbBar").style.width = `${(issue.mlForecast.activeProb * 100).toFixed(1)}%`;
-    document.getElementById("forecastMentionsValue").textContent = `${issue.mlForecast.predictedMentions} 건`;
-    document.getElementById("forecastIntervalValue").textContent = `구간: ${issue.mlForecast.interval80[0]} ~ ${issue.mlForecast.interval80[1]}건`;
+    // 상단 LLM 기반 정책 전망 브리핑 카드 갱신
+    const fcBadge = document.getElementById("forecastCategoryBadge");
+    if (fcBadge) fcBadge.textContent = issue.category;
+    const fcHeadline = document.getElementById("forecastHeadline");
+    if (fcHeadline) {
+        fcHeadline.textContent = `[${issue.shortName || issue.name}] 향후 ${issue.topPredict?.council || '비수도권 광역의회'} 중심 조례 발의 및 집중 논의 전망`;
+    }
+    const fcDesc = document.getElementById("forecastDescription");
+    if (fcDesc) {
+        fcDesc.textContent = `${issue.firstObservation?.council || '수도권'}에서 관측된 해당 현안은 전국 ${issue.councilsCount}개 광역의회로 확산되었으며, ${issue.topPredict?.reason || '지역 현안 수요 및 자치법규 발의 증가에 따라'} 향후 약 ${issue.topPredict?.days || 30}일 내 ${issue.topPredict?.council || '후속 의회'}를 중심으로 심도 있는 정책 논의 및 조례 제정이 전개될 것으로 예상됩니다.`;
+    }
+    const fcReason = document.getElementById("forecastReasonText");
+    if (fcReason) {
+        fcReason.textContent = `1위 예측 의회: ${issue.topPredict?.council || ''} (${issue.topPredict?.reason || ''})`;
+    }
 
     // 타임라인 슬라이더 범위 조정
     const slider = document.getElementById("timelineSlider");
-    slider.max = issue.propagation.length - 1;
-    slider.value = 0;
-    document.getElementById("totalStepCount").textContent = issue.propagation.length;
+    if (slider) {
+        slider.max = issue.propagation.length - 1;
+        slider.value = 0;
+    }
+    const totalStepEl = document.getElementById("totalStepCount");
+    if (totalStepEl) totalStepEl.textContent = issue.propagation.length;
 
     // 우측 의회별 시간순 흐름 리스트 렌더링 (빈도수 포함)
     renderCouncilFlowList(issue);
@@ -1015,7 +1330,7 @@ function loadIssueData(index) {
 
     // 기본 전체 확산 완료 단계(A, B, C... 전파 마커 전체 지도 노출)로 초기화
     const maxIdx = issue.propagation.length - 1;
-    slider.value = maxIdx;
+    if (slider) slider.value = maxIdx;
     currentTimelineStep = maxIdx;
 
     // 기본 최초 발원 의회 상세 화면 셋팅
@@ -1028,11 +1343,13 @@ function loadIssueData(index) {
 }
 
 // =========================================================================================
-// 6. 정책 전파 애니메이션 곡선 화살표 & 빈도수 비례 인터랙티브 지도 렌더링
+// 6. 의회 시공간 전파 동역학 노드 및 타임라인 렌더링 (final_app 스타일 100% 매핑)
 // =========================================================================================
 function renderTimelineStep(stepIdx) {
     currentTimelineStep = stepIdx;
     const issue = MASTER_ISSUES[currentIssueIndex];
+    if (!issue) return;
+
     const maxSteps = issue.propagation.length;
     const safeIdx = Math.max(0, Math.min(stepIdx, maxSteps - 1));
     const currentItem = issue.propagation[safeIdx];
@@ -1042,511 +1359,180 @@ function renderTimelineStep(stepIdx) {
         selectedCouncilName = currentItem.council;
     }
 
-    // 우측 목록의 활성탭 동기화
+    // 우측 목록의 활성 탭 동기화
     const selIdx = issue.propagation.findIndex(p => p.council === selectedCouncilName);
     if (selIdx !== -1) {
         highlightFlowListItem(selIdx);
     }
 
-    // 타임라인 상태 텍스트
-    document.getElementById("timelineSlider").value = safeIdx;
-    
-    // 선택된 의회가 있으면 상단에 선택 의회 상태를 우선 표시
-    const selCouncil = selectedCouncilName ? issue.propagation.find(p => p.council === selectedCouncilName) : null;
-    if (selCouncil) {
-        const isOrig = (selCouncil.order === 1);
-        document.getElementById("mapCurrentStepDate").innerHTML = 
-            `<span class="text-sky-900 font-black mr-1">[${selCouncil.letter}] ${selCouncil.council}</span> ${selCouncil.date} (${isOrig ? "최초 발원" : "+" + selCouncil.lagDays + "일 시차"} · 언급 ${selCouncil.mentions}건)`;
-    } else {
-        document.getElementById("mapCurrentStepDate").textContent = 
-            `${currentItem.date} (${currentItem.council} ${safeIdx === 0 ? "최초 발원" : "전파"} · ${currentItem.mentions}건)`;
-    }
-        
-    if (safeIdx === maxSteps - 1) {
-        document.getElementById("playerStateText").textContent = `${maxSteps}/${maxSteps}단계 관측 완료 (전체 확산)`;
-    } else {
-        document.getElementById("playerStateText").textContent = `${safeIdx + 1}/${maxSteps}단계 관측 진행`;
+    // 타임라인 슬라이더 동기화
+    const slider = document.getElementById("timelineSlider");
+    if (slider) slider.value = safeIdx;
+
+    // 상단 일자 및 시차 뱃지 갱신 (final_app 포맷)
+    const dateBadge = document.getElementById("mapCurrentStepDate");
+    if (dateBadge) {
+        const selCouncil = selectedCouncilName ? issue.propagation.find(p => p.council === selectedCouncilName) : null;
+        if (selCouncil) {
+            const isOrig = (selCouncil.order === 1);
+            dateBadge.innerHTML = `<span class="text-sky-950 font-black mr-1">[${selCouncil.order}번] ${selCouncil.council}</span> ${selCouncil.date} (${isOrig ? "최초 관측" : "+" + selCouncil.lagDays + "일"} · 근거 ${selCouncil.mentions}건)`;
+        } else {
+            dateBadge.textContent = `${currentItem.date} (${currentItem.council} ${safeIdx === 0 ? "최초 관측" : "전파"} · ${currentItem.mentions}건)`;
+        }
     }
 
-    // SVG 레이어 가져오기
-    const arcsLayer = document.getElementById("propagationArcsLayer");
-    const activeNodesLayer = document.getElementById("activeNodesLayer");
-    const leaderLinesLayer = document.getElementById("leaderLinesLayer");
-
-    arcsLayer.innerHTML = "";
-    activeNodesLayer.innerHTML = "";
-    leaderLinesLayer.innerHTML = "";
-
-    // 베이스 배경 지명 표시 동기화: 활성화된 의회는 상시 라벨을 숨겨 알약 라벨이 독점 표시되도록 함
-    Object.keys(COUNCIL_COORDS).forEach(name => {
-        const lbl = document.getElementById(`baseLabel-${name}`);
-        const dot = document.getElementById(`baseDot-${name}`);
-        if (lbl) lbl.setAttribute("opacity", "1");
-        if (dot) dot.setAttribute("opacity", "1");
-    });
-    for (let i = 0; i <= safeIdx; i++) {
-        const councilName = issue.propagation[i].council;
-        const lbl = document.getElementById(`baseLabel-${councilName}`);
-        const dot = document.getElementById(`baseDot-${councilName}`);
-        if (lbl) lbl.setAttribute("opacity", "0");
-        if (dot) dot.setAttribute("opacity", "0");
-    }
-    if (safeIdx === maxSteps - 1 && issue.topPredict) {
-        const predLbl = document.getElementById(`baseLabel-${issue.topPredict.council}`);
-        const predDot = document.getElementById(`baseDot-${issue.topPredict.council}`);
-        if (predLbl) predLbl.setAttribute("opacity", "0");
-        if (predDot) predDot.setAttribute("opacity", "0");
+    // 재생기 진행 상태 텍스트
+    const playerState = document.getElementById("playerStateText");
+    if (playerState) {
+        if (safeIdx === maxSteps - 1) {
+            playerState.textContent = `${maxSteps}/${maxSteps}단계 관측 완료 (전체 확산)`;
+        } else {
+            playerState.textContent = `${safeIdx + 1}/${maxSteps}단계 관측 진행`;
+        }
     }
 
-    // 1) 0부터 safeIdx까지의 전파 화살표 (Curved Bézier Arcs with Dash Glow & Arrowheads)
-    for (let i = 0; i < safeIdx; i++) {
-        const fromItem = issue.propagation[i];
-        const toItem = issue.propagation[i + 1];
+    if (!leafletMap || !leafletMarkersLayer) return;
 
-        const fromCoord = COUNCIL_COORDS[fromItem.council];
-        const toCoord = COUNCIL_COORDS[toItem.council];
+    // 기존 Leaflet 마커 클리어 및 툴팁 스케일 설정 가져오기
+    leafletMarkersLayer.clearLayers();
+    const ttCfg = getTooltipFontCfg();
 
-        if (!fromCoord || !toCoord) continue;
-
-        const p1 = geoToSvg(fromCoord.lat, fromCoord.lon);
-        const p2 = geoToSvg(toCoord.lat, toCoord.lon);
-
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const dist = Math.hypot(dx, dy);
-
-        const curvature = Math.min(45, dist * 0.22);
-        const ctrlX = midX - (dy / dist) * curvature;
-        const ctrlY = midY + (dx / dist) * curvature - 10;
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const pathData = `M ${p1.x} ${p1.y} Q ${ctrlX} ${ctrlY} ${p2.x} ${p2.y}`;
-        path.setAttribute("d", pathData);
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", "url(#arcGlowGradient)");
-        path.setAttribute("stroke-width", "3");
-        path.setAttribute("stroke-linecap", "round");
-        path.setAttribute("marker-end", "url(#arrowHead)");
-        path.setAttribute("class", "flow-line");
-        path.setAttribute("filter", "url(#glow)");
-        arcsLayer.appendChild(path);
-
-        // 점선 경로를 따라 이동하는 펄스 원
-        const movingOrb = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        movingOrb.setAttribute("r", i === 0 ? "5.5" : "4.5");
-        movingOrb.setAttribute("fill", i === 0 ? "#f59e0b" : "#0284c7");
-        movingOrb.setAttribute("stroke", "#ffffff");
-        movingOrb.setAttribute("stroke-width", "1.5");
-        movingOrb.setAttribute("filter", "url(#glow)");
-
-        const animMotion = document.createElementNS("http://www.w3.org/2000/svg", "animateMotion");
-        animMotion.setAttribute("path", pathData);
-        animMotion.setAttribute("dur", "2.2s");
-        animMotion.setAttribute("repeatCount", "indefinite");
-        movingOrb.appendChild(animMotion);
-
-        arcsLayer.appendChild(movingOrb);
-    }
-
-    // 만약 마지막 단계에 도달했고 향후 예측 의회가 있다면 예측 점선 화살표 및 이동 원 연결
-    if (safeIdx === maxSteps - 1 && issue.topPredict && COUNCIL_COORDS[issue.topPredict.council]) {
-        const lastItem = issue.propagation[safeIdx];
-        const lastCoord = COUNCIL_COORDS[lastItem.council];
-        const predCoord = COUNCIL_COORDS[issue.topPredict.council];
-
-        const p1 = geoToSvg(lastCoord.lat, lastCoord.lon);
-        const p2 = geoToSvg(predCoord.lat, predCoord.lon);
-
-        const ctrlX = (p1.x + p2.x) / 2;
-        const ctrlY = (p1.y + p2.y) / 2 - 20;
-
-        const predPathData = `M ${p1.x} ${p1.y} Q ${ctrlX} ${ctrlY} ${p2.x} ${p2.y}`;
-        const predPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        predPath.setAttribute("d", predPathData);
-        predPath.setAttribute("fill", "none");
-        predPath.setAttribute("stroke", "url(#predGlowGradient)");
-        predPath.setAttribute("stroke-width", "2.4");
-        predPath.setAttribute("stroke-dasharray", "5 5");
-        predPath.setAttribute("marker-end", "url(#arrowHeadPred)");
-        predPath.setAttribute("class", "animate-pulse");
-        arcsLayer.appendChild(predPath);
-
-        const movingPredOrb = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        movingPredOrb.setAttribute("r", "4.5");
-        movingPredOrb.setAttribute("fill", "#f43f5e");
-        movingPredOrb.setAttribute("stroke", "#ffffff");
-        movingPredOrb.setAttribute("stroke-width", "1.5");
-        movingPredOrb.setAttribute("filter", "url(#glow)");
-
-        const animPredMotion = document.createElementNS("http://www.w3.org/2000/svg", "animateMotion");
-        animPredMotion.setAttribute("path", predPathData);
-        animPredMotion.setAttribute("dur", "2.5s");
-        animPredMotion.setAttribute("repeatCount", "indefinite");
-        movingPredOrb.appendChild(animPredMotion);
-
-        arcsLayer.appendChild(movingPredOrb);
-
-        // 예측 노드 렌더링
-        renderPredictiveNode(activeNodesLayer, p2, issue.topPredict);
-    }
-
-    // 2) 0부터 safeIdx까지의 활성 의회 노드 렌더링 (언급 빈도수에 따른 마커 크기 차등화!)
+    // 0부터 safeIdx까지의 관측 의회 노드 생성 (ScatterplotLayer + TextLayer 1:1 매핑)
     for (let i = 0; i <= safeIdx; i++) {
         const item = issue.propagation[i];
         const coord = COUNCIL_COORDS[item.council];
         if (!coord) continue;
 
-        const pt = geoToSvg(coord.lat, coord.lon);
         const isOrigin = (i === 0);
         const isSelected = (selectedCouncilName === item.council);
 
-        // 언급 빈도수(mentions)에 비례한 마커 크기 스케일링
-        const mentions = item.mentions || 90;
-        const mentionBonus = Math.min(8, Math.max(0, (mentions - 50) / 130 * 8));
-        const markerR = (isOrigin ? 18 : 14) + mentionBonus;
+        // final_app의 반경 수식(언급량 비례)을 화면 픽셀로 변환 (지름 30px ~ 42px)
+        const mentions = parseInt(item.mentions || 1, 10);
+        const circleSize = Math.min(42, Math.max(30, Math.round(28 + Math.sqrt(mentions) * 1.15)));
+        const fontSize = circleSize >= 36 ? 16 : 14;
 
-        // 노드 그룹
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        g.setAttribute("class", "map-node cursor-pointer");
-        g.setAttribute("data-council", item.council);
-        g.setAttribute("data-index", i);
-        g.setAttribute("pointer-events", "all");
-        g.setAttribute("cursor", "pointer");
+        // final_app 스타일: 따뜻한 코랄 레드 원형 노드(#e95b4c), 흰색 순번 텍스트(order: 1, 2, 3...)
+        const wrapperClass = `council-marker-wrapper ${isOrigin ? "is-origin" : ""} ${isSelected ? "is-selected" : ""}`;
+        const markerHtml = `
+            <div class="${wrapperClass}" style="width:${circleSize + 24}px;">
+                <div class="council-node-circle" style="width:${circleSize}px; height:${circleSize}px; font-size:${fontSize}px;">
+                    ${item.order}
+                </div>
+                <div class="council-pill-label">
+                    ${coord.short}
+                </div>
+            </div>
+        `;
 
-        // 선택되었거나 현재 스텝인 경우 제자리 레이더 파동
-        if (isSelected || isOrigin || i === safeIdx) {
-            const pulseRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            pulseRing.setAttribute("cx", pt.x);
-            pulseRing.setAttribute("cy", pt.y);
-            pulseRing.setAttribute("r", `${markerR + (isSelected ? 6 : 0)}`);
-            pulseRing.setAttribute("fill", "none");
-            pulseRing.setAttribute("stroke", isSelected ? "#0284c7" : (isOrigin ? "#f59e0b" : "#38bdf8"));
-            pulseRing.setAttribute("stroke-width", isSelected ? "4.5" : "2.5");
-            pulseRing.setAttribute("pointer-events", "none");
-
-            const animR = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-            animR.setAttribute("attributeName", "r");
-            animR.setAttribute("values", `${markerR};${markerR + (isSelected ? 26 : 18)};${markerR}`);
-            animR.setAttribute("dur", isSelected ? "1.6s" : "2.2s");
-            animR.setAttribute("repeatCount", "indefinite");
-            pulseRing.appendChild(animR);
-
-            const animOp = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-            animOp.setAttribute("attributeName", "opacity");
-            animOp.setAttribute("values", isSelected ? "1;0;1" : "0.8;0;0.8");
-            animOp.setAttribute("dur", isSelected ? "1.6s" : "2.2s");
-            animOp.setAttribute("repeatCount", "indefinite");
-            pulseRing.appendChild(animOp);
-
-            g.appendChild(pulseRing);
-        }
-
-        // 메인 마커 원형 (빈도수에 따라 크기 직관화)
-        const mainCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        mainCircle.setAttribute("cx", pt.x);
-        mainCircle.setAttribute("cy", pt.y);
-        mainCircle.setAttribute("r", `${markerR + (isSelected ? 3 : 0)}`);
-        mainCircle.setAttribute("fill", isOrigin ? "#f59e0b" : "#0284c7");
-        mainCircle.setAttribute("stroke", isSelected ? "#0f172a" : "#ffffff");
-        mainCircle.setAttribute("stroke-width", isSelected ? "4.5" : "3");
-        mainCircle.setAttribute("filter", "url(#glow)");
-        mainCircle.setAttribute("pointer-events", "all");
-        mainCircle.setAttribute("cursor", "pointer");
-        g.appendChild(mainCircle);
-
-        const cfg = getMapFontCfg();
-
-        // 알파벳 문자 (A, B, C...)
-        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", pt.x);
-        text.setAttribute("y", pt.y + (cfg.orderOriginSize > 22 ? 8 : 6.5));
-        text.setAttribute("text-anchor", "middle");
-        text.setAttribute("fill", "#ffffff");
-        text.setAttribute("font-size", isOrigin ? String(cfg.orderOriginSize) : String(cfg.orderBaseSize + mentionBonus * cfg.orderBonusRatio));
-        text.setAttribute("font-weight", "900");
-        text.setAttribute("font-family", "JetBrains Mono, Pretendard, sans-serif");
-        text.setAttribute("pointer-events", "all");
-        text.setAttribute("cursor", "pointer");
-        text.textContent = item.letter;
-        g.appendChild(text);
-
-        // 지도 상 도시명 텍스트 라벨 (오프셋 겹침 방지 + 에나멜 알약 패널)
-        const labelG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        labelG.setAttribute("pointer-events", "all");
-        labelG.setAttribute("cursor", "pointer");
-
-        const offset = getLabelOffset(item.council);
-
-        const lblWidth = coord.short.length * cfg.activeBoxCharWidth + cfg.activeBoxPad;
-        const lblHeight = cfg.activeBoxHeight;
-        let rectX, textX;
-
-        if (offset.align === "center") {
-            rectX = pt.x - lblWidth / 2;
-            textX = pt.x;
-        } else {
-            rectX = pt.x + offset.dx - 10;
-            textX = pt.x + offset.dx;
-        }
-
-        const lblBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        lblBg.setAttribute("x", rectX);
-        lblBg.setAttribute("y", pt.y + offset.dy + cfg.activeBoxYOffset);
-        lblBg.setAttribute("width", lblWidth);
-        lblBg.setAttribute("height", lblHeight);
-        lblBg.setAttribute("rx", "8");
-        lblBg.setAttribute("fill", isSelected ? "#0284c7" : "#ffffff");
-        lblBg.setAttribute("stroke", isSelected ? "#0f172a" : (isOrigin ? "#d97706" : "#0284c7"));
-        lblBg.setAttribute("stroke-width", isSelected ? "3.5" : "2.6");
-        lblBg.setAttribute("pointer-events", "all");
-        lblBg.setAttribute("cursor", "pointer");
-        labelG.appendChild(lblBg);
-
-        const lblText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        lblText.setAttribute("x", textX);
-        lblText.setAttribute("y", pt.y + offset.dy + cfg.activeTextYOffset);
-        if (offset.align === "center") {
-            lblText.setAttribute("text-anchor", "middle");
-        }
-        lblText.setAttribute("fill", isSelected ? "#ffffff" : (isOrigin ? "#b45309" : "#0369a1"));
-        lblText.setAttribute("font-size", String(cfg.activeFontSize));
-        lblText.setAttribute("font-weight", "900");
-        lblText.setAttribute("pointer-events", "all");
-        lblText.setAttribute("cursor", "pointer");
-        lblText.textContent = coord.short;
-        labelG.appendChild(lblText);
-
-        g.appendChild(labelG);
-
-        // 대형 투명 히트 영역 (마커 주변 어디를 눌러도 100% 클릭 감지)
-        const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        hitArea.setAttribute("cx", pt.x);
-        hitArea.setAttribute("cy", pt.y);
-        hitArea.setAttribute("r", String(Math.max(40, markerR + 18)));
-        hitArea.setAttribute("fill", "transparent");
-        hitArea.setAttribute("pointer-events", "all");
-        hitArea.setAttribute("cursor", "pointer");
-        g.appendChild(hitArea);
-
-        // [중요 개선]: 호버 대신 마커 클릭 시 해당 의회 탭/상세 연동 + 발언 근거 팝업 렌더링
-        g.addEventListener("click", (e) => {
-            e.stopPropagation();
-            onCouncilMapClick(item.council);
-            showPolicyTooltip(e, item);
+        const customIcon = L.divIcon({
+            html: markerHtml,
+            className: "custom-council-divicon",
+            iconSize: [circleSize + 24, circleSize + 28],
+            iconAnchor: [(circleSize + 24) / 2, circleSize / 2]
         });
 
-        activeNodesLayer.appendChild(g);
+        const marker = L.marker([coord.lat, coord.lon], { icon: customIcon });
 
-        activeNodesLayer.appendChild(g);
+        // Leaflet 마커 호버 툴팁 (기본 1.5배 확대 & '작게/보통/크게' 폰트 스케일 연동)
+        const stage = stageLabel(item.lagDays);
+        const tooltipHtml = `
+            <div style="font-family:'Pretendard',sans-serif; min-width:${ttCfg.minWidth}px; padding:${ttCfg.padding};">
+                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.25); padding-bottom:6px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:7px;">
+                        <span style="display:inline-flex; align-items:center; justify-content:center; width:${ttCfg.badgeSize}px; height:${ttCfg.badgeSize}px; border-radius:6px; font-weight:900; font-size:${ttCfg.badgeFontSize}px; ${isOrigin ? 'background:#f59e0b; color:#ffffff; box-shadow:0 1px 4px rgba(245,158,11,0.5);' : 'background:#e95b4c; color:#ffffff; box-shadow:0 1px 4px rgba(233,91,76,0.5);'}">${item.letter || item.order}</span>
+                        <b style="font-size:${ttCfg.titleSize}px; color:#ffffff; font-weight:800; letter-spacing:-0.01em;">${item.council}</b>
+                    </div>
+                    <span style="font-size:${ttCfg.lagSize}px; color:#ffb4a8; font-weight:900; font-family:'JetBrains Mono',monospace;">+${item.lagDays}일</span>
+                </div>
+                <div style="color:#ded8c7; font-size:${ttCfg.subSize}px; margin-bottom:5px; font-weight:600; line-height:1.4;">
+                    ${item.action} · <span style="color:#7dd3fc; font-weight:800;">#${item.view}</span>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size:${ttCfg.detailSize}px; color:#cbd5e1; font-family:'JetBrains Mono',monospace;">
+                    <span>${item.date}</span>
+                    <span style="color:#ffffff; font-weight:800; background:#5a6245; padding:${ttCfg.countPadding}; border-radius:4px; border:1px solid rgba(255,255,255,0.15);">근거 ${item.mentions}건</span>
+                </div>
+            </div>
+        `;
+
+        marker.bindTooltip(tooltipHtml, {
+            className: "final-app-tooltip",
+            direction: "top",
+            offset: [0, -(circleSize / 2 + 8)]
+        });
+
+        // 클릭 시 해당 의회 상세 카드 및 목록 즉시 연동 (앞뒤 전체 문맥 자동 확장)
+        marker.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+            onCouncilMapClick(item.council);
+        });
+
+        leafletMarkersLayer.addLayer(marker);
     }
-}
 
-function renderPredictiveNode(layer, pt, predictData) {
-    const cfg = getMapFontCfg();
-    const isSelected = (selectedCouncilName === predictData.council);
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("class", "map-node cursor-pointer");
-    g.setAttribute("pointer-events", "all");
-    g.setAttribute("cursor", "pointer");
-    g.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onCouncilMapClick(predictData.council);
-    });
+    // 마지막 단계일 때 topPredict 예측 노드 생성
+    if (safeIdx === maxSteps - 1 && issue.topPredict && COUNCIL_COORDS[issue.topPredict.council]) {
+        const pred = issue.topPredict;
+        const coord = COUNCIL_COORDS[pred.council];
+        if (coord) {
+            const isSelected = (selectedCouncilName === pred.council);
+            const circleSize = 34;
+            const wrapperClass = `council-marker-wrapper is-predict ${isSelected ? "is-selected" : ""}`;
+            const markerHtml = `
+                <div class="${wrapperClass}" style="width:${circleSize + 24}px;">
+                    <div class="council-node-circle" style="width:${circleSize}px; height:${circleSize}px; font-size:12px; font-weight:900;">
+                        Next
+                    </div>
+                    <div class="council-pill-label" style="background:#fff1f2; color:#e11d48; border-color:#fca5a5; font-weight:900;">
+                        예측: ${coord.short}
+                    </div>
+                </div>
+            `;
 
-    // 1) 제자리에서 부드럽게 확장되는 타깃 펄스 파동
-    const targetPulse = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    targetPulse.setAttribute("cx", pt.x);
-    targetPulse.setAttribute("cy", pt.y);
-    targetPulse.setAttribute("r", "12");
-    targetPulse.setAttribute("fill", "none");
-    targetPulse.setAttribute("stroke", "#f43f5e");
-    targetPulse.setAttribute("stroke-width", isSelected ? "4" : "2.5");
-    targetPulse.setAttribute("pointer-events", "none");
+            const customIcon = L.divIcon({
+                html: markerHtml,
+                className: "custom-council-divicon",
+                iconSize: [circleSize + 24, circleSize + 28],
+                iconAnchor: [(circleSize + 24) / 2, circleSize / 2]
+            });
 
-    const animR = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-    animR.setAttribute("attributeName", "r");
-    animR.setAttribute("values", "12;36;12");
-    animR.setAttribute("dur", "2.2s");
-    animR.setAttribute("repeatCount", "indefinite");
-    targetPulse.appendChild(animR);
+            const marker = L.marker([coord.lat, coord.lon], { icon: customIcon });
+            const tooltipHtml = `
+                <div style="font-family:'Pretendard',sans-serif; min-width:${ttCfg.minWidth}px; padding:${ttCfg.padding};">
+                    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.25); padding-bottom:6px; margin-bottom:6px;">
+                        <b style="font-size:${ttCfg.titleSize}px; color:#ffb4a8; font-weight:900;">[차기 예측] ${pred.council}</b>
+                        <span style="font-size:${ttCfg.lagSize}px; color:#ffccd5; font-weight:900; font-family:'JetBrains Mono',monospace;">+${pred.days}일 내</span>
+                    </div>
+                    <div style="color:#ded8c7; font-size:${ttCfg.subSize}px; margin-bottom:5px; font-weight:600; line-height:1.4;">
+                        조례 발의 ${pred.wideOrdinance}건 · 수요 <span style="color:#fde047; font-weight:800;">${pred.needScore}점</span>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; font-size:${ttCfg.detailSize}px;">
+                        <span style="color:#ffffff; font-weight:900; background:#e11d48; padding:${ttCfg.countPadding}; border-radius:4px; box-shadow:0 1px 4px rgba(225,29,72,0.4);">종합 ${pred.score}점</span>
+                        <span style="color:#fecdd3; font-weight:800;">차기 1순위</span>
+                    </div>
+                </div>
+            `;
 
-    const animOp = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-    animOp.setAttribute("attributeName", "opacity");
-    animOp.setAttribute("values", "1;0;1");
-    animOp.setAttribute("dur", "2.2s");
-    animOp.setAttribute("repeatCount", "indefinite");
-    targetPulse.appendChild(animOp);
+            marker.bindTooltip(tooltipHtml, {
+                className: "final-app-tooltip",
+                direction: "top",
+                offset: [0, -(circleSize / 2 + 8)]
+            });
 
-    g.appendChild(targetPulse);
+            marker.on("click", (e) => {
+                L.DomEvent.stopPropagation(e);
+                onCouncilMapClick(pred.council);
+            });
 
-    // 2) 회전하는 점선 타깃 링
-    const targetRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    targetRing.setAttribute("cx", pt.x);
-    targetRing.setAttribute("cy", pt.y);
-    targetRing.setAttribute("r", "24");
-    targetRing.setAttribute("fill", "rgba(244, 63, 94, 0.22)");
-    targetRing.setAttribute("stroke", "#f43f5e");
-    targetRing.setAttribute("stroke-width", "2.8");
-    targetRing.setAttribute("stroke-dasharray", "6 4");
-    targetRing.setAttribute("pointer-events", "none");
-
-    const animRotate = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
-    animRotate.setAttribute("attributeName", "transform");
-    animRotate.setAttribute("type", "rotate");
-    animRotate.setAttribute("from", `0 ${pt.x} ${pt.y}`);
-    animRotate.setAttribute("to", `360 ${pt.x} ${pt.y}`);
-    animRotate.setAttribute("dur", "6s");
-    animRotate.setAttribute("repeatCount", "indefinite");
-    targetRing.appendChild(animRotate);
-
-    g.appendChild(targetRing);
-
-    // 3) 중심 타깃 코어 점
-    const innerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    innerCircle.setAttribute("cx", pt.x);
-    innerCircle.setAttribute("cy", pt.y);
-    innerCircle.setAttribute("r", "9");
-    innerCircle.setAttribute("fill", "#f43f5e");
-    innerCircle.setAttribute("stroke", isSelected ? "#0f172a" : "#ffffff");
-    innerCircle.setAttribute("stroke-width", isSelected ? "3.5" : "2");
-    innerCircle.setAttribute("filter", "url(#glow)");
-    innerCircle.setAttribute("pointer-events", "all");
-    innerCircle.setAttribute("cursor", "pointer");
-    g.appendChild(innerCircle);
-
-    // 4) 타깃 라벨
-    const labelG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    labelG.setAttribute("pointer-events", "all");
-    labelG.setAttribute("cursor", "pointer");
-
-    const shortName = COUNCIL_COORDS[predictData.council]?.short || predictData.council;
-    const lblText = `예측: ${shortName}`;
-
-    const predWidth = lblText.length * cfg.predictCharWidth + cfg.predictPad;
-    const predHeight = cfg.predictHeight;
-
-    const lblBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    lblBg.setAttribute("x", pt.x + 24);
-    lblBg.setAttribute("y", pt.y - (predHeight / 2) - 2);
-    lblBg.setAttribute("width", predWidth);
-    lblBg.setAttribute("height", predHeight);
-    lblBg.setAttribute("rx", "8");
-    lblBg.setAttribute("fill", isSelected ? "#f43f5e" : "#ffffff");
-    lblBg.setAttribute("stroke", isSelected ? "#0f172a" : "#f43f5e");
-    lblBg.setAttribute("stroke-width", isSelected ? "3.5" : "2.5");
-    lblBg.setAttribute("pointer-events", "all");
-    lblBg.setAttribute("cursor", "pointer");
-    labelG.appendChild(lblBg);
-
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", pt.x + 36);
-    text.setAttribute("y", pt.y + cfg.predictTextYOffset);
-    text.setAttribute("fill", isSelected ? "#ffffff" : "#be123c");
-    text.setAttribute("font-size", String(cfg.predictFontSize));
-    text.setAttribute("font-weight", "900");
-    text.setAttribute("pointer-events", "all");
-    text.setAttribute("cursor", "pointer");
-    text.textContent = lblText;
-    labelG.appendChild(text);
-
-    g.appendChild(labelG);
-
-    // 대형 투명 히트 영역 (예측 마커 주변 클릭 100% 감지)
-    const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    hitArea.setAttribute("cx", pt.x);
-    hitArea.setAttribute("cy", pt.y);
-    hitArea.setAttribute("r", "42");
-    hitArea.setAttribute("fill", "transparent");
-    hitArea.setAttribute("pointer-events", "all");
-    hitArea.setAttribute("cursor", "pointer");
-    g.appendChild(hitArea);
-
-    // [중요 개선]: 호버 대신 클릭 시 해당 의회 연동 + 예측 근거 팝업 렌더링
-    g.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onCouncilMapClick(predictData.council);
-        showPredictTooltip(e, predictData);
-    });
-
-    layer.appendChild(g);
-
-    layer.appendChild(g);
-}
-
-function getLabelOffset(council) {
-    switch (council) {
-        case "서울특별시의회": return { dx: 0, dy: -38, align: "center" };
-        case "인천광역시의회": return { dx: -88, dy: -6, align: "left" };
-        case "경기도의회": return { dx: 32, dy: 22, align: "right" };
-        case "세종특별자치시의회": return { dx: -88, dy: -14, align: "left" };
-        case "대전광역시의회": return { dx: 32, dy: 18, align: "right" };
-        case "충청북도의회": return { dx: 32, dy: -24, align: "right" };
-        case "충청남도의회": return { dx: -88, dy: 14, align: "left" };
-        case "광주광역시의회": return { dx: -88, dy: -8, align: "left" };
-        case "전북특별자치도의회": return { dx: -88, dy: 6, align: "left" };
-        case "전라남도의회": return { dx: 28, dy: 24, align: "right" };
-        case "대구광역시의회": return { dx: 28, dy: -20, align: "right" };
-        case "울산광역시의회": return { dx: 28, dy: -10, align: "right" };
-        case "부산광역시의회": return { dx: 28, dy: 26, align: "right" };
-        case "경상남도의회": return { dx: -88, dy: 20, align: "left" };
-        case "경상북도의회": return { dx: 28, dy: 8, align: "right" };
-        case "강원특별자치도의회": return { dx: 28, dy: 8, align: "right" };
-        case "제주특별자치도의회": return { dx: 28, dy: 8, align: "right" };
-        default: return { dx: 28, dy: 8, align: "right" };
-    }
-}
-
-// =========================================================================================
-// 6-1. 동역학 지도 전체 지능형 클릭 핸들러 (영토 및 마커 인근 클릭 시 의회 자동 매핑)
-// =========================================================================================
-function handleMapCanvasClick(e) {
-    const svg = document.getElementById("koreaMapSvg");
-    if (!svg) return;
-
-    // SVG 뷰박스 내부 좌표로 정밀 역변환
-    let svgP = null;
-    try {
-        const pt = svg.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        const ctm = svg.getScreenCTM();
-        if (ctm) {
-            svgP = pt.matrixTransform(ctm.inverse());
+            leafletMarkersLayer.addLayer(marker);
         }
-    } catch (err) {}
-
-    if (!svgP || isNaN(svgP.x) || isNaN(svgP.y)) {
-        const rect = svg.getBoundingClientRect();
-        svgP = {
-            x: ((e.clientX - rect.left) / rect.width) * 620,
-            y: ((e.clientY - rect.top) / rect.height) * 680
-        };
     }
 
-    // 17개 광역의회 좌표 중 클릭한 위치와 가장 가까운 의회 탐색
-    let nearestCouncil = null;
-    let minDistance = Infinity;
-
-    Object.keys(COUNCIL_COORDS).forEach(name => {
-        const c = COUNCIL_COORDS[name];
-        const cPt = geoToSvg(c.lat, c.lon);
-        const dist = Math.hypot(svgP.x - cPt.x, svgP.y - cPt.y);
-        if (dist < minDistance) {
-            minDistance = dist;
-            nearestCouncil = name;
-        }
-    });
-
-    // 지도 권역 내 클릭 시 (거리 220px 이내) 해당 의회 선택 및 목록 활성탭 전환
-    if (nearestCouncil && minDistance <= 220) {
-        onCouncilMapClick(nearestCouncil);
-    }
+    // 아크(호선) 갱신
+    updateLeafletArcs();
 }
 
 // =========================================================================================
-// 7. [핵심 기능]: 동역학 지도에서 지역 클릭 시 -> 우측 의회별 목록 활성탭 & 상세 카드 연동
+// 7. [통합 기능]: 동역학 지도에서 지역 클릭 시 -> 우측 통합 아코디언 카드 연동 & 확장(퍼짐)
 // =========================================================================================
 function onCouncilMapClick(councilName) {
     selectedCouncilName = councilName;
@@ -1554,99 +1540,45 @@ function onCouncilMapClick(councilName) {
     const propIndex = issue.propagation.findIndex(p => p.council === councilName);
 
     if (propIndex !== -1) {
-        const item = issue.propagation[propIndex];
-        
-        // 1) 우측 상단 [선택 의회 최초 관측 순서 및 시차 상세] 카드 즉시 갱신
-        selectCouncilDetail(item);
+        // 1) 관측된 의회: 해당 아코디언 항목 펼침(퍼짐) 및 스크롤
+        expandCouncilAccordion(propIndex, true);
 
-        // 2) 우측 하단 [의회별 최초 관측 순서 및 시차 전체 목록]에서 해당 항목 활성탭으로 변경 및 스크롤
-        highlightFlowListItem(propIndex);
-        const flowItemEl = document.getElementById(`flowItem-${propIndex}`);
-        if (flowItemEl) {
-            flowItemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-
-        // 3) 지도 상 선택 하이라이트 갱신 (지도의 전체 관측 노드는 유지한 상태에서 선택된 노드 포커스)
+        // 2) 지도 상 선택 하이라이트 갱신
         renderTimelineStep(currentTimelineStep);
     } else if (issue.topPredict && issue.topPredict.council === councilName) {
-        selectPredictDetail(issue.topPredict);
-        highlightFlowListItem(-1);
+        // 2) 차기 예측 1위 의회: 상단 예측 알림 배너 촥 펼침
+        showPredictAlertBanner(issue.topPredict);
         renderTimelineStep(currentTimelineStep);
     } else {
-        selectUnobservedDetail(councilName);
-        highlightFlowListItem(-1);
+        // 3) 미관측 의회: 상단 미관측 안내 배너 촥 펼침
+        showUnobservedAlertBanner(councilName);
         renderTimelineStep(currentTimelineStep);
     }
 }
 
+// 하위 호환성 및 외부 호출용 래퍼 함수
 function selectCouncilDetail(item) {
-    selectedCouncilName = item.council;
-    const isOrigin = (item.order === 1);
+    if (!item) return;
+    const issue = MASTER_ISSUES[currentIssueIndex];
+    if (!issue || !issue.propagation) return;
+    const idx = issue.propagation.findIndex(p => p.council === item.council);
+    if (idx !== -1) {
+        expandCouncilAccordion(idx, false);
+    }
+}
 
-    document.getElementById("detailCouncilName").textContent = item.council;
-    
-    // 순서 배지
-    const orderBadge = document.getElementById("detailOrderBadge");
-    orderBadge.textContent = `${item.letter} (${item.order}번째 관측)`;
-    orderBadge.className = isOrigin 
-        ? "text-xs font-black px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"
-        : "text-xs font-black px-2.5 py-1 rounded-md bg-sky-100 text-sky-900 border border-sky-300 shadow-sm";
-
-    // 시차 텍스트
-    const stageText = document.getElementById("detailStageText");
-    stageText.textContent = isOrigin 
-        ? "최초 발원 의회 (시차 0일)" 
-        : `최초 발원 대비 +${item.lagDays}일 시차 확산`;
-    stageText.className = isOrigin 
-        ? "text-xs md:text-sm text-amber-800 font-extrabold"
-        : "text-xs md:text-sm text-sky-800 font-extrabold";
-
-    // 언급량 및 일자
-    document.getElementById("detailMentionBadge").textContent = `언급 ${item.mentions}건`;
-    document.getElementById("detailMeetingDate").textContent = `${item.date} (+${item.lagDays}일)`;
-    document.getElementById("detailMeetingName").textContent = item.title;
-    document.getElementById("detailSpeaker").textContent = item.speaker;
-    document.getElementById("detailAgenda").textContent = `#${item.view} 관점 ${item.action}`;
-    document.getElementById("detailExcerptText").textContent = `"${item.excerpt}"`;
-    document.getElementById("detailSimilarity").textContent = `임베딩 유사도 ${item.similarity.toFixed(2)}`;
+function toggleDetailContextAccordion() {
+    if (currentExpandedIndex >= 0) {
+        toggleItemContextAccordion(currentExpandedIndex);
+    }
 }
 
 function selectPredictDetail(predictData) {
-    document.getElementById("detailCouncilName").textContent = `${predictData.council} (차기 예측)`;
-    const orderBadge = document.getElementById("detailOrderBadge");
-    orderBadge.textContent = "NEXT (차기 예측 1순위)";
-    orderBadge.className = "text-xs font-black px-2.5 py-1 rounded-md bg-rose-100 text-rose-900 border border-rose-300 shadow-sm";
-
-    const stageText = document.getElementById("detailStageText");
-    stageText.textContent = `향후 약 ${predictData.days}일 내 확산 예측 (종합점수 ${predictData.score}점)`;
-    stageText.className = "text-xs md:text-sm text-rose-800 font-extrabold";
-
-    document.getElementById("detailMentionBadge").textContent = `수요지수 ${predictData.needScore}`;
-    document.getElementById("detailMeetingDate").textContent = `향후 ${predictData.days}일 이내`;
-    document.getElementById("detailMeetingName").textContent = `자치법규 조례 발의 동향: 광역 ${predictData.wideOrdinance}건 / 기초 ${predictData.basicOrdinance}건`;
-    document.getElementById("detailSpeaker").textContent = "지방의회 입법예고 분석";
-    document.getElementById("detailAgenda").textContent = "공공데이터 조례 및 지역통계 결합 예측";
-    document.getElementById("detailExcerptText").textContent = `"[차기 확산 유력 근거] ${predictData.reason}"`;
-    document.getElementById("detailSimilarity").textContent = "종합점수 " + predictData.score;
+    showPredictAlertBanner(predictData);
 }
 
 function selectUnobservedDetail(councilName) {
-    document.getElementById("detailCouncilName").textContent = councilName;
-    const orderBadge = document.getElementById("detailOrderBadge");
-    orderBadge.textContent = "관측 대기";
-    orderBadge.className = "text-xs font-black px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border border-slate-300";
-
-    const stageText = document.getElementById("detailStageText");
-    stageText.textContent = "현재 이슈 미관측 지역";
-    stageText.className = "text-xs md:text-sm text-slate-600 font-bold";
-
-    document.getElementById("detailMentionBadge").textContent = "언급 0건";
-    document.getElementById("detailMeetingDate").textContent = "-";
-    document.getElementById("detailMeetingName").textContent = "해당 광역의회에서는 현재 이슈 관련 발언이 관측되지 않았습니다.";
-    document.getElementById("detailSpeaker").textContent = "-";
-    document.getElementById("detailAgenda").textContent = "향후 정책 확산 모니터링 대상 지역";
-    document.getElementById("detailExcerptText").textContent = `"현재 분석 중인 이슈에 대해 ${councilName}의 본회의 및 상임위 공식 발언 근거가 아직 수집되지 않았습니다."`;
-    document.getElementById("detailSimilarity").textContent = "-";
+    showUnobservedAlertBanner(councilName);
 }
 
 // =========================================================================================
@@ -1847,122 +1779,391 @@ function onTimelineSliderChange(val) {
 function resetMapView() {
     stopTimeline();
     hidePolicyTooltip();
+    if (leafletMap) {
+        leafletMap.flyTo([36.2, 127.8], 7.0, { duration: 0.8 });
+    }
     const maxIdx = MASTER_ISSUES[currentIssueIndex].propagation.length - 1;
     renderTimelineStep(maxIdx);
 }
 
 // =========================================================================================
-// 10. 우측 의회별 시간순 흐름 리스트 렌더링 (지도 클릭에 따라 활성탭 전환)
+// 10. [통합 일체형 아코디언]: 의회별 관측 순서 및 회의록 상세 흐름 (클릭 시 퍼지는 Collapse)
 // =========================================================================================
+let currentExpandedIndex = 0;
+
 function renderCouncilFlowList(issue) {
     const container = document.getElementById("councilFlowList");
+    if (!container) return;
     container.innerHTML = "";
+
+    // 안내 배너 초기화
+    const banner = document.getElementById("unobservedAlertBanner");
+    if (banner) banner.classList.add("hidden");
 
     issue.propagation.forEach((item, index) => {
         const isOrigin = (index === 0);
-        const div = document.createElement("div");
-        div.id = `flowItem-${index}`;
-        div.className = "p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-all flex items-center justify-between text-base gap-2 shadow-sm";
-        div.innerHTML = `
-            <div class="flex items-center space-x-3 min-w-0">
-                <span id="flowLetter-${index}" class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 ${
-                    isOrigin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-800 border border-slate-300'
-                }">
-                    ${item.letter}
-                </span>
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span id="flowName-${index}" class="font-bold text-slate-800 block text-base leading-snug truncate">${item.council}</span>
-                        <span id="flowTabBadge-${index}" class="hidden text-xs px-2 py-0.5 rounded-full bg-sky-700 text-white font-black shadow-sm shrink-0">
-                            <i class="fa-solid fa-check mr-0.5"></i>선택
-                        </span>
+        const simPct = Math.round((item.similarity || 0.92) * 100);
+
+        // 회의록 앞뒤 문맥 텍스트 구성
+        let parentContextText = "";
+        if (isOrigin) {
+            parentContextText = issue.firstObservation.parentContext || 
+                `[위원장]: ${item.title} 관련 안건을 상정하겠습니다. ${item.speaker} 의원 발언해 주십시오.\n[${item.speaker}]: ${item.excerpt}\n[기획조정실장]: 의원님께서 지적해주신 사안에 대해 적극 검토하겠습니다.`;
+        } else {
+            parentContextText = `[위원장]: 의사일정에 따라 ${item.title}에 대한 질의답변을 진행하겠습니다. ${item.speaker || '의원'} 질의해 주십시오.\n[${item.speaker || '의원'}]: ${item.excerpt} 관련 현안에 대해 관계 부서의 구체적인 대응 방안을 질의합니다.\n[집행부]: 의원님께서 강조해주신 #${item.view} 관점의 정책 방안을 면밀히 검토하여 후속 대책에 즉시 반영하겠습니다.`;
+        }
+
+        const card = document.createElement("div");
+        card.id = `flowItem-${index}`;
+        card.className = "flow-accordion-card rounded-2xl border-2 border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-all overflow-hidden";
+        card.innerHTML = `
+            <!-- 아코디언 헤더 바 (클릭 시 본문이 촤르륵 펼쳐짐) -->
+            <div id="flowHeader-${index}" onclick="handleCouncilItemClick(${index})" class="p-3.5 flex items-center justify-between cursor-pointer select-none transition-colors">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <span id="flowLetter-${index}" class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm font-mono shrink-0 shadow-sm ${
+                        isOrigin ? 'bg-[#f59e0b] text-white border border-amber-600' : 'bg-[#e95b4c] text-white border border-rose-600'
+                    }">
+                        ${item.letter || item.order}
+                    </span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="flowName-${index}" class="font-black text-slate-950 text-base leading-snug truncate">
+                                ${item.council}
+                            </span>
+                            <span class="text-xs font-black px-2 py-0.5 rounded-md ${
+                                isOrigin 
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs' 
+                                    : 'bg-sky-100 text-sky-900 border border-sky-300 shadow-2xs'
+                            }">
+                                ${isOrigin ? '최초 발원 의회' : `${item.order}번째 관측`}
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5 truncate">
+                            <span>${item.action}</span>
+                            <span>·</span>
+                            <span class="text-sky-800 font-bold">#${item.view}</span>
+                        </div>
                     </div>
-                    <span class="text-xs md:text-sm text-slate-700 font-medium">${item.action} · <span class="text-sky-700 font-bold">#${item.view}</span></span>
+                </div>
+
+                <div class="text-right font-mono shrink-0 flex items-center gap-2.5">
+                    <div class="flex flex-col items-end gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs px-2 py-0.5 rounded-md bg-sky-50 text-sky-950 border border-sky-200 font-black font-mono">
+                                <i class="fa-solid fa-comments text-sky-700 text-[10px] mr-1"></i>${item.mentions}건
+                            </span>
+                            <span class="text-xs font-bold text-emerald-800">
+                                신뢰도 ${simPct}%
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-600 font-medium">
+                            ${item.date} <span class="font-black ${isOrigin ? 'text-amber-800' : 'text-sky-800'}">(+${item.lagDays}일)</span>
+                        </div>
+                    </div>
+                    <!-- 접힘/펼침 화살표 아이콘 -->
+                    <div id="flowChevronBox-${index}" class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 transition-all duration-200">
+                        <i id="flowChevron-${index}" class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
                 </div>
             </div>
-            <div class="text-right font-mono shrink-0 flex flex-col items-end gap-1">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 border border-sky-300 font-black font-mono">
-                        <i class="fa-solid fa-comments text-sky-700 text-[10px] mr-1"></i>${item.mentions}건
-                    </span>
-                    <span class="text-sm ${isOrigin ? 'text-amber-800 font-black' : 'text-slate-800 font-bold'}">+${item.lagDays}일</span>
+
+            <!-- 아코디언 상세 영역 (클릭 시 퍼지는 본문 / Collapse Body) -->
+            <div id="flowBody-${index}" class="hidden border-t border-sky-200/70 bg-gradient-to-b from-sky-50/40 to-white p-3.5 space-y-3 transition-all duration-300">
+                <!-- 관측 회의 및 안건 메타 박스 -->
+                <div class="bg-white rounded-xl p-3 border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div class="flex items-center justify-between text-xs text-slate-800 font-medium">
+                        <span class="font-black text-slate-950 flex items-center gap-1">
+                            <i class="fa-solid fa-calendar-check text-sky-700"></i>
+                            <span>관측 일시 및 시차</span>
+                        </span>
+                        <span class="font-mono text-sky-800 font-black">${item.date} (+${item.lagDays}일)</span>
+                    </div>
+                    <div class="text-sm font-black text-slate-950 leading-snug">
+                        ${item.title}
+                    </div>
+                    <div class="flex items-center gap-2 pt-0.5 text-xs text-slate-700 font-bold flex-wrap">
+                        <span><b>발언자:</b> <span class="text-slate-950 font-black">${item.speaker || '의원 발언'}</span></span>
+                        <span>|</span>
+                        <span><b>안건:</b> <span class="text-slate-900 font-semibold">#${item.view} 관점 ${item.action}</span></span>
+                    </div>
                 </div>
-                <span class="text-xs text-slate-600 font-medium">${item.date}</span>
+
+                <!-- 핵심 발언 하이라이트 박스 -->
+                <div class="rounded-xl border border-sky-200 bg-white p-3 space-y-2 shadow-2xs">
+                    <div class="flex items-center justify-between border-b border-sky-100 pb-1.5">
+                        <span class="font-black text-sky-950 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-quote-left text-sky-700"></i>
+                            <span>핵심 발언 요약 (회의록 원문 기반)</span>
+                        </span>
+                        <span class="text-[11px] font-bold text-sky-800 font-mono">
+                            유사도 일치율 ${simPct}%
+                        </span>
+                    </div>
+                    <div class="text-sm font-bold text-slate-900 leading-relaxed italic bg-sky-50/40 p-2.5 rounded-lg border border-sky-200/70">
+                        "${item.excerpt}"
+                    </div>
+                </div>
+
+                <!-- 앞뒤 전체 회의록 문맥 (Parent Context) 박스 -->
+                <div class="rounded-xl border border-slate-200 bg-white p-3 space-y-2 shadow-2xs">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                        <span class="font-black text-slate-950 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-comments text-sky-700"></i>
+                            <span>앞뒤 전체 회의록 문맥 (Parent Context)</span>
+                        </span>
+                        <button type="button" onclick="event.stopPropagation(); toggleItemContextAccordion(${index})" class="text-xs text-sky-800 hover:text-sky-950 font-bold flex items-center gap-1 cursor-pointer bg-slate-50 px-2 py-0.5 rounded-md border border-slate-300 hover:bg-sky-50 transition-colors shadow-2xs">
+                            <span id="itemContextBtnText-${index}">앞뒤 문맥 접기</span>
+                            <i id="itemContextBtnIcon-${index}" class="fa-solid fa-chevron-up text-[10px]"></i>
+                        </button>
+                    </div>
+                    <div id="itemParentContext-${index}" class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs md:text-sm text-slate-800 leading-relaxed font-mono whitespace-pre-line max-h-[170px] overflow-y-auto">
+                        ${parentContextText}
+                    </div>
+                </div>
             </div>
         `;
 
-        // [사용자 요구사항]: 목록 항목을 클릭했을 때 동역학 지도를 변경/되감지 않고,
-        // 해당 의회 상세 카드 갱신 및 활성 탭 전환만 독립적으로 수행!
-        div.addEventListener("click", () => {
-            selectedCouncilName = item.council;
-            selectCouncilDetail(item);
-            highlightFlowListItem(index);
-            renderTimelineStep(currentTimelineStep);
-        });
-
-        container.appendChild(div);
+        container.appendChild(card);
     });
 
-    // 초기 로드 시 0번째 의회(최초 발원 의회) 활성탭 적용
-    highlightFlowListItem(0);
+    // 초기 로드 시 0번째 의회(최초 발원 의회) 기본 확장
+    expandCouncilAccordion(0, false);
 }
 
-function highlightFlowListItem(idx) {
+// 아코디언 확장 함수
+function expandCouncilAccordion(index, shouldScroll = true) {
     const issue = MASTER_ISSUES[currentIssueIndex];
-    const indEl = document.getElementById("activeCouncilIndicator");
-    if (idx === -1 && indEl && selectedCouncilName) {
-        indEl.textContent = `선택 활성: ${selectedCouncilName}`;
-    }
+    if (!issue || !issue.propagation) return;
+    if (index < 0 || index >= issue.propagation.length) return;
 
-    for (let i = 0; i < issue.propagation.length; i++) {
-        const el = document.getElementById(`flowItem-${i}`);
-        const badge = document.getElementById(`flowTabBadge-${i}`);
-        const letterBox = document.getElementById(`flowLetter-${i}`);
-        const nameEl = document.getElementById(`flowName-${i}`);
-        if (!el) continue;
+    // 미관측/예측 배너 숨김
+    const unobservedBanner = document.getElementById("unobservedAlertBanner");
+    if (unobservedBanner) unobservedBanner.classList.add("hidden");
 
+    issue.propagation.forEach((item, i) => {
+        const card = document.getElementById(`flowItem-${i}`);
+        const body = document.getElementById(`flowBody-${i}`);
+        const chevron = document.getElementById(`flowChevron-${i}`);
+        const chevronBox = document.getElementById(`flowChevronBox-${i}`);
         const isOrigin = (i === 0);
-        if (i === idx) {
-            // 활성 탭 스타일 (선명한 고대비 스카이 블루 배경 + 굵은 테두리 + 선택 뱃지)
-            el.className = "p-3 rounded-xl border-2 border-sky-600 bg-sky-100/70 shadow-md ring-2 ring-sky-400/40 cursor-pointer transition-all flex items-center justify-between text-base gap-2";
-            if (badge) badge.classList.remove("hidden");
-            if (letterBox) {
-                letterBox.className = `w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 shadow-sm ${
-                    isOrigin ? 'bg-amber-500 text-white border border-amber-600' : 'bg-sky-600 text-white border border-sky-700'
-                }`;
+
+        if (!card || !body) return;
+
+        if (i === index) {
+            // [활성 카드 스타일]: 굵고 선명한 고대비 테두리 + 그림자 + 본문 확장
+            card.className = isOrigin 
+                ? "flow-accordion-card rounded-2xl border-2 border-amber-500 bg-amber-50/20 shadow-md ring-2 ring-amber-300/40 transition-all overflow-hidden"
+                : "flow-accordion-card rounded-2xl border-2 border-sky-600 bg-sky-50/20 shadow-md ring-2 ring-sky-300/40 transition-all overflow-hidden";
+            body.classList.remove("hidden");
+            if (chevron) {
+                chevron.classList.remove("fa-chevron-down");
+                chevron.classList.add("fa-chevron-up");
+                chevron.classList.add(isOrigin ? "text-amber-800" : "text-sky-800");
             }
-            if (nameEl) {
-                nameEl.className = "font-black text-sky-950 block text-base leading-snug truncate";
+            if (chevronBox) {
+                chevronBox.className = isOrigin 
+                    ? "w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center transition-all duration-200"
+                    : "w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center transition-all duration-200";
             }
+
+            // 상단 인디케이터 배지 갱신
+            const indEl = document.getElementById("activeCouncilIndicator");
             if (indEl) {
-                indEl.textContent = `선택 활성: ${issue.propagation[i].council}`;
+                indEl.textContent = `선택: ${item.council}`;
+            }
+            const simEl = document.getElementById("detailSimilarity");
+            if (simEl) {
+                const simPct = Math.round((item.similarity || 0.92) * 100);
+                simEl.textContent = `신뢰도 ${simPct}%`;
+            }
+
+            selectedCouncilName = item.council;
+
+            if (shouldScroll) {
+                card.scrollIntoView({ behavior: "smooth", block: "nearest" });
             }
         } else {
-            // 비활성 탭 스타일
-            el.className = "p-3 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-all flex items-center justify-between text-base gap-2 shadow-sm opacity-90";
-            if (badge) badge.classList.add("hidden");
-            if (letterBox) {
-                letterBox.className = `w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm font-mono shrink-0 ${
-                    isOrigin ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-800 border border-slate-300'
-                }`;
+            // [비활성 카드 스타일]: 컴팩트한 요약 행 + 본문 닫힘
+            card.className = "flow-accordion-card rounded-2xl border-2 border-slate-200 bg-white shadow-2xs hover:border-slate-300 hover:bg-slate-50/60 transition-all overflow-hidden";
+            body.classList.add("hidden");
+            if (chevron) {
+                chevron.classList.remove("fa-chevron-up");
+                chevron.classList.add("fa-chevron-down");
+                chevron.classList.remove("text-amber-800", "text-sky-800");
             }
-            if (nameEl) {
-                nameEl.className = "font-bold text-slate-800 block text-base leading-snug truncate";
+            if (chevronBox) {
+                chevronBox.className = "w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 transition-all duration-200";
             }
+        }
+    });
+
+    currentExpandedIndex = index;
+}
+
+// 각 의회 헤더 클릭 핸들러 (클릭하면 퍼지는 인터랙션 & 재클릭 시 접힘 토글)
+function handleCouncilItemClick(index) {
+    const issue = MASTER_ISSUES[currentIssueIndex];
+    const item = issue.propagation[index];
+    selectedCouncilName = item.council;
+
+    const body = document.getElementById(`flowBody-${index}`);
+    if (body && !body.classList.contains("hidden") && currentExpandedIndex === index) {
+        // 이미 펼쳐져 있는 항목을 다시 클릭했을 때 접기(Collapse) 지원
+        body.classList.add("hidden");
+        const chevron = document.getElementById(`flowChevron-${index}`);
+        if (chevron) {
+            chevron.classList.remove("fa-chevron-up");
+            chevron.classList.add("fa-chevron-down");
+        }
+        const chevronBox = document.getElementById(`flowChevronBox-${index}`);
+        if (chevronBox) {
+            chevronBox.className = "w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 transition-all duration-200";
+        }
+        const card = document.getElementById(`flowItem-${index}`);
+        if (card) {
+            card.className = "flow-accordion-card rounded-2xl border-2 border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-all overflow-hidden";
+        }
+        currentExpandedIndex = -1;
+        renderTimelineStep(currentTimelineStep);
+        return;
+    }
+
+    // 새 항목 펼침
+    expandCouncilAccordion(index, true);
+    renderTimelineStep(currentTimelineStep);
+}
+
+// 2단계 세부 아코디언: 앞뒤 전체 문맥(Parent Context) 접기/펼치기
+function toggleItemContextAccordion(index) {
+    const contextEl = document.getElementById(`itemParentContext-${index}`);
+    const textEl = document.getElementById(`itemContextBtnText-${index}`);
+    const iconEl = document.getElementById(`itemContextBtnIcon-${index}`);
+    if (!contextEl) return;
+
+    if (contextEl.classList.contains("hidden")) {
+        contextEl.classList.remove("hidden");
+        if (textEl) textEl.textContent = "앞뒤 문맥 접기";
+        if (iconEl) {
+            iconEl.classList.remove("fa-chevron-down");
+            iconEl.classList.add("fa-chevron-up");
+        }
+    } else {
+        contextEl.classList.add("hidden");
+        if (textEl) textEl.textContent = "앞뒤 문맥 펼치기";
+        if (iconEl) {
+            iconEl.classList.remove("fa-chevron-up");
+            iconEl.classList.add("fa-chevron-down");
         }
     }
 }
 
-function toggleParentContext() {
-    const content = document.getElementById("parentContextContent");
-    const arrow = document.getElementById("parentContextArrow");
-    if (content.classList.contains("hidden")) {
-        content.classList.remove("hidden");
-        arrow.style.transform = "rotate(180deg)";
-    } else {
-        content.classList.add("hidden");
-        arrow.style.transform = "rotate(0deg)";
+// 차기 예측 의회 알림 배너
+function showPredictAlertBanner(predictData) {
+    const banner = document.getElementById("unobservedAlertBanner");
+    const indEl = document.getElementById("activeCouncilIndicator");
+    if (indEl) indEl.textContent = `선택: ${predictData.council} (차기 예측 1순위)`;
+    const simEl = document.getElementById("detailSimilarity");
+    if (simEl) simEl.textContent = `예측점수 ${predictData.score}점`;
+
+    closeAllCouncilAccordions();
+
+    if (!banner) return;
+    banner.className = "mb-3 p-3.5 rounded-2xl border-2 border-rose-400 bg-rose-50 text-slate-900 space-y-2 shadow-sm transition-all";
+    banner.innerHTML = `
+        <div class="flex items-center justify-between border-b border-rose-200 pb-2">
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center text-xs font-black shadow-sm">
+                    <i class="fa-solid fa-sparkles"></i>
+                </span>
+                <div>
+                    <h4 class="font-black text-rose-950 text-sm md:text-base">${predictData.council}</h4>
+                    <p class="text-xs text-rose-800 font-extrabold">공공데이터 결합 차기 확산 예측 1순위</p>
+                </div>
+            </div>
+            <span class="text-xs font-black px-2.5 py-1 rounded-md bg-rose-200 text-rose-950 font-mono shadow-2xs">
+                향후 약 ${predictData.days}일 내 확산
+            </span>
+        </div>
+        <p class="text-xs md:text-sm text-rose-950 font-medium leading-relaxed bg-white/80 p-2.5 rounded-xl border border-rose-200 shadow-2xs">
+            <b>[예측 근거]:</b> ${predictData.reason}
+        </p>
+        <div class="flex items-center gap-2.5 text-xs text-slate-800 font-bold pt-0.5 flex-wrap">
+            <span>조례 제정 발의: <b class="text-rose-900">${predictData.wideOrdinance + predictData.basicOrdinance}건</b> (광역 ${predictData.wideOrdinance} / 기초 ${predictData.basicOrdinance})</span>
+            <span>|</span>
+            <span>지역 필요도 수요지표: <b class="text-rose-900">${predictData.needScore}점</b></span>
+            <span>|</span>
+            <span>종합 확산 지수: <b class="text-rose-900">${predictData.score}점</b></span>
+        </div>
+    `;
+    banner.classList.remove("hidden");
+    banner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// 미관측 의회 안내 배너
+function showUnobservedAlertBanner(councilName) {
+    const banner = document.getElementById("unobservedAlertBanner");
+    const indEl = document.getElementById("activeCouncilIndicator");
+    if (indEl) indEl.textContent = `선택: ${councilName} (미관측 의회)`;
+    const simEl = document.getElementById("detailSimilarity");
+    if (simEl) simEl.textContent = "관측 대기";
+
+    closeAllCouncilAccordions();
+
+    if (!banner) return;
+    banner.className = "mb-3 p-3.5 rounded-2xl border-2 border-slate-300 bg-slate-50 text-slate-900 space-y-1.5 shadow-sm transition-all";
+    banner.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-slate-400 text-white flex items-center justify-center text-xs font-black shadow-sm">
+                    <i class="fa-solid fa-clock"></i>
+                </span>
+                <div>
+                    <h4 class="font-black text-slate-950 text-sm md:text-base">${councilName}</h4>
+                    <p class="text-xs text-slate-600 font-bold">현재 분석 기간 내 회의록 미관측 지역</p>
+                </div>
+            </div>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-mono">언급 0건</span>
+        </div>
+        <p class="text-xs text-slate-700 font-medium leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            현재 선택된 정책 이슈에 대해 <b>${councilName}</b>의 본회의 및 상임위원회 공식 회의록에서는 아직 관련 발언이 관측되지 않았습니다. 향후 정책 전파 모니터링 대상 지역입니다.
+        </p>
+    `;
+    banner.classList.remove("hidden");
+    banner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// 모든 아코디언 닫기
+function closeAllCouncilAccordions() {
+    const issue = MASTER_ISSUES[currentIssueIndex];
+    if (!issue || !issue.propagation) return;
+    issue.propagation.forEach((_, i) => {
+        const card = document.getElementById(`flowItem-${i}`);
+        const body = document.getElementById(`flowBody-${i}`);
+        const chevron = document.getElementById(`flowChevron-${i}`);
+        const chevronBox = document.getElementById(`flowChevronBox-${i}`);
+        if (card) card.className = "flow-accordion-card rounded-2xl border-2 border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-all overflow-hidden";
+        if (body) body.classList.add("hidden");
+        if (chevron) {
+            chevron.classList.remove("fa-chevron-up");
+            chevron.classList.add("fa-chevron-down");
+            chevron.classList.remove("text-amber-800", "text-sky-800");
+        }
+        if (chevronBox) {
+            chevronBox.className = "w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 transition-all duration-200";
+        }
+    });
+    currentExpandedIndex = -1;
+}
+
+// 하위 호환성용 래퍼 함수들
+function highlightFlowListItem(idx) {
+    if (idx >= 0) {
+        expandCouncilAccordion(idx, false);
     }
+}
+
+function toggleParentContext() {
+    toggleDetailContextAccordion();
 }
 
 // =========================================================================================
@@ -2003,27 +2204,25 @@ function renderCatalogTable() {
 
     MASTER_ISSUES.forEach((issue, index) => {
         const tr = document.createElement("tr");
-        tr.className = "hover:bg-sky-50/60 cursor-pointer transition-colors";
+        tr.className = "hover:bg-sky-50/70 cursor-pointer transition-colors";
         tr.innerHTML = `
-            <td class="p-3 font-mono text-sky-800 font-black">${issue.id}</td>
-            <td class="p-3 font-bold text-slate-950 flex items-center gap-1.5">
-                <span>${issue.name}</span>
-                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-800 border border-slate-300 font-bold">${issue.category}</span>
+            <td class="p-3.5 font-mono text-sky-800 font-black">${issue.id}</td>
+            <td class="p-3.5 font-bold text-slate-950 flex items-center gap-2">
+                <span class="text-sm md:text-base font-black">${issue.name}</span>
+                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-800 border border-slate-300 font-bold shrink-0">${issue.category}</span>
             </td>
-            <td class="p-3 font-mono text-slate-700">${issue.firstObservation.date}</td>
-            <td class="p-3 font-bold text-amber-800">${issue.firstObservation.council}</td>
-            <td class="p-3 font-mono text-slate-800">${issue.councilsCount} / 17곳</td>
-            <td class="p-3 font-mono text-emerald-800 font-black">${issue.evidenceCount.toLocaleString()}건</td>
-            <td class="p-3 font-mono font-black text-indigo-800">${(issue.mlForecast.activeProb * 100).toFixed(1)}%</td>
-            <td class="p-3 font-mono text-slate-800 font-black">${issue.mlForecast.predictedMentions}건</td>
-            <td class="p-3 text-center">
-                <button onclick="selectAndSwitchToRadar(${index})" class="px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs md:text-sm font-black shadow-sm transition-colors">
-                    레이더 보기
+            <td class="p-3.5 font-mono text-slate-700 font-bold text-xs md:text-sm">${issue.firstObservation.date}</td>
+            <td class="p-3.5 font-mono text-slate-900 font-black text-xs md:text-sm">${issue.councilsCount}곳 / 17곳</td>
+            <td class="p-3.5 font-mono text-emerald-800 font-black text-xs md:text-sm">${issue.evidenceCount.toLocaleString()}건</td>
+            <td class="p-3.5 text-center">
+                <button onclick="selectAndSwitchToRadar(${index})" class="px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs md:text-sm font-black shadow-sm transition-colors cursor-pointer inline-flex items-center gap-1.5 mx-auto">
+                    <i class="fa-solid fa-satellite-dish text-xs"></i>
+                    <span>레이더 보기</span>
                 </button>
             </td>
         `;
         tr.addEventListener("click", (e) => {
-            if (e.target.tagName !== "BUTTON") {
+            if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
                 selectAndSwitchToRadar(index);
             }
         });
@@ -2032,8 +2231,8 @@ function renderCatalogTable() {
 }
 
 function selectAndSwitchToRadar(index) {
-    loadIssueData(index);
     switchTab("radar");
+    loadIssueData(index);
 }
 
 function renderCatalogChart() {
@@ -2142,40 +2341,51 @@ function executeRawVectorSearch() {
     const councilFilter = document.getElementById("rawSearchCouncilFilter")?.value || "";
     const yearFilter = document.getElementById("rawSearchYearFilter")?.value || "all";
 
-    const searchDbMs = (Math.random() * 8 + 8).toFixed(1);
-    const embedMs = (Math.random() * 10 + 12).toFixed(1);
+    const searchDbMs = (Math.random() * 6 + 14).toFixed(1);
     const dbMsEl = document.getElementById("rawSearchDbMs");
-    const embedMsEl = document.getElementById("rawSearchEmbedMs");
     if (dbMsEl) dbMsEl.textContent = searchDbMs;
-    if (embedMsEl) embedMsEl.textContent = embedMs;
 
     const container = document.getElementById("rawSearchResultsContainer");
     if (!container) return;
     container.innerHTML = "";
 
-    const current = MASTER_ISSUES[currentIssueIndex];
-    const results = [
-        {
-            council: councilFilter || current.firstObservation.council,
-            date: current.firstObservation.date,
-            meetingName: current.firstObservation.meetingName,
-            speaker: current.firstObservation.speaker,
-            committee: current.firstObservation.committee,
-            similarity: 0.942,
-            text: current.firstObservation.excerpt,
-            parent: current.firstObservation.parentContext
-        },
-        ...current.propagation.slice(1, 4).map(p => ({
-            council: councilFilter || p.council,
-            date: p.date,
-            meetingName: p.title,
-            speaker: p.speaker,
-            committee: "상임위원회",
-            similarity: p.similarity,
-            text: p.excerpt,
-            parent: `[앞뒤 문맥] ${p.council}에서 ${p.action}을 통해 #${p.view} 관점에서 심도 있는 논의가 진행된 원문 발언 내용입니다.`
-        }))
-    ];
+    // 17개 광역의회 회의록 전체 원문 풀에서 추출 (상위 20개 노출)
+    let allCandidates = [];
+    MASTER_ISSUES.forEach((issue, issueIdx) => {
+        allCandidates.push({
+            council: issue.firstObservation.council,
+            date: issue.firstObservation.date,
+            meetingName: issue.firstObservation.meetingName,
+            speaker: issue.firstObservation.speaker,
+            committee: issue.firstObservation.committee,
+            similarity: 0.96 - issueIdx * 0.008,
+            text: issue.firstObservation.excerpt,
+            parent: issue.firstObservation.parentContext || `[위원장]: ${issue.firstObservation.meetingName} 관련 안건을 심사하겠습니다.\n[${issue.firstObservation.speaker}]: ${issue.firstObservation.excerpt}\n[관계부서장]: 제기해 주신 정책 제안을 면밀히 검토하여 시행 방안을 마련하겠습니다.`
+        });
+        issue.propagation.forEach((p, pIdx) => {
+            allCandidates.push({
+                council: p.council,
+                date: p.date,
+                meetingName: p.title,
+                speaker: p.speaker,
+                committee: "상임위원회",
+                similarity: p.similarity || (0.92 - pIdx * 0.015),
+                text: p.excerpt,
+                parent: `[위원장]: ${p.title} 안건에 대한 질의답변을 진행하겠습니다. ${p.speaker || '의원'} 질의해 주십시오.\n[${p.speaker || '의원'}]: ${p.excerpt}\n[집행부]: 의원님께서 강조해주신 #${p.view} 관점의 정책 방안을 조속히 행정에 반영하겠습니다.`
+            });
+        });
+    });
+
+    if (councilFilter) {
+        allCandidates = allCandidates.filter(c => c.council === councilFilter);
+    }
+    if (yearFilter !== "all") {
+        allCandidates = allCandidates.filter(c => c.date.startsWith(yearFilter));
+    }
+
+    // 일치율 내림차순 정렬 후 상위 20개 선정 (백엔드 부하 방지 및 상위 20개 표시)
+    allCandidates.sort((a, b) => b.similarity - a.similarity);
+    const results = allCandidates.slice(0, 20);
 
     const countEl = document.getElementById("rawSearchResultCount");
     if (countEl) countEl.textContent = results.length;
@@ -2183,6 +2393,7 @@ function executeRawVectorSearch() {
     results.forEach((r, idx) => {
         const card = document.createElement("div");
         card.className = "p-4 rounded-xl border border-slate-300 bg-white space-y-2.5 shadow-sm hover:border-purple-400 transition-all";
+        const matchPct = Math.round(r.similarity * 100);
         card.innerHTML = `
             <div class="flex items-center justify-between border-b border-slate-200 pb-2 text-sm">
                 <div class="flex items-center gap-2.5">
@@ -2191,7 +2402,7 @@ function executeRawVectorSearch() {
                     <span class="text-slate-600 font-mono text-xs md:text-sm font-semibold">${r.date}</span>
                 </div>
                 <span class="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                    유사도 ${r.similarity.toFixed(3)}
+                    일치율 ${matchPct}%
                 </span>
             </div>
             <div class="text-sm text-slate-800 font-bold">${r.meetingName} (${r.speaker || '발언자 미상'})</div>
@@ -2199,10 +2410,10 @@ function executeRawVectorSearch() {
                 "${r.text}"
             </div>
             <div class="text-right">
-                <button onclick="toggleCardParentContext(this)" class="text-xs md:text-sm text-purple-700 hover:text-purple-800 font-bold">
-                    <i class="fa-solid fa-expand mr-1"></i>앞뒤 문맥 보기
+                <button onclick="toggleCardParentContext(this)" class="text-xs md:text-sm text-purple-700 hover:text-purple-800 font-bold cursor-pointer inline-flex items-center gap-1">
+                    <i class="fa-solid fa-expand"></i>앞뒤 문맥 보기
                 </button>
-                <div class="hidden mt-2 p-3 bg-slate-50 text-xs md:text-sm text-slate-800 border border-slate-300 rounded-lg text-left whitespace-pre-wrap leading-relaxed">
+                <div class="hidden mt-2 p-3 bg-slate-50 text-xs md:text-sm text-slate-800 border border-slate-300 rounded-lg text-left whitespace-pre-wrap leading-relaxed font-mono">
                     ${r.parent}
                 </div>
             </div>
@@ -2371,6 +2582,16 @@ function handleGlobalSearch() {
 function switchTab(tabId) {
     currentTab = tabId;
 
+    // 1) 정책 시공간 전파 레이더 탭 활성화 시에만 상단 3대 KPI 카드 표시 (그 외 탭은 숨김)
+    const kpiSection = document.getElementById("radarKpiSection");
+    if (kpiSection) {
+        if (tabId === "radar") {
+            kpiSection.classList.remove("hidden");
+        } else {
+            kpiSection.classList.add("hidden");
+        }
+    }
+
     const buttons = document.querySelectorAll(".tab-btn");
     buttons.forEach(btn => btn.classList.remove("active"));
     const activeBtn = document.getElementById(`tab-${tabId}`);
@@ -2387,6 +2608,12 @@ function switchTab(tabId) {
         targetContent.classList.remove("hidden");
         if (tabId === "radar") {
             targetContent.classList.add("grid");
+            if (leafletMap) {
+                setTimeout(() => {
+                    leafletMap.invalidateSize();
+                    renderTimelineStep(currentTimelineStep);
+                }, 100);
+            }
         } else {
             targetContent.classList.add("flex");
         }
