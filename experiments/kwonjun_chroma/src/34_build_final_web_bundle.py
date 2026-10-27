@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT / "outputs" / "web_final",
     )
     parser.add_argument("--expected-issues", type=int, default=10)
+    parser.add_argument(
+        "--external-followup-dir", type=Path,
+        default=PROJECT_ROOT / "outputs" / "external" / "followup_v1",
+        help="32a 외부 후속 흐름 결과 폴더. 없으면 기존 데이터만으로 생성",
+    )
     return parser.parse_args()
 
 
@@ -86,6 +91,20 @@ def main() -> None:
         raise ValueError(
             "다중 예측에 대응하는 웹 JSON이 없습니다: " + ", ".join(missing_payloads)
         )
+    followup_dir = args.external_followup_dir.expanduser().resolve()
+    followups: dict[str, dict[str, Any]] = {}
+    for path in sorted(followup_dir.glob("*.json")) if followup_dir.is_dir() else []:
+        try:
+            followup = load_json(path)
+        except (json.JSONDecodeError, OSError):
+            continue
+        if followup.get("schema_version") not in {
+            "council_external_followup_v1", "council_external_followup_v2",
+        }:
+            continue
+        followup_issue_id = str((followup.get("issue") or {}).get("issue_id") or "")
+        if followup_issue_id:
+            followups[followup_issue_id] = followup
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     entries = []
@@ -103,6 +122,9 @@ def main() -> None:
             "leakage_control": model_report.get("leakage_control"),
             "limitations": model_report.get("limitations"),
         }
+        followup = followups.get(issue_id)
+        if followup:
+            augmented["external_followup"] = followup
         output_path = output_dir / source_path.name
         atomic_json(output_path, augmented)
         issue = augmented.get("issue") or {}
@@ -125,6 +147,13 @@ def main() -> None:
             "selected_classifier": forecast.get("selected_classifier"),
             "selected_count_model": forecast.get("selected_count_model"),
             "single_issue_direction": single.get("direction"),
+            "external_followup_candidates": (
+                [
+                    row.get("council")
+                    for row in (followup.get("outlook") or {}).get("top_candidates") or []
+                    if row.get("council")
+                ] if followup else None
+            ),
             "payload": str(output_path),
         })
     entries.sort(key=lambda row: (
@@ -151,6 +180,7 @@ def main() -> None:
         "source": {
             "web_dir": str(web_dir),
             "multi_forecast": str(forecast_path),
+            "external_followup_dir": str(followup_dir) if followups else None,
         },
     }
     catalog_path = output_dir / "issue_catalog.json"
@@ -164,6 +194,7 @@ def main() -> None:
         "언급량 선택: "
         f"{(model_report.get('selection') or {}).get('count_model')}"
     )
+    print(f"외부 후속 흐름 결합: {sum(issue_id in followups for issue_id in forecasts)}")
     print(f"catalog: {catalog_path}")
     print(f"payloads: {output_dir}")
 

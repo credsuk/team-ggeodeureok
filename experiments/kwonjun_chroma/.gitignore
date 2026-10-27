@@ -22,6 +22,7 @@ data/postgres/*
 data/external/*
 models/huggingface/*
 outputs/*
+exports/
 
 !data/README.md
 !models/README.md
@@ -33,3 +34,7 @@ outputs/*
 *.sqlite3
 *.parquet
 *.log
+*.dump
+*.dump.sha256
+*.dump.info.txt
+*.dump.part-*

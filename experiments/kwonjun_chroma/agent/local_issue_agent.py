@@ -3,6 +3,9 @@
 
 기본 설정은 localhost Ollama만 허용한다. 회의록 원문을 외부 API로 전송하지
 않으며, 답변은 검색된 근거와 고정 이슈 결과 안에서만 생성한다.
+pipeline(agent/query_pipeline.py)이 주어지면 자유 질문을 '해석(LLM, JSON 스키마) → 검증·보정(코드)
+→ 의도별 실행(코드) → 답변(LLM) → 답변 검증(코드)'으로 처리한다. LLM 호출은 질문당 두 번이며,
+외부 공공 API로는 검증된 짧은 정책어와 KOSIS 통계표 ID만 나간다.
 """
 
 from __future__ import annotations
@@ -17,6 +20,17 @@ from urllib.parse import urlparse
 
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+ANSWER_RULES = (
+    "당신은 '의정이슈레이더'의 로컬 분석 Agent다. [계산 결과]와 [회의록 근거]만 사용한다. "
+    "근거에 없는 사실·숫자·의회는 만들지 말고 '근거 부족'이라 말한다. 숫자는 계산 결과의 값을 그대로 옮긴다. "
+    "[근거 N]은 [회의록 근거]의 N번째 항목에만 쓰고, 조례·법안·통계 같은 외부 공공데이터는 "
+    "[외부: 법제처]·[외부: 국회]·[외부: KOSIS]로 표시한다. 조례는 계산 결과에 있는 조례 이름을 그대로 쓴다. "
+    "최초 관측과 의회 간 순서는 인과관계가 아닌 시간적 관측 순서라고 표현한다. "
+    "후속 점수는 미리 고정한 규칙 기반 참고값이지 확률이 아니라고 밝힌다. "
+    "mode=live이면 외부 데이터는 조회일 기준이고 회의록은 기준일까지라는 점을, "
+    "backtest이면 기준일 시점 자료만 썼다는 점을 한 번 언급한다. "
+    "질문의 의도와 지역에 맞춰 한국어로 간결하게 답한다."
+)
 
 
 def probe_ollama(
@@ -141,11 +155,31 @@ def issue_snapshot(payload: dict[str, Any]) -> str:
         f"예측 방향: {forecast.get('direction')}\n"
         f"예상 언급: {forecast.get('predicted_mention_count')}건 "
         f"(80% 경험적 구간 {lower}~{upper})\n"
-        "주의: 의회 간 연결은 시간적 관측 순서이며 인과적 전파가 아니다."
+        + followup_snapshot(payload)
+        + "주의: 의회 간 연결은 시간적 관측 순서이며 인과적 전파가 아니다."
         + (
             " 이 결과는 자유검색으로 생성한 검수 전 provisional 분석이다."
             if "provisional" in issue_status else ""
         )
+    )
+
+
+def followup_snapshot(payload: dict[str, Any]) -> str:
+    """32a 사전 계산 결과 요약. 있으면 LLM이 도구를 부르지 않고도 후속 흐름을 답할 수 있다"""
+    followup = payload.get("external_followup") or {}
+    view = followup.get("outlook") or {}
+    if not followup:
+        return ""
+    lag = view.get("median_lag_days_minutes_to_ordinance")
+    candidates = ", ".join(
+        f"{row.get('council')}({row.get('expected_next_step')}, {row.get('followup_score')})"
+        for row in view.get("top_candidates") or []
+    )
+    return (
+        f"[외부 공공데이터 후속 흐름 · 기준일 {followup.get('analysis_cutoff')} · 참고용]\n"
+        f"광역 조례화 의회: {', '.join(view.get('already_institutionalized') or []) or '없음'}\n"
+        f"후속 조례화 후보: {candidates or '없음'}\n"
+        f"논의→조례화 중앙 소요일: {f'{int(lag)}일' if lag is not None else '근거 부족'}\n"
     )
 
 
@@ -205,6 +239,9 @@ class LocalCouncilAgent:
     ollama_url: str = "http://127.0.0.1:11434"
     model: str = "qwen3:8b"
     timeout_seconds: int = 180
+    pipeline: Any | None = None          # agent.query_pipeline.QuestionPipeline
+    parser_model: str | None = None      # 질문 해석용 모델 (없으면 model과 같음)
+    parser_timeout_seconds: int = 120
 
     def __post_init__(self) -> None:
         host = (urlparse(self.ollama_url).hostname or "").lower()
@@ -263,26 +300,150 @@ class LocalCouncilAgent:
                     "role": item["role"], "content": str(item["content"])[:3000]
                 })
         messages.append({"role": "user", "content": user_context})
+        return _clean_generation(str(self._chat(messages).get("content") or ""))
+
+    def _chat(
+        self,
+        messages: list[dict[str, Any]],
+        response_format: dict[str, Any] | None = None,
+        num_predict: int = 600,
+        model: str | None = None,
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "model": model or self.model,
+            "messages": messages,
+            "stream": False,
+            "think": False,
+            "keep_alive": "10m",
+            "options": {
+                "temperature": 0.1,
+                "num_ctx": 8192,
+                "num_predict": num_predict,
+            },
+        }
+        if response_format:
+            body["format"] = response_format   # Ollama structured output: JSON 스키마 강제
         request = urllib.request.Request(
             self.ollama_url.rstrip("/") + "/api/chat",
-            data=json.dumps({
-                "model": self.model,
-                "messages": messages,
-                "stream": False,
-                "think": False,
-                "keep_alive": "10m",
-                "options": {
-                    "temperature": 0.1,
-                    "num_ctx": 8192,
-                    "num_predict": 600,
-                },
-            }).encode("utf-8"),
+            data=json.dumps(body).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+        with urllib.request.urlopen(request, timeout=timeout or self.timeout_seconds) as response:
             payload = json.loads(response.read().decode("utf-8"))
-        return _clean_generation(str((payload.get("message") or {}).get("content") or ""))
+        return payload.get("message") or {}
+
+    def _llm_ready(self) -> tuple[bool, str | None]:
+        status = probe_ollama(self.ollama_url, self.model, timeout_seconds=min(3.0, float(self.timeout_seconds)))
+        if not status["reachable"]:
+            return False, f"Ollama 서버 미연결: {status['error']}"
+        if not status["model_available"]:
+            return False, f"Ollama 모델 미설치: {self.model}"
+        return True, None
+
+    def _ask_pipeline(
+        self,
+        question: str,
+        history: list[dict[str, str]] | None,
+        previous_slots: dict[str, Any] | None,
+        top_k: int,
+    ) -> dict[str, Any]:
+        """질문 파이프라인: ① 해석 → ② 검증·보정 → ③ 의도별 실행 → ④ 답변 → ⑤ 답변 검증"""
+        from agent.query_pipeline import template_answer, verify_answer  # 순환 import 방지
+
+        warnings: list[str] = []
+        llm_ok, llm_error = self._llm_ready()
+        if llm_error:
+            warnings.append(llm_error)
+
+        def parse_llm(messages, schema, num_predict):
+            message = self._chat(messages, schema, num_predict, self.parser_model, self.parser_timeout_seconds)
+            return str(message.get("content") or "")
+
+        slots, parser, parse_warning = self.pipeline.parse(question, previous_slots, parse_llm if llm_ok else None)
+        if parse_warning:
+            warnings.append(parse_warning)
+        plan: dict[str, Any] = {"slots": slots, "parser": parser}
+        if slots["needs_clarification"]:
+            return self._pipeline_response(
+                slots.get("clarification_question") or "어떤 정책 주제에 대한 질문인지 조금 더 알려주세요.",
+                [], "clarification", warnings, plan, [])
+        grounded = self.pipeline.ground(slots, question)
+        plan.update({"route": grounded["route"], "terms": grounded["terms"], "indicators": grounded["indicators"]})
+        if grounded["route"].get("ambiguous"):
+            names = " / ".join(str(row["issue_name"]) for row in grounded["route"]["candidates"][:2])
+            return self._pipeline_response(
+                f"다음 중 어떤 이슈를 말씀하신 건가요? {names}", [], "clarification", warnings, plan, [])
+        self.issue_payload = grounded["payload"] or {}
+
+        def retrieve(query: str) -> tuple[list[dict[str, Any]], str]:
+            try:
+                return self.retrieve(query, top_k=top_k)
+            except Exception as error:
+                warnings.append(f"검색 실패: {type(error).__name__}: {error}")
+                return payload_evidence(self.issue_payload, top_k), "fixed_issue_payload_after_search_error"
+
+        executed = self.pipeline.execute(slots, grounded, retrieve)
+        plan["steps"] = executed["steps"]
+        rows = executed["evidence"] or payload_evidence(self.issue_payload, top_k)
+        facts = executed["facts"]
+        facts_text = json.dumps(facts, ensure_ascii=False)
+        evidence_text = format_evidence(rows)
+        if not llm_ok:
+            return self._pipeline_response(
+                "로컬 LLM에 연결하지 못해 계산 결과를 그대로 요약합니다.\n" + template_answer(slots, facts),
+                rows, "deterministic_fallback", warnings, plan, executed["sent_externally"])
+        messages = [{"role": "system", "content": ANSWER_RULES}]
+        for item in (history or [])[-4:]:
+            if item.get("role") in {"user", "assistant"} and item.get("content"):
+                messages.append({"role": item["role"], "content": str(item["content"])[:2000]})
+        messages.append({"role": "user", "content": (
+            f"[질문 해석]\n{json.dumps(slots, ensure_ascii=False)}\n\n"
+            f"[계산 결과]\n{facts_text}\n\n[회의록 근거]\n{evidence_text}\n\n[질문]\n{question}"
+        )})
+        try:
+            answer = _clean_generation(str(self._chat(messages, num_predict=700).get("content") or ""))
+            if not answer:
+                raise RuntimeError("Ollama가 빈 답변을 반환했습니다")
+        except Exception as error:
+            warnings.append(f"답변 생성 대체: {type(error).__name__}: {error}")
+            return self._pipeline_response(
+                "로컬 LLM 답변 생성에 실패해 계산 결과를 그대로 요약합니다.\n" + template_answer(slots, facts),
+                rows, "deterministic_fallback", warnings, plan, executed["sent_externally"])
+        verification = verify_answer(answer, facts_text, evidence_text, question, len(rows))
+        plan["verification"] = verification
+        if not verification["passed"]:
+            warnings.append(
+                "답변 검증 실패(계산 결과에 없는 값): "
+                + ", ".join(verification["unknown_numbers"] + verification["unknown_councils"]))
+            return self._pipeline_response(
+                "LLM 답변에 계산 결과와 맞지 않는 값이 있어 계산 결과를 그대로 요약합니다.\n"
+                + template_answer(slots, facts),
+                rows, "verified_fallback", warnings, plan, executed["sent_externally"])
+        return self._pipeline_response(
+            answer, rows, f"ollama:{self.model}", warnings, plan, executed["sent_externally"])
+
+    def _pipeline_response(
+        self, answer: str, rows: list[dict[str, Any]], generation_mode: str,
+        warnings: list[str], plan: dict[str, Any], sent: list[str],
+    ) -> dict[str, Any]:
+        return {
+            "answer": answer,
+            "citations": evidence_citations(rows),
+            "retrieval_mode": "query_pipeline",
+            "generation_mode": generation_mode,
+            "warning": "; ".join(warnings) or None,
+            "plan": plan,
+            "issue_payload": self.issue_payload,
+            "policy": {
+                "external_llm_api_used": False,
+                "meeting_text_sent_externally": False,
+                "question_text_sent_externally": False,
+                "answer_grounded_in_retrieved_evidence": True,
+                "external_public_api_values": sent,
+            },
+        }
 
     def fallback_answer(
         self, question: str, evidence_rows: list[dict[str, Any]]
@@ -303,6 +464,9 @@ class LocalCouncilAgent:
             ])
         else:
             lines.append("- 고정 이슈가 아니므로 검색 근거만 제시합니다.")
+        snapshot = followup_snapshot(self.issue_payload)
+        if snapshot:
+            lines.extend("- " + line for line in snapshot.strip().splitlines())
         for index, row in enumerate(evidence_rows[:3], start=1):
             metadata = row.get("metadata") or {}
             lines.append(
@@ -317,10 +481,13 @@ class LocalCouncilAgent:
         question: str,
         history: list[dict[str, str]] | None = None,
         top_k: int = 6,
+        previous_slots: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         question = question.strip()
         if not question:
             raise ValueError("질문이 비었습니다")
+        if self.pipeline is not None:
+            return self._ask_pipeline(question, history, previous_slots, top_k)
         retrieval_warning = None
         try:
             rows, retrieval_mode = self.retrieve(question, top_k=top_k)

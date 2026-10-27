@@ -1,6 +1,6 @@
 {
   "schema_version": "council_issue_radar_release_v1",
-  "created_at": "2026-10-26T16:58:44",
+  "created_at": "2026-10-27T13:39:22",
   "source": "/home/jun0/projects/council-vector-benchmark",
   "output": "/home/jun0/projects/council-issue-radar-release",
   "backup": null,
@@ -11,22 +11,22 @@
     "docs/POST_EMBEDDING_RUNBOOK.md"
   ],
   "validation_problems": [],
-  "file_count": 75,
+  "file_count": 89,
   "files": [
     {
       "path": ".env.example",
-      "size_bytes": 1048,
-      "sha256": "44b73c3ec1158ac7a669c313a1514339fd6f3e8f0ba45edc1a5216f66e89d5ae"
+      "size_bytes": 1674,
+      "sha256": "74eed5a91b14b3930524af7b0106924c7c156b4384ed3e09d266d4e89d315b68"
     },
     {
       "path": ".gitignore",
-      "size_bytes": 387,
-      "sha256": "d1af03a05b5c07234e57e3615efe7687cf911479bf9cd36036465bbffb7f9a27"
+      "size_bytes": 447,
+      "sha256": "4b897210086b36df06581697d3d64cec6d106241742b374475bd9443f0f160fc"
     },
     {
       "path": "README.md",
-      "size_bytes": 3880,
-      "sha256": "db05b3640444e0806fe24d4c2fd01b1ed097a8ef28ecef22390cd6053ac92a9e"
+      "size_bytes": 35306,
+      "sha256": "fff3a99e2a6806bcf40a3414587773c5ef5e34aaab9032e64d8cda0a270be388"
     },
     {
       "path": "agent/__init__.py",
@@ -34,9 +34,19 @@
       "sha256": "8368eedb89fc6fdadd55140311b89e5fa69744308dd2ceb7d13ecbbcb70be279"
     },
     {
+      "path": "agent/followup_tools.py",
+      "size_bytes": 7910,
+      "sha256": "54d341c0c7ef6d1cbe98e46e7407621b1684a05e269d54c30df01c759a1e2b28"
+    },
+    {
       "path": "agent/local_issue_agent.py",
-      "size_bytes": 15056,
-      "sha256": "9b2ef597523fb1dcefd8a8e4a5bfeffeca1087523adea5c26a5347727b9cee91"
+      "size_bytes": 24517,
+      "sha256": "5cb6b7eb298adf199116d35ea3fb8117025f7d5f4a54137057c39b310ecb5a8f"
+    },
+    {
+      "path": "agent/query_pipeline.py",
+      "size_bytes": 28159,
+      "sha256": "38c5339dda352c48e3679b2a0a2d1c46b6bfec24cff7701a70562ebf1403d165"
     },
     {
       "path": "agent/tools.py",
@@ -64,6 +74,11 @@
       "sha256": "dc5e74d0d7e2d11d90fb7e37d429b43ea54ac6b4420e72062c0ef33e2192e4ca"
     },
     {
+      "path": "config/kosis_indicators.json",
+      "size_bytes": 8990,
+      "sha256": "0d391a1efc8bfeff77c6300aa2eb7d5424d0efd3f8110e710d81313ba3b27273"
+    },
+    {
       "path": "config/representative_issue_keys_v1.txt",
       "size_bytes": 149,
       "sha256": "b6de015b3bc9a572bd109abdaea9b2bb9a5a1d247da5504a1dc4f63275a96869"
@@ -85,8 +100,8 @@
     },
     {
       "path": "demo/final_app.py",
-      "size_bytes": 32173,
-      "sha256": "8f1f2a673bfbbee8d66d4242740f1b812c7ee93bdeb0bc638f1bc7e19a01d7a3"
+      "size_bytes": 59906,
+      "sha256": "53f570b37b58ef6e558e3e876e7e50bf61f1022f3bfb23c67964d8d47598d723"
     },
     {
       "path": "demo/issue_review_app.py",
@@ -114,6 +129,16 @@
       "sha256": "81a1803dc5be5402bfcd447b0e29b71b7d449cd2d46184e3a5cb72ffe266a00b"
     },
     {
+      "path": "docs/EXTERNAL_DATA_INTEGRATION.md",
+      "size_bytes": 3310,
+      "sha256": "bc1cabd43e0c9a1fc002b57910570618a2e85df0c3a420e21f62120e4c12ec16"
+    },
+    {
+      "path": "docs/FINAL_GITHUB_UPLOAD.md",
+      "size_bytes": 2499,
+      "sha256": "79e5e33f91b7746d376be415b5bece3560419f6291355c28fb9049625c5ec381"
+    },
+    {
       "path": "docs/FORECAST_EVALUATION.md",
       "size_bytes": 1743,
       "sha256": "3c42442436bcec2d2300bb8809332df990dff945895913ac99033012f7f85788"
@@ -122,6 +147,16 @@
       "path": "docs/HYBRID_BM25_RUNBOOK.md",
       "size_bytes": 2743,
       "sha256": "da1a84b093e5183b31bf33bbc8c097ec5de870c78290d64f355550203fecc7b8"
+    },
+    {
+      "path": "docs/POSTGRES_DB_TEAM_SHARE.md",
+      "size_bytes": 2972,
+      "sha256": "5ba64a4a63d0a6241c73f65f219bcf3aa5a48d8b72a22b7ec6935677c86f9229"
+    },
+    {
+      "path": "docs/README_RELEASE.md",
+      "size_bytes": 3880,
+      "sha256": "db05b3640444e0806fe24d4c2fd01b1ed097a8ef28ecef22390cd6053ac92a9e"
     },
     {
       "path": "docs/REPRESENTATIVE_ISSUES_AND_AGENT_RUNBOOK.md",
@@ -179,14 +214,29 @@
       "sha256": "135aaeb9698a8dee028208c85e5c069c1198881a73c812eb21f3178d07f7c206"
     },
     {
+      "path": "scripts/41_prepare_release.py",
+      "size_bytes": 11994,
+      "sha256": "c9fb96315cbaf9cf2e4d25577937fb03aca08e2157e54b575b2f5142d6f17f62"
+    },
+    {
       "path": "scripts/build_bm25_hybrid.sh",
       "size_bytes": 379,
       "sha256": "4d23d680edff96c2fb7bf4d5bfe99f33214415c78a7bd32359a421658d36d6a9"
     },
     {
+      "path": "scripts/export_pgvector_for_share.sh",
+      "size_bytes": 3209,
+      "sha256": "0fc501ace44e367a2aed0c5306df614fd3d5d65869196325f1b883f463fe88cf"
+    },
+    {
+      "path": "scripts/restore_pgvector_from_dump.sh",
+      "size_bytes": 2678,
+      "sha256": "332422c3359927080ca5627d6388ad745b1d64a9aed62b44157a33cdc336238f"
+    },
+    {
       "path": "scripts/run_final_app.sh",
-      "size_bytes": 1356,
-      "sha256": "3b52f3ac0d81f13e3870d25e930cdd1bae0c1a66d02f7bf74ea9301415fcee03"
+      "size_bytes": 1863,
+      "sha256": "bf76480ba333ae7c32805375677b5384a49a2efdca79d991a19cace7be40ebc3"
     },
     {
       "path": "scripts/run_forecast_evaluation.sh",
@@ -359,14 +409,19 @@
       "sha256": "ee00fc965e98be409ad2c27a64755aae3df7bbb2f31db49702d1fe44f2cc8fe9"
     },
     {
+      "path": "src/32a_external_followup_flow.py",
+      "size_bytes": 11211,
+      "sha256": "cfe0dbed3de83253945729cf7ae52e20514abd1008b482f5695b54ce2d19c015"
+    },
+    {
       "path": "src/33_analyze_free_query.py",
       "size_bytes": 12569,
       "sha256": "06a62fddfaf2d81626e79ddd222cccc5c939486adc421fa15c1ba7a712f7bcc4"
     },
     {
       "path": "src/34_build_final_web_bundle.py",
-      "size_bytes": 6758,
-      "sha256": "8d79738c26dbd870c5a248eb6e8d2f9762a52a126837a7d42f0547b8642ba19a"
+      "size_bytes": 8239,
+      "sha256": "df66665ed2c0917ca20ec58891ce26d3f31c956c927e64514f3b4029dcf08c26"
     },
     {
       "path": "src/35_build_bm25_index.py",
@@ -382,6 +437,21 @@
       "path": "src/council_vector_runtime.py",
       "size_bytes": 23319,
       "sha256": "fb86757ab8ba5d05f13a3e20ca409feac2296a4263ca6c9bd689ad79701e2af0"
+    },
+    {
+      "path": "src/external_followup.py",
+      "size_bytes": 23511,
+      "sha256": "7833ed7723446e890c337dd0b2e01e7c67852ae6a8d027409c0c851f097d5091"
+    },
+    {
+      "path": "src/external_policy_sources.py",
+      "size_bytes": 15459,
+      "sha256": "908e27915b0466e8c3ffdad3bd17ff159e7e435af809cd650213d76d3ba9dab5"
+    },
+    {
+      "path": "src/regional_stats.py",
+      "size_bytes": 13783,
+      "sha256": "9639f3829d51906adaa1d71b63d2115ee73d764e453a4083d1153ed5579025e5"
     },
     {
       "path": "src/search_aliases.py",
