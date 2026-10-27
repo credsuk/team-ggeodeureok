@@ -1,0 +1,41 @@
+{
+ "_설명": "KOSIS 주제별 국내통계(vwCd=MT_ZTITLE) 30개 분류를 기준으로 한 통계 목록 지도. 질문·이슈 분야를 주제로 먼저 좁힌 뒤 그 주제의 통계표 중에서 kosis_indicators.json에 올릴 지표를 고르는 데 쓴다(런타임 조회에는 쓰지 않음). policy_keywords·indicator_ids는 사람이 관리하고, list_id·children·table_count·sido_table_count는 src/kosis_topic_catalog.py --crawl이 KOSIS 통계목록 API로 채운다(다시 실행해도 사람이 관리하는 필드는 유지). sido_hint=true는 표 이름에 시도/지역별 표기가 있는 표로, 실제로 17개 시도 값이 나오는지는 regional_stats.py로 확인해야 한다.",
+ "source": {
+  "name": "KOSIS 국가통계포털 주제별 통계",
+  "url": "https://kosis.kr/statisticsList/statisticsListIndex.do?vwcd=MT_ZTITLE&menuId=M_01_01",
+  "vw_cd": "MT_ZTITLE",
+  "crawled_at": null
+ },
+ "topics": [
+  {"name": "인구", "list_id": null, "policy_keywords": ["인구", "저출생", "출산", "고령화", "지방소멸", "인구감소", "청년 유출", "귀농", "귀촌", "외국인주민"], "indicator_ids": ["population", "pop_change", "aged_ratio", "tfr", "births"], "children": []},
+  {"name": "사회일반", "list_id": null, "policy_keywords": ["사회조사", "가족", "다문화", "1인가구", "사회적 관계", "자원봉사", "주민참여"], "indicator_ids": [], "children": []},
+  {"name": "범죄ㆍ안전", "list_id": null, "policy_keywords": ["범죄", "안전", "교통사고", "화재", "재난", "재해", "어린이보호구역", "가정폭력", "성폭력", "학교폭력"], "indicator_ids": ["traffic_acc", "traffic_death", "fire"], "children": []},
+  {"name": "노동", "list_id": null, "policy_keywords": ["고용", "실업", "일자리", "청년 일자리", "노인 일자리", "산업재해", "비정규직", "장애인 고용", "경력단절"], "indicator_ids": ["unemployment"], "children": []},
+  {"name": "소득ㆍ소비ㆍ자산", "list_id": null, "policy_keywords": ["소득", "가계부채", "빈곤", "자산", "소비", "기본소득", "지역화폐"], "indicator_ids": [], "children": []},
+  {"name": "보건", "list_id": null, "policy_keywords": ["건강", "의료", "공공의료", "응급의료", "정신건강", "자살", "감염병", "치매", "흡연", "비만"], "indicator_ids": [], "children": []},
+  {"name": "복지", "list_id": null, "policy_keywords": ["복지", "기초생활", "노인복지", "장애인", "아동", "돌봄", "고독사", "학대", "한부모", "보육"], "indicator_ids": ["basic_living"], "children": []},
+  {"name": "교육ㆍ훈련", "list_id": null, "policy_keywords": ["교육", "학교", "교원", "사교육", "급식", "평생교육", "직업훈련", "특수교육", "학생 건강"], "indicator_ids": ["teachers_ratio"], "children": []},
+  {"name": "문화ㆍ여가", "list_id": null, "policy_keywords": ["문화", "예술", "체육", "관광", "도서관", "여가", "축제", "생활체육"], "indicator_ids": [], "children": []},
+  {"name": "주거", "list_id": null, "policy_keywords": ["주거", "주택", "전세", "월세", "임대주택", "청년주택", "빈집", "주거취약", "전세사기"], "indicator_ids": ["jeonse_index"], "children": []},
+  {"name": "국토이용", "list_id": null, "policy_keywords": ["토지", "도시계획", "개발제한구역", "도시재생", "공원", "지적"], "indicator_ids": [], "children": []},
+  {"name": "경제일반ㆍ경기", "list_id": null, "policy_keywords": ["경기", "지역경제", "경제동향"], "indicator_ids": [], "children": []},
+  {"name": "기업경영", "list_id": null, "policy_keywords": ["기업", "소상공인", "중소기업", "창업", "사회적기업", "협동조합", "벤처"], "indicator_ids": [], "children": []},
+  {"name": "농림", "list_id": null, "policy_keywords": ["농업", "농촌", "농가", "임업", "산림", "축산", "먹거리", "반려동물"], "indicator_ids": [], "children": []},
+  {"name": "수산", "list_id": null, "policy_keywords": ["수산", "어업", "어촌", "양식", "귀어"], "indicator_ids": [], "children": []},
+  {"name": "광업ㆍ제조업", "list_id": null, "policy_keywords": ["제조업", "산업단지", "공장"], "indicator_ids": [], "children": []},
+  {"name": "건설", "list_id": null, "policy_keywords": ["건설", "건축", "건축허가", "공사"], "indicator_ids": [], "children": []},
+  {"name": "교통ㆍ물류", "list_id": null, "policy_keywords": ["교통", "대중교통", "버스", "택시", "주차", "자전거", "도로", "철도", "물류", "고령운전"], "indicator_ids": ["traffic_acc", "traffic_death"], "children": []},
+  {"name": "정보통신", "list_id": null, "policy_keywords": ["디지털", "정보격차", "인터넷", "스마트폰", "인공지능", "디지털 포용"], "indicator_ids": [], "children": []},
+  {"name": "과학ㆍ기술", "list_id": null, "policy_keywords": ["연구개발", "과학기술", "R&D"], "indicator_ids": [], "children": []},
+  {"name": "도소매ㆍ서비스", "list_id": null, "policy_keywords": ["전통시장", "상권", "골목상권", "유통", "프랜차이즈", "온라인쇼핑"], "indicator_ids": [], "children": []},
+  {"name": "임금", "list_id": null, "policy_keywords": ["임금", "생활임금", "최저임금", "근로시간"], "indicator_ids": [], "children": []},
+  {"name": "물가", "list_id": null, "policy_keywords": ["물가", "공공요금", "생활물가"], "indicator_ids": [], "children": []},
+  {"name": "국민계정", "list_id": null, "policy_keywords": ["지역내총생산", "GRDP", "지역소득"], "indicator_ids": [], "children": []},
+  {"name": "정부ㆍ재정", "list_id": null, "policy_keywords": ["재정", "재정자립도", "지방세", "예산", "지방채", "공무원"], "indicator_ids": ["fiscal_indep", "fiscal_auto"], "children": []},
+  {"name": "금융", "list_id": null, "policy_keywords": ["금융", "대출", "서민금융"], "indicator_ids": [], "children": []},
+  {"name": "무역ㆍ국제수지", "list_id": null, "policy_keywords": ["수출", "수입", "무역"], "indicator_ids": [], "children": []},
+  {"name": "환경", "list_id": null, "policy_keywords": ["환경", "탄소중립", "온실가스", "미세먼지", "대기오염", "폐기물", "재활용", "상수도", "하수도", "수질"], "indicator_ids": ["ghg"], "children": []},
+  {"name": "에너지", "list_id": null, "policy_keywords": ["에너지", "재생에너지", "태양광", "전력", "에너지 전환"], "indicator_ids": [], "children": []},
+  {"name": "지역통계", "list_id": null, "policy_keywords": ["지역", "시도", "지방자치", "균형발전"], "indicator_ids": [], "children": []}
+ ]
+}
