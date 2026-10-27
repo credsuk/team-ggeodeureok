@@ -23,3 +23,6 @@ __pycache__/
 /*
 !/.gitignore
 !/mini_pj/
+
+# mini_team 폴더 허용
+!/mini_team/
