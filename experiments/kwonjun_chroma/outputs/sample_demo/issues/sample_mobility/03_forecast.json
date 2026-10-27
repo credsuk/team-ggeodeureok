@@ -1,0 +1,20 @@
+{
+  "issue": {
+    "issue_id": "SAMPLE_ISSUE_002"
+  },
+  "forecast": {
+    "target_month": "2026-01",
+    "direction": "attenuation",
+    "predicted_mention_count": 1,
+    "prediction_interval_80": [
+      0,
+      3
+    ]
+  },
+  "selected_count_baseline": "sample",
+  "supporting_signals": {},
+  "method": "sample_demo",
+  "limitations": [
+    "최근 합성 시계열의 감소 패턴을 이용한 화면 설명용 예측입니다. 실제 예측 결과가 아닙니다."
+  ]
+}

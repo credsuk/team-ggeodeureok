@@ -1,0 +1,338 @@
+{
+  "schema_version": "council_issue_web_v1",
+  "status": "complete",
+  "issue": {
+    "issue_id": "SAMPLE_ISSUE_002",
+    "issue_name": "교통약자 이동지원 서비스 개선",
+    "aliases": [
+      "교통약자",
+      "교통약자 이동지원 서비스 개선",
+      "배차",
+      "이동지원"
+    ],
+    "status": "fixed",
+    "scope": "합성 예시이며 실제 의회 분석 결과가 아닙니다."
+  },
+  "summary": {
+    "first_observation_date": "2024-04-03",
+    "first_observation_councils": [
+      "서울특별시의회"
+    ],
+    "last_observation_date": "2025-10-14",
+    "council_count": 2,
+    "evidence_unit_count": 7,
+    "calendar_month_count": 21
+  },
+  "map": {
+    "center": {
+      "latitude": 36.25,
+      "longitude": 127.85
+    },
+    "zoom": 6.0,
+    "nodes": [
+      {
+        "order": 1,
+        "council": "서울특별시의회",
+        "latitude": 37.5665,
+        "longitude": 126.978,
+        "first_observation_date": "2024-04-03",
+        "lag_days": 0,
+        "stage": "first_observation",
+        "mention_count": 4
+      },
+      {
+        "order": 2,
+        "council": "대전광역시의회",
+        "latitude": 36.3504,
+        "longitude": 127.3845,
+        "first_observation_date": "2025-01-22",
+        "lag_days": 294,
+        "stage": "later_observation",
+        "mention_count": 3
+      }
+    ],
+    "edges": [
+      {
+        "from_order": 1,
+        "to_order": 2,
+        "from_council": "서울특별시의회",
+        "to_council": "대전광역시의회",
+        "source": [
+          126.978,
+          37.5665
+        ],
+        "target": [
+          127.3845,
+          36.3504
+        ],
+        "days_between_observations": 294
+      }
+    ],
+    "missing_coordinate_councils": [],
+    "interpretation": "화살표는 의회별 최초 관측의 시간 순서를 연결하며 인과관계를 의미하지 않음"
+  },
+  "propagation": [
+    {
+      "council": "서울특별시의회",
+      "first_observation_date": "2024-04-03",
+      "lag_days_from_first": 0,
+      "stage": "first_observation",
+      "mention_count": 4,
+      "last_observation_date": "2025-10-14",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_004:20-260",
+          "parent_chunk_id": null,
+          "council": "서울특별시의회",
+          "meeting_date": "2024-04-03",
+          "meeting_name": "합성 교통위원회 회의록",
+          "agenda_title": "이동지원센터 운영",
+          "centroid_similarity": 0.84,
+          "text": "교통약자 이동지원 차량의 대기시간과 배차 체계를 개선하자는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 1
+    },
+    {
+      "council": "대전광역시의회",
+      "first_observation_date": "2025-01-22",
+      "lag_days_from_first": 294,
+      "stage": "later_observation",
+      "mention_count": 3,
+      "last_observation_date": "2025-10-14",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_005:340-610",
+          "parent_chunk_id": null,
+          "council": "대전광역시의회",
+          "meeting_date": "2025-01-22",
+          "meeting_name": "합성 산업건설위원회 회의록",
+          "agenda_title": "교통약자 접근성",
+          "centroid_similarity": 0.75,
+          "text": "예약 절차를 단순화하고 서비스 접근성을 높이자는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 2
+    }
+  ],
+  "monthly_series": [
+    {
+      "month": "2024-04",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 1,
+      "cumulative_council_count": 1,
+      "feature_ready": true
+    },
+    {
+      "month": "2024-05",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-06",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-07",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-08",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-09",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": true
+    },
+    {
+      "month": "2024-10",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-11",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-12",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-01",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 1,
+      "cumulative_council_count": 2,
+      "feature_ready": true
+    },
+    {
+      "month": "2025-02",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-03",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-04",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-05",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-06",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-07",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-08",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-09",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-10",
+      "mention_count": 1,
+      "active_council_count": 1,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": true
+    },
+    {
+      "month": "2025-11",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-12",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    }
+  ],
+  "forecast": {
+    "target_month": "2026-01",
+    "direction": "attenuation",
+    "predicted_mention_count": 1,
+    "prediction_interval_80": [
+      0,
+      3
+    ],
+    "selected_baseline": "sample",
+    "supporting_signals": {},
+    "method": "sample_demo",
+    "limitations": [
+      "최근 합성 시계열의 감소 패턴을 이용한 화면 설명용 예측입니다. 실제 예측 결과가 아닙니다."
+    ]
+  },
+  "evidence": [
+    {
+      "chunk_id": "SYNTHETIC_DOC_004:20-260",
+      "parent_chunk_id": null,
+      "council": "서울특별시의회",
+      "meeting_date": "2024-04-03",
+      "committee": "",
+      "meeting_name": "합성 교통위원회 회의록",
+      "agenda_title": "이동지원센터 운영",
+      "similarity": 0.84,
+      "text": "교통약자 이동지원 차량의 대기시간과 배차 체계를 개선하자는 합성 예시 발언입니다."
+    },
+    {
+      "chunk_id": "SYNTHETIC_DOC_005:340-610",
+      "parent_chunk_id": null,
+      "council": "대전광역시의회",
+      "meeting_date": "2025-01-22",
+      "committee": "",
+      "meeting_name": "합성 산업건설위원회 회의록",
+      "agenda_title": "교통약자 접근성",
+      "similarity": 0.75,
+      "text": "예약 절차를 단순화하고 서비스 접근성을 높이자는 합성 예시 발언입니다."
+    }
+  ],
+  "disclaimers": [
+    "모든 결과는 제공된 2024~2025 광역 지방의회 회의록 범위에 한정됨",
+    "지도 연결선은 최초 관측 순서이며 정책의 실제 인과적 전파를 증명하지 않음",
+    "2026년 1월 예측은 단일 이슈 소표본 기준선이며 확률은 비보정 상대 지표임",
+    "LLM은 수치 계산을 변경하지 않고 구조화 결과의 설명에만 사용"
+  ],
+  "source_files": {
+    "timeline": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_mobility\\01_timeline.json",
+    "forecast": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_mobility\\03_forecast.json",
+    "features": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_mobility\\monthly_features.csv"
+  }
+}

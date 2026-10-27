@@ -1,0 +1,20 @@
+외부데이터 코드 추가하면서 수정/추가된 파일들
+
+1. 이번 작업으로 새로 생긴 파일 (7개)
+파일	내용
+src/external_policy_sources.py	법제처·국회·KOSIS 공통 API 클라이언트 (허용 주소, 검색어 검사, 캐시, 접근 기록)
+src/external_followup.py	후속 흐름·후보 점수 계산 (live/backtest 모드, 무관한 조례 제외)
+src/32a_external_followup_flow.py	대표 이슈 후속 흐름 일괄 계산 (32번과 34번 사이)
+src/regional_stats.py	KOSIS 시도별 통계 모듈 (이전 Postgre_DB 코드를 옮김)
+config/kosis_indicators.json	KOSIS 지표 목록 15개
+agent/query_pipeline.py	질문 해석 → 검증·보정 → 의도별 실행 → 답변 검증
+agent/followup_tools.py	파이프라인이 쓰는 외부 데이터 작업
+
+
+2. 이번 작업으로 수정한 파일 (5개) 
+파일	내 변경	원격 최신 커밋의 변경	합칠 때
+demo/final_app.py	후속 흐름 섹션, Agent 파이프라인 연결	+164 / −150 (크게 바뀜)	충돌 가능성 높음
+scripts/run_final_app.sh	키가 있으면 32a 실행	+21 / −2	충돌 가능성 있음
+agent/local_issue_agent.py	파이프라인 실행·답변 검증 추가	+2 / −1 (retrieve의 검색 방식 표기)	작은 충돌, 쉽게 해결
+.env	세 API 키·모드 설정	+6	작은 충돌
+src/34_build_final_web_bundle.py	후속 흐름 결합	+4	작은 충돌
