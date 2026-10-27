@@ -1,0 +1,37 @@
+{
+  "status": "complete",
+  "method": "expanding_window_by_target_month",
+  "leakage_control": "무작위 분할 금지; 각 검증 월보다 이전 월만 학습",
+  "issue_count": 10,
+  "training_rows": 180,
+  "validation_predictions": 100,
+  "selection": {
+    "classifier": "active_ratio_baseline",
+    "count_model": "poisson_regression"
+  },
+  "required_evaluation": {
+    "discussion_active_f1": 0.8813559322033898,
+    "mention_count_mae": 7.122431460513062,
+    "mention_count_rmse": 10.042468878606321,
+    "directional_accuracy": 0.76,
+    "last_month_persistence_comparison": {
+      "reference": "last_month_persistence",
+      "classification_f1_delta": 0.0620788237696549,
+      "count_mae_improvement_percent": 29.82826147277772,
+      "count_rmse_improvement_percent": 24.308493344081132,
+      "directional_accuracy_delta": 0.74
+    }
+  },
+  "rolling_backtest": {
+    "strategy": "expanding_window_by_target_month",
+    "fold_count": 10,
+    "first_validation_month": "2025-03",
+    "last_validation_month": "2025-12",
+    "metrics_file": "/home/jun0/projects/council-vector-benchmark/outputs/forecast/multi_issue_v1/model/rolling_backtest_metrics.csv"
+  },
+  "limitations": [
+    "대표 이슈 수가 적어 확률 보정 전의 실험 모델임",
+    "예측은 제공된 2024~2025 회의록 이력만 사용함",
+    "이슈 정의와 군집 품질 변화에 민감하므로 사람 검수가 선행되어야 함"
+  ]
+}

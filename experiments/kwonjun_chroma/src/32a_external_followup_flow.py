@@ -8,8 +8,8 @@
 - outlook: 후속 조례화·논의 진입 후보 순위 (회의록 + 조례 + 지역 정책 수요, 국회 의안은 참고 근거)
 - post_cutoff_check: backtest 모드에서 기준일 이후 실제 '제정' 조례로 후보 순위를 사후 점검
 
---mode live(기본): 외부 데이터는 조회일(--as-of, 기본 오늘)까지 전부 사용, 전망은 조회일 이후
---mode backtest  : 외부 데이터는 --as-of(기본 회의록 기준일)까지만, 통계는 그 시점에 공표된 값만
+--mode backtest(대회 기본): 외부 데이터는 --as-of(기본 회의록 기준일)까지만, 통계는 그 시점에 공표된 값만
+--mode live             : 별도 사후 탐색용. 조회일(--as-of, 기본 오늘)까지 전부 사용, 전망은 조회일 이후
 
 계산 규칙은 external_followup.py에 있으며 Agent 도구(agent/followup_tools.py)와 공유한다.
 외부지표는 이슈 탐지·군집화·예측 모델 입력에 쓰지 않는다(reference_only).
@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir", type=Path,
         default=PROJECT_ROOT / "outputs" / "external" / "followup_v1",
     )
-    parser.add_argument("--mode", choices=FU.MODES, default=os.environ.get("COUNCIL_FOLLOWUP_MODE", "live"))
+    parser.add_argument("--mode", choices=FU.MODES, default=os.environ.get("COUNCIL_FOLLOWUP_MODE", "backtest"))
     parser.add_argument("--as-of", default=None, help="live 기본=오늘, backtest 기본=회의록 기준일")
     parser.add_argument(
         "--minutes-cutoff", "--analysis-cutoff", dest="minutes_cutoff",

@@ -12,6 +12,7 @@ LLM 호출은 두 번으로 고정한다.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -133,8 +134,11 @@ def heuristic_parse(question: str, previous: dict[str, Any] | None) -> dict[str,
         terms = list(previous.get("topic_terms") or [])
         if intent == "other":
             intent = previous.get("intent") or intent
+    requested_live = any(word in question for word in ("현재", "최신", "오늘", "실시간", "live"))
+    default_mode = os.environ.get("COUNCIL_FOLLOWUP_MODE", "backtest")
+    mode = "live" if requested_live else (previous or {}).get("mode", default_mode)
     return {"intent": intent, "topic": topic, "topic_terms": terms[:5], "regions": regions,
-            "mode": (previous or {}).get("mode", "live"), "needs_clarification": False,
+            "mode": mode, "needs_clarification": False,
             "clarification_question": ""}
 
 
@@ -150,6 +154,10 @@ def normalize_slots(raw: dict[str, Any], question: str, previous: dict[str, Any]
         topic = previous.get("topic") or ""
         terms = terms or list(previous.get("topic_terms") or [])
     mode = raw.get("mode") if raw.get("mode") in FU.MODES else fallback["mode"]
+    # LLM이 임의로 최신 정보를 선택하지 못하게 한다. 사용자가 최신·현재를
+    # 명시했거나 직전 대화가 live였을 때만 live를 허용한다.
+    if mode == "live" and fallback["mode"] != "live":
+        mode = "backtest"
     return {
         "intent": intent, "topic": topic, "topic_terms": list(dict.fromkeys([topic, *terms]))[:6],
         "regions": regions, "mode": mode,
@@ -187,7 +195,8 @@ class QuestionPipeline:
             "intent는 다음 중 하나: " + "; ".join(f"{key}={value}" for key, value in INTENTS.items()) + ". "
             "topic은 정책 주제의 짧은 명사구, topic_terms는 그 주제의 동의어·공식 용어·조례 이름에 쓰일 표현이다. "
             "regions는 질문에 나온 광역의회만 정식 명칭으로 쓴다(경북→경상북도의회). "
-            "질문이 '당시 기준', '검증', '백테스트'를 말하면 mode=backtest, 아니면 live. "
+            "질문이 '현재', '최신', '오늘', '실시간'을 명시하면 mode=live, "
+            "그 밖에는 대회 데이터 기준을 지키도록 mode=backtest. "
             "직전 해석이 주어지고 질문이 짧은 후속 질문이면 바뀐 항목만 바꾸고 나머지는 이어받는다."
         )
         user = json.dumps({"question": question, "previous": previous or None}, ensure_ascii=False)

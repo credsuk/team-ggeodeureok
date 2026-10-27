@@ -1,0 +1,10 @@
+# PyTorch는 GPU/CUDA 환경에 맞춰 공식 설치 명령으로 별도 설치합니다.
+numpy>=1.26,<3
+pandas>=2.2,<3
+pyarrow>=16,<22
+duckdb>=1.1,<2
+PyYAML>=6,<7
+psutil>=5.9,<8
+tqdm>=4.66,<5
+
+

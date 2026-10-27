@@ -30,7 +30,7 @@ class FollowupTools:
 
     issue_payloads: list[dict[str, Any]]
     search_service: Any | None = None
-    default_mode: str = field(default_factory=lambda: os.environ.get("COUNCIL_FOLLOWUP_MODE", "live"))
+    default_mode: str = field(default_factory=lambda: os.environ.get("COUNCIL_FOLLOWUP_MODE", "backtest"))
     minutes_cutoff: str = field(
         default_factory=lambda: os.environ.get("COUNCIL_MINUTES_CUTOFF", FU.DEFAULT_MINUTES_CUTOFF)
     )

@@ -258,7 +258,8 @@ class LocalCouncilAgent:
             )
             rows = list(result.get("results") or [])
             if rows:
-                return rows, "pgvector_retrieval"
+                mode = str(result.get("retrieval_mode") or "dense")
+                return rows, f"pgvector_{mode}_retrieval"
         return payload_evidence(self.issue_payload, top_k), "fixed_issue_payload"
 
     def _ollama_answer(
