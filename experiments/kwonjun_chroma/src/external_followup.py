@@ -386,6 +386,118 @@ def post_cutoff_check(candidates: list[dict], after_enacted: list[dict], top_k: 
     }
 
 
+def prediction_integration(
+    forecast: dict[str, Any], counts: dict[str, Any],
+    regional: dict[str, Any], view: dict[str, Any], mode: str,
+) -> dict[str, Any]:
+    """공식 회의록 예측과 외부 공공데이터를 설명 가능한 2층 결과로 묶는다.
+
+    외부정보가 공식 확률·언급량을 다시 계산한 것처럼 보이지 않도록 숫자는
+    변경하지 않는다. 조례화·국회 모멘텀·지역 수요는 후속 단계 후보와
+    조건부 해석을 보강하는 참고 신호로만 사용한다.
+    """
+    probability = forecast.get("discussion_active_probability")
+    mentions = forecast.get("predicted_mention_count")
+    target = forecast.get("target_month") or "다음 달"
+    institutionalized = list(view.get("already_institutionalized") or [])
+    top = list(view.get("top_candidates") or [])
+    indicators = list(regional.get("indicators") or [])
+    bills = int(counts.get("national_bills_last_12m") or 0)
+    ordinances = int(counts.get("ordinances_visible") or 0)
+    lag = view.get("median_lag_days_minutes_to_ordinance")
+
+    if probability is None:
+        base_observation = f"{target} 공식 확률 없음"
+        base_outlook = "회의록 예측 근거가 부족합니다."
+    else:
+        base_observation = (
+            f"{target} 논의 지속 {float(probability):.1%}"
+            + (f" · 예상 언급 {int(mentions)}건" if mentions is not None else "")
+        )
+        if float(probability) >= 0.70:
+            base_outlook = "회의록 시계열은 후속 논의 지속 가능성이 높은 상태입니다."
+        elif float(probability) >= 0.45:
+            base_outlook = "회의록 시계열은 제한적 지속 또는 기존 의회 중심 논의를 시사합니다."
+        else:
+            base_outlook = "회의록 시계열만 보면 단기 논의 약화 가능성이 큽니다."
+
+    indicator_names = [
+        str(row.get("name") or row.get("indicator_id")) for row in indicators[:2]
+    ]
+    evidence_table = [
+        {
+            "source": "회의록 시계열 모델",
+            "observation": base_observation,
+            "reflection": "공식 논의 지속 확률·예상 언급량",
+            "model_input": "사용",
+        },
+        {
+            "source": "법제처 자치법규",
+            "observation": (
+                f"관련 조례 {ordinances}건 · 광역 조례화 {len(institutionalized)}곳"
+                + (f" · 중앙 소요일 {int(lag)}일" if lag is not None else "")
+            ),
+            "reflection": "후속 조례화 단계와 지역 후보 순위 보강",
+            "model_input": "참고 신호",
+        },
+        {
+            "source": "열린국회정보",
+            "observation": f"최근 12개월 관련 의안 {bills}건",
+            "reflection": "전국 단위 정책 모멘텀 해석",
+            "model_input": "참고 신호",
+        },
+        {
+            "source": "KOSIS",
+            "observation": (
+                f"연결 지표 {len(indicators)}개"
+                + (f" · {', '.join(indicator_names)}" if indicator_names else "")
+            ),
+            "reflection": "지역별 정책 수요와 후속 논의 후보 보강",
+            "model_input": "참고 신호",
+        },
+    ]
+
+    supporting = sum((bool(institutionalized), bills > 0, bool(indicators)))
+    step_labels = {
+        "광역_조례화": "광역 조례화",
+        "광역의회_논의_진입": "광역의회 논의 진입",
+        "관망": "관망",
+    }
+    candidate_text = (
+        f" 후속 단계 1순위는 {top[0]['council']}"
+        f"({step_labels.get(top[0]['expected_next_step'], top[0]['expected_next_step'])})입니다."
+        if top else ""
+    )
+    if mode == "live":
+        integrated = (
+            f"{base_outlook} 최신 외부정보는 공식 대회 예측과 분리된 사후 참고자료입니다."
+            f"{candidate_text}"
+        )
+    elif supporting >= 2:
+        integrated = (
+            f"{base_outlook} 조례·국회·지역수요 가운데 {supporting}개 외부 신호가 확인되어 "
+            f"후속 논의 또는 제도화 가능성을 보강합니다.{candidate_text}"
+        )
+    elif supporting == 1:
+        integrated = (
+            f"{base_outlook} 외부 보강 신호는 1개로 제한적이므로 방향 해석에만 참고합니다."
+            f"{candidate_text}"
+        )
+    else:
+        integrated = (
+            f"{base_outlook} 확인된 외부 보강 신호가 부족해 회의록 모델 결과를 우선합니다."
+            f"{candidate_text}"
+        )
+    return {
+        "official_forecast_unchanged": True,
+        "numeric_forecast_adjusted": False,
+        "external_role": "후속 단계 후보 순위와 조건부 해석 보강",
+        "evidence_table": evidence_table,
+        "integrated_outlook": integrated,
+        "caution": "외부 참고 점수는 확률 또는 인과적 전파 판정이 아님",
+    }
+
+
 def build_followup(
     issue: dict[str, Any],
     propagation: list[dict[str, Any]],
@@ -420,6 +532,20 @@ def build_followup(
     # live에서는 회의록 기준 모델 확률(기준일 직후 1개월 대상)이 조회일 이후 전망에 맞지 않아 점수에서 뺀다
     probability = forecast.get("discussion_active_probability") if mode == "backtest" else None
     view = outlook(flows, need["by_council"], probability, top_k)
+    external_counts = {
+        "ordinances_visible": len(parts["visible"]),
+        "ordinances_unrelated_excluded": len(parts["unrelated"]),
+        "enacted_after_as_of": len(parts["after_enacted"]),
+        "amended_after_as_of_uncertain_excluded": parts["uncertain_excluded"],
+        "national_bills_visible": len(bills_visible),
+        "national_bills_last_12m": sum(
+            1 for item in bills_visible if parse_day(item.get("date")) >= momentum_from
+        ),
+    }
+    regional_result = {
+        "indicators": need["indicators"],
+        "by_council": need["by_council"],
+    }
     used = [source for source in EXT.DATA_SOURCES if EXT.key_available(source)]
     return {
         "schema_version": SCHEMA_VERSION,
@@ -441,20 +567,14 @@ def build_followup(
             "predicted_mention_count": forecast.get("predicted_mention_count"),
             "used_in_score": probability is not None,
         },
-        "external_counts": {
-            "ordinances_visible": len(parts["visible"]),
-            "ordinances_unrelated_excluded": len(parts["unrelated"]),
-            "enacted_after_as_of": len(parts["after_enacted"]),
-            "amended_after_as_of_uncertain_excluded": parts["uncertain_excluded"],
-            "national_bills_visible": len(bills_visible),
-            "national_bills_last_12m": sum(
-                1 for item in bills_visible if parse_day(item.get("date")) >= momentum_from
-            ),
-        },
+        "external_counts": external_counts,
         "council_merges": applied_merges(as_of),
         "followup_flow": flows,
-        "regional_need": {"indicators": need["indicators"], "by_council": need["by_council"]},
+        "regional_need": regional_result,
         "outlook": {key: value for key, value in view.items() if key != "all_candidates"},
+        "prediction_integration": prediction_integration(
+            forecast, external_counts, regional_result, view, mode,
+        ),
         "post_cutoff_check": (
             post_cutoff_check(view["all_candidates"], parts["after_enacted"], top_k)
             if mode == "backtest" else {"status": "not_applicable_live_mode"}
@@ -516,6 +636,13 @@ def compact_for_llm(result: dict[str, Any], max_flows: int = 8, councils: list[s
             for row in (result.get("national_bills") or [])[:3]
         ],
         "post_cutoff_check": result.get("post_cutoff_check"),
+        "prediction_integration": {
+            key: (result.get("prediction_integration") or {}).get(key)
+            for key in (
+                "official_forecast_unchanged", "external_role",
+                "integrated_outlook", "caution",
+            )
+        },
         "errors": [row.get("error") for row in result.get("errors") or []][:3],
         "attribution": [row.get("attribution") for row in result.get("data_sources") or []],
         "note": "점수는 미리 고정한 규칙 기반 참고값이며 인과관계·확률이 아님. 회의록 원문은 외부로 전송되지 않음",
