@@ -16,5 +16,5 @@ agent/followup_tools.py	파이프라인이 쓰는 외부 데이터 작업
 demo/final_app.py	후속 흐름 섹션, Agent 파이프라인 연결	+164 / −150 (크게 바뀜)	충돌 가능성 높음
 scripts/run_final_app.sh	키가 있으면 32a 실행	+21 / −2	충돌 가능성 있음
 agent/local_issue_agent.py	파이프라인 실행·답변 검증 추가	+2 / −1 (retrieve의 검색 방식 표기)	작은 충돌, 쉽게 해결
-.env.example	세 API 키·모드 설정	+6	작은 충돌
+.env	세 API 키·모드 설정	+6	작은 충돌
 src/34_build_final_web_bundle.py	후속 흐름 결합	+4	작은 충돌

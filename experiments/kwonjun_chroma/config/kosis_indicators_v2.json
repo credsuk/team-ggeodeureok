@@ -1,0 +1,234 @@
+{
+ "schema_version": "kosis_indicators_v2",
+ "_설명": "KOSIS 지표 실행 목록(초안). kosis_topic_catalog.json이 '어떤 주제에 어떤 후보 표가 있는가'를 찾는 탐색 계층이라면, 이 파일은 고른 표를 '정확히 어떻게 조회하고 어떻게 해석하는가'를 고정하는 실행 계층이다. 모든 코드(org_id, tbl_id, obj_id, itm_id, 지역 코드)는 KOSIS 통계표설명 API(statisticsData.do?method=getMeta, type=TBL/ITM/PRD/UNIT/SOURCE)로 확인한 값만 적는다. 이름 문자열로 항목·지역을 고르지 않고 코드로 고정한다.",
+ "_필드_안내": {
+  "matching": "이슈·질문과 지표를 연결하는 정보. issue_keys는 config/representative_issue_keys_v1.txt의 key, role은 이 지표가 정책 수요(need)·결과(outcome)·배경(context)·분모(denominator) 중 무엇인지.",
+  "interpretation": "값을 지역 간 비교 가능한 수로 만드는 규칙. value_type이 count면 per_capita, index면 yoy_change처럼 transform을 반드시 지정한다.",
+  "source": "출처 표기와 재현에 필요한 표 정보(getMeta type=TBL·SOURCE).",
+  "query": "statisticsParameterData.do 호출 파라미터. obj_order는 표의 분류 순서(objL1, objL2...), region은 지역 분류와 의회별 코드, fixed_dims는 지역 외 분류를 '계' 등 한 값으로 고정.",
+  "timing": "수록 범위·주기와 공표 지연(백테스트에서 기준일에 아직 공표되지 않은 값을 빼는 데 사용).",
+  "quality": "검증 상태. verified=true는 실제 응답으로 17개 시도 값을 받은 경우만."
+ },
+ "defaults": {
+  "region_level": "sido",
+  "min_regions": 15,
+  "monthly_to_annual": "mean",
+  "publication_lag_months": 9
+ },
+ "region_master": {
+  "_설명": "프로젝트 의회명 ↔ KOSIS 표준 시도 코드(2자리) ↔ 표마다 다른 지역명 표기. 표별 코드가 표준과 다르면 각 지표의 query.region.code_map에 적는다.",
+  "councils": [
+   {"council": "서울특별시의회", "std_code": "11", "names": ["서울특별시", "서울"]},
+   {"council": "부산광역시의회", "std_code": "21", "names": ["부산광역시", "부산"]},
+   {"council": "대구광역시의회", "std_code": "22", "names": ["대구광역시", "대구"]},
+   {"council": "인천광역시의회", "std_code": "23", "names": ["인천광역시", "인천"]},
+   {"council": "광주광역시의회", "std_code": "24", "names": ["광주광역시", "광주"]},
+   {"council": "대전광역시의회", "std_code": "25", "names": ["대전광역시", "대전"]},
+   {"council": "울산광역시의회", "std_code": "26", "names": ["울산광역시", "울산"]},
+   {"council": "세종특별자치시의회", "std_code": "29", "names": ["세종특별자치시", "세종", "세종특별자치도"], "since": "2012"},
+   {"council": "경기도의회", "std_code": "31", "names": ["경기도", "경기"]},
+   {"council": "강원특별자치도의회", "std_code": "32", "names": ["강원특별자치도", "강원도", "강원"]},
+   {"council": "충청북도의회", "std_code": "33", "names": ["충청북도", "충북"]},
+   {"council": "충청남도의회", "std_code": "34", "names": ["충청남도", "충남"]},
+   {"council": "전북특별자치도의회", "std_code": "35", "names": ["전북특별자치도", "전라북도", "전북"]},
+   {"council": "전라남도의회", "std_code": "36", "names": ["전라남도", "전남"]},
+   {"council": "경상북도의회", "std_code": "37", "names": ["경상북도", "경북"]},
+   {"council": "경상남도의회", "std_code": "38", "names": ["경상남도", "경남"]},
+   {"council": "제주특별자치도의회", "std_code": "39", "names": ["제주특별자치도", "제주"]}
+  ],
+  "aggregate_regions": [
+   {"code": "00", "names": ["전국", "계"], "policy": "exclude"},
+   {"code": "12", "names": ["전남광주통합특별시"], "members": ["24", "36"], "policy": "exclude_when_members_present",
+    "_근거": "2026-10-27 DT_1DA7014S(경제활동인구) 메타에서 12와 24·36이 함께 조회됨. 그대로 쓰면 광주·전남이 이중 집계된다."}
+  ]
+ },
+ "indicators": [
+  {
+   "id": "tfr",
+   "name": "합계출산율",
+   "topic": "인구",
+   "description": "가임여성 1명이 평생 낳을 것으로 예상되는 평균 출생아 수. 저출생 정책 수요를 시도 간 비교하는 대표 지표.",
+   "matching": {
+    "keywords": ["저출생", "저출산", "출산", "출산율", "합계출산율", "출산장려"],
+    "exclude_keywords": ["출산휴가"],
+    "issue_keys": ["birth_rate", "population_decline"],
+    "role": "need"
+   },
+   "interpretation": {
+    "value_type": "rate",
+    "unit": "가임여자 1명당 명",
+    "need_direction": "low",
+    "transform": {"method": "none"},
+    "comparable_across_regions": true
+   },
+   "source": {
+    "org_id": "101", "org_nm": "국가데이터처",
+    "tbl_id": "DT_1B81A21", "tbl_nm": "시도/합계출산율, 모의 연령별 출산율",
+    "stat_id": "1962004", "survey_nm": "인구동향조사"
+   },
+   "query": {
+    "prd_se": "Y",
+    "obj_order": ["A"],
+    "item": {"itm_id": "T1", "itm_nm": "합계출산율"},
+    "region": {"obj_id": "A", "code_scheme": "std"},
+    "fixed_dims": []
+   },
+   "timing": {"coverage": {"start": "1993", "end": "2025"}, "update_cycle": "annual", "publication_lag_months": 8,
+              "_lag_근거": "추정치. 공표일정(통계표설명 NCD)으로 확인 필요"},
+   "quality": {"verified": true, "verified_at": "2026-10-27", "checked": {"regions": 17, "latest_period": "2025"}, "known_issues": []}
+  },
+  {
+   "id": "unemployment",
+   "name": "실업률",
+   "topic": "노동",
+   "description": "경제활동인구 중 실업자 비율. 청년 일자리·소상공인 경영 안정 이슈의 지역 고용 여건.",
+   "matching": {
+    "keywords": ["실업", "실업률", "일자리", "고용", "청년고용", "취업"],
+    "exclude_keywords": [],
+    "issue_keys": ["youth_jobs", "small_business"],
+    "role": "need"
+   },
+   "interpretation": {
+    "value_type": "rate",
+    "unit": "%",
+    "need_direction": "high",
+    "transform": {"method": "none"},
+    "comparable_across_regions": true
+   },
+   "source": {
+    "org_id": "101", "org_nm": "국가데이터처",
+    "tbl_id": "DT_1DA7014S", "tbl_nm": "행정구역(시도)/성별 경제활동인구",
+    "survey_nm": "경제활동인구조사"
+   },
+   "query": {
+    "prd_se": "Y",
+    "obj_order": ["A", "B"],
+    "item": {"itm_id": "T80", "itm_nm": "실업률"},
+    "region": {"obj_id": "A", "code_scheme": "std", "exclude_codes": ["00", "12"]},
+    "fixed_dims": [{"obj_id": "B", "obj_nm": "성별", "itm_id": "0", "itm_nm": "계"}]
+   },
+   "timing": {"coverage": {"start": "2000", "end": "2025"}, "update_cycle": "annual", "also_available": ["M", "Q"], "publication_lag_months": 1},
+   "quality": {"verified": true, "verified_at": "2026-10-27", "checked": {"regions": 17, "latest_period": "2025"},
+               "known_issues": ["통합 지역 '전남광주통합특별시'(12)가 광주(24)·전남(36)과 함께 응답됨 → 12 제외"]}
+  },
+  {
+   "id": "population",
+   "name": "주민등록인구",
+   "topic": "인구",
+   "description": "시도별 주민등록인구. 건수 지표를 인구 대비로 바꾸는 분모로 쓴다.",
+   "matching": {"keywords": [], "exclude_keywords": [], "issue_keys": [], "role": "denominator"},
+   "interpretation": {"value_type": "count", "unit": "명", "need_direction": "none", "transform": {"method": "none"}, "comparable_across_regions": false},
+   "source": {"org_id": "101", "org_nm": "국가데이터처", "tbl_id": "DT_1YL20651E", "tbl_nm": "주민등록인구(시도/시/군/구)", "kosis_view": "e-지방지표"},
+   "query": {
+    "prd_se": "Y",
+    "obj_order": ["A"],
+    "item": {"itm_id": "T20", "itm_nm": "계"},
+    "region": {"obj_id": "A", "code_scheme": "std", "top_level_only": true},
+    "fixed_dims": []
+   },
+   "timing": {"coverage": {"start": "1992", "end": "2025"}, "update_cycle": "annual", "also_available": ["M"], "publication_lag_months": 1},
+   "quality": {"verified": false, "verified_at": null, "checked": {}, "known_issues": ["지역 분류에 시군구가 섞여 있음(260개) → 상위코드 없는 시도만"]}
+  },
+  {
+   "id": "births_per_1000",
+   "name": "인구 천 명당 출생아 수",
+   "topic": "인구",
+   "description": "출생아 수를 주민등록인구로 나눈 값. 출생아 '수'를 그대로 비교하면 인구가 많은 경기·서울이 항상 상위가 되므로 비율로 바꾼다.",
+   "matching": {"keywords": ["출생아", "출생", "출생아수"], "exclude_keywords": [], "issue_keys": ["birth_rate"], "role": "need"},
+   "interpretation": {
+    "value_type": "count",
+    "unit": "명",
+    "need_direction": "low",
+    "transform": {"method": "per_capita", "denominator_indicator": "population", "scale": 1000, "result_unit": "인구 천 명당 명"},
+    "comparable_across_regions": true
+   },
+   "source": {"org_id": "101", "org_nm": "국가데이터처", "tbl_id": "INH_1B81A01", "tbl_nm": "출생아수(시도/시/군/구)", "stat_id": "1962004", "survey_nm": "인구동향조사"},
+   "query": {
+    "prd_se": "Y",
+    "obj_order": ["A"],
+    "item": {"itm_id": "T1", "itm_nm": "계"},
+    "region": {"obj_id": "A", "code_scheme": "std", "top_level_only": true},
+    "fixed_dims": []
+   },
+   "timing": {"coverage": {"start": "1997", "end": "2025"}, "update_cycle": "annual", "also_available": ["M"], "publication_lag_months": 8},
+   "quality": {"verified": false, "verified_at": null, "checked": {},
+               "known_issues": ["기존 births 지표는 출생아 '수'를 그대로 비교했음", "지역 분류 307개에 시군구 포함 → 상위코드 없는 시도만"]}
+  },
+  {
+   "id": "jeonse_change",
+   "name": "주택 전세가격 변동률(전년동월 대비)",
+   "topic": "주거",
+   "description": "주택전세가격지수의 전년 같은 달 대비 변동률. 지수 자체는 기준시점=100이라 지역 간 수준 비교가 무의미하므로 변화율로 바꾼다.",
+   "matching": {"keywords": ["전세", "전세사기", "전세가격", "임차인", "깡통전세"], "exclude_keywords": [], "issue_keys": ["jeonse_fraud"], "role": "context"},
+   "interpretation": {
+    "value_type": "index",
+    "unit": "2025.3=100.0",
+    "need_direction": "none",
+    "transform": {"method": "yoy_change", "periods_back": 12, "result_unit": "%"},
+    "comparable_across_regions": true,
+    "_need_direction_근거": "전세가 급등·급락 모두 위험 신호라 방향을 한쪽으로 정할 수 없음 → 점수 계산에서 빼고 화면 참고값으로만"
+   },
+   "source": {"org_id": "101", "org_nm": "국가데이터처", "tbl_id": "DT_1YL13602E", "tbl_nm": "주택전세가격지수(시도/시/군/구)", "kosis_view": "e-지방지표"},
+   "query": {
+    "prd_se": "M",
+    "obj_order": ["region", "type"],
+    "item": {"itm_id": "sales", "itm_nm": "주택전세가격지수"},
+    "region": {
+     "obj_id": "region",
+     "code_scheme": "table",
+     "code_map": {
+      "서울특별시의회": "a7", "부산광역시의회": "b1", "대구광역시의회": "b2", "인천광역시의회": "a9",
+      "광주광역시의회": "b3", "대전광역시의회": "b4", "울산광역시의회": "b5", "세종특별자치시의회": "b6",
+      "경기도의회": "a8", "강원특별자치도의회": "c1", "충청북도의회": "c2", "충청남도의회": "c3",
+      "전북특별자치도의회": "c4", "전라남도의회": "c5", "경상북도의회": "c6", "경상남도의회": "c7",
+      "제주특별자치도의회": "c8"
+     }
+    },
+    "fixed_dims": [{"obj_id": "type", "obj_nm": "주택유형별", "itm_id": "00", "itm_nm": "종합"}]
+   },
+   "timing": {"coverage": {"start": "2021.06", "end": "2026.01"}, "update_cycle": "monthly", "publication_lag_months": 1},
+   "quality": {"verified": true, "verified_at": "2026-10-27", "checked": {"sample_regions": ["a7", "b1"], "latest_period": "202601"},
+               "known_issues": ["지역 코드가 표준 2자리가 아닌 표 고유 코드(a7, b1…)", "월별만 제공", "기존 jeonse_index는 지수 수준을 그대로 비교했음"]}
+  },
+  {
+   "id": "ghg_emission",
+   "name": "온실가스 총배출량",
+   "topic": "환경",
+   "description": "시도별 온실가스 총배출량(직접 배출). 기후위기·탄소중립 이슈의 지역 배출 규모.",
+   "matching": {"keywords": ["온실가스", "탄소중립", "탄소", "기후위기", "기후변화", "배출량"], "exclude_keywords": [], "issue_keys": ["climate_neutrality"], "role": "need"},
+   "interpretation": {
+    "value_type": "amount",
+    "unit": "Gg CO2eq.",
+    "need_direction": "high",
+    "transform": {"method": "per_capita", "denominator_indicator": "population", "scale": 1000, "result_unit": "1인당 t CO2eq."},
+    "comparable_across_regions": true
+   },
+   "source": {"org_id": "106", "org_nm": "온실가스종합정보센터", "tbl_id": "DT_106N_99_2800026", "tbl_nm": "국가 온실가스 지역별 배출량(직접)"},
+   "query": {
+    "prd_se": "Y",
+    "obj_order": ["13101844246A"],
+    "item": {"itm_id": "13103844246T.10001", "itm_nm": "배출량"},
+    "region": {
+     "obj_id": "13101844246A",
+     "code_scheme": "hierarchy_path",
+     "path": ["{region}", "총배출량", "합계"],
+     "_설명": "이 표는 지역 분류 안에 '서울특별시 > 총배출량 > 합계'처럼 배출 구분이 계층으로 들어 있고 값은 가장 아래 단계에만 있다. 응답 행의 C1_NM은 '합계'·'소계'뿐이라 이름으로는 지역을 알 수 없으므로, getMeta ITM의 UP_ITM_ID를 따라 지역별 코드를 먼저 구한 뒤 그 코드로 행을 고른다.",
+     "resolved_level2": {
+      "서울특별시의회": "13102844246A.50018", "부산광역시의회": "13102844246A.52827", "대구광역시의회": "13102844246A.55636",
+      "인천광역시의회": "13102844246A.58445", "광주광역시의회": "13102844246A.61254", "대전광역시의회": "13102844246A.64063",
+      "울산광역시의회": "13102844246A.66872", "세종특별자치시의회": "13102844246A.69681", "경기도의회": "13102844246A.72490",
+      "강원특별자치도의회": "13102844246A.75299", "충청북도의회": "13102844246A.78108", "충청남도의회": "13102844246A.80917",
+      "전북특별자치도의회": "13102844246A.83726", "전라남도의회": "13102844246A.86535", "경상북도의회": "13102844246A.89344",
+      "경상남도의회": "13102844246A.92153", "제주특별자치도의회": "13102844246A.94962"
+     }
+    },
+    "fixed_dims": []
+   },
+   "timing": {"coverage": {"start": "2010", "end": "2023"}, "update_cycle": "annual", "publication_lag_months": 30,
+              "_lag_근거": "2026-10 기준 최신 수록 2023년. 추정치이며 공표일정 확인 필요"},
+   "quality": {"verified": false, "verified_at": null,
+               "checked": {"meta_levels": "지역(level1) → 총배출량(level2) 코드 17개 확인, 합계(level3) 코드 해석은 미완"},
+               "known_issues": ["원표의 세종 표기가 '세종특별자치도'(오기)", "기존 ghg가 실패한 원인: 지역명 문자열 매칭으로는 계층형 행을 고를 수 없음", "수록 시점이 2~3년 늦음"]}
+  }
+ ]
+}
