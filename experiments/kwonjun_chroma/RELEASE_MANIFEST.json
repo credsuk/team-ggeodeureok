@@ -1,9 +1,9 @@
 {
   "schema_version": "council_issue_radar_release_v1",
-  "created_at": "2026-10-27T13:39:22",
+  "created_at": "2026-10-27T14:38:04",
   "source": "/home/jun0/projects/council-vector-benchmark",
   "output": "/home/jun0/projects/council-issue-radar-release",
-  "backup": null,
+  "backup": "/home/jun0/projects/council-issue-radar-release_backup_20261027_143803",
   "missing_optional_or_required_files": [
     "requirements-issue-flow.txt",
     "src/20_validate_embedding_artifact.py",
@@ -100,8 +100,8 @@
     },
     {
       "path": "demo/final_app.py",
-      "size_bytes": 59906,
-      "sha256": "53f570b37b58ef6e558e3e876e7e50bf61f1022f3bfb23c67964d8d47598d723"
+      "size_bytes": 61179,
+      "sha256": "024288cd7e388b0672e5b8a31253d76f571e7163a78c69ae1791e6a3be01b887"
     },
     {
       "path": "demo/issue_review_app.py",
@@ -130,8 +130,8 @@
     },
     {
       "path": "docs/EXTERNAL_DATA_INTEGRATION.md",
-      "size_bytes": 3310,
-      "sha256": "bc1cabd43e0c9a1fc002b57910570618a2e85df0c3a420e21f62120e4c12ec16"
+      "size_bytes": 3881,
+      "sha256": "d479442694bf0e7f285feb20b0ec0628a3a278b18228a5e8b90585d8f81a605a"
     },
     {
       "path": "docs/FINAL_GITHUB_UPLOAD.md",
@@ -440,13 +440,13 @@
     },
     {
       "path": "src/external_followup.py",
-      "size_bytes": 23511,
-      "sha256": "7833ed7723446e890c337dd0b2e01e7c67852ae6a8d027409c0c851f097d5091"
+      "size_bytes": 28965,
+      "sha256": "fa0bf7dfb4877cb1ec63884e9096cabef6bcaa7f4cf802695a65035229067390"
     },
     {
       "path": "src/external_policy_sources.py",
-      "size_bytes": 15459,
-      "sha256": "908e27915b0466e8c3ffdad3bd17ff159e7e435af809cd650213d76d3ba9dab5"
+      "size_bytes": 17114,
+      "sha256": "67e0f40ffbbb0b613b8faa5db5fcf893688a6e054b4d14ccb9bf6c3254b24270"
     },
     {
       "path": "src/regional_stats.py",
