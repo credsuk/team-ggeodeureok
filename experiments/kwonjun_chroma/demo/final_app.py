@@ -521,6 +521,33 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
     bills = counts.get("national_bills_last_12m", view.get("national_bills_in_window"))
     cols[3].metric("국회 의안(12개월)", f"{int(bills or 0)}건")
 
+    integration = followup.get("prediction_integration") or {}
+    evidence_rows = integration.get("evidence_table") or []
+    if evidence_rows:
+        st.markdown("**회의록 예측 + 외부데이터 반영표**")
+        evidence_frame = pd.DataFrame(evidence_rows).rename(columns={
+            "source": "근거",
+            "observation": "확인한 값",
+            "reflection": "예측 결과에 반영한 방식",
+            "model_input": "구분",
+        })
+        st.dataframe(
+            evidence_frame[["근거", "확인한 값", "예측 결과에 반영한 방식", "구분"]],
+            hide_index=True, use_container_width=True,
+        )
+        st.markdown(
+            "<div class='forecast'>"
+            "<b>외부 근거를 반영한 통합 해석</b><br>"
+            f"{escape(str(integration.get('integrated_outlook') or '근거 부족'))}"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "공식 논의 지속 확률과 예상 언급량은 회의록 시간순 모델의 값 그대로입니다. "
+            "외부데이터는 후속 조례화·논의 진입 후보와 조건부 설명을 보강하며, "
+            "참고 점수를 확률로 해석하지 않습니다."
+        )
+
     after = view.get("followups_after_minutes_cutoff") or []
     if after:
         st.success(f"회의록 기준일 이후 실제 광역 조례화: {', '.join(after)}")

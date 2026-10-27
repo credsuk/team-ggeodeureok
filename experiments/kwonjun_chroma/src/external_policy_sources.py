@@ -9,6 +9,7 @@ KOSIS 통계표 조회는 regional_stats.py가 이 모듈의 _get·캐시를 써
 from __future__ import annotations
 
 import hashlib
+import html.entities
 import json
 import os
 import re
@@ -104,6 +105,11 @@ _KEYWORD_OK = re.compile(r"^[가-힣A-Za-z0-9][가-힣A-Za-z0-9 ·\-]{0,29}$")
 # 회의록 발언자 표기(이름+직함)가 검색어로 새 나가지 않도록
 _PERSON = re.compile(r"[가-힣]{2,4}\s*(의원|위원장|위원|의장|국장|실장|과장|시장|도지사|지사|교육감|교육장|단장|본부장|청장)(님)?$"
                      r"|^(위원장|부위원장|부의장|의원|위원|의장|국장|실장|과장|시장|도지사|교육감)\s*[가-힣]{2,4}$")
+_XML_STANDARD_ENTITIES = {b"amp", b"lt", b"gt", b"apos", b"quot"}
+_XML_NAMED_ENTITY = re.compile(rb"&([A-Za-z][A-Za-z0-9]+);")
+_XML_BARE_AMPERSAND = re.compile(
+    rb"&(?!#\d+;|#x[0-9A-Fa-f]+;|amp;|lt;|gt;|apos;|quot;)"
+)
 
 
 class PolicyError(ValueError):
@@ -118,6 +124,36 @@ def check_keyword(keyword: str) -> str:
     if _PERSON.search(k):
         raise PolicyError(f"사람(발언자) 이름으로 보이는 검색어는 외부로 보내지 않습니다: {k!r}")
     return k
+
+
+def _xml_safe_bytes(payload: bytes) -> bytes:
+    """법제처 XML에 섞인 HTML 엔티티와 잘못된 `&`를 XML-safe 형태로 바꾼다.
+
+    XML은 amp/lt/gt/apos/quot 다섯 이름만 기본 지원한다. 법제처 응답의
+    `&nbsp;`, `&middot;` 등은 Unicode 숫자 참조로 바꾸고, 알 수 없는
+    엔티티는 원문 문자열로 보존되도록 `&amp;name;`으로 이스케이프한다.
+    """
+
+    def replace_named(match: re.Match[bytes]) -> bytes:
+        name_bytes = match.group(1)
+        if name_bytes in _XML_STANDARD_ENTITIES:
+            return match.group(0)
+        name = name_bytes.decode("ascii")
+        value = html.entities.html5.get(name + ";")
+        if value is None:
+            return b"&amp;" + name_bytes + b";"
+        return "".join(f"&#{ord(character)};" for character in value).encode("ascii")
+
+    normalized = _XML_NAMED_ENTITY.sub(replace_named, payload)
+    return _XML_BARE_AMPERSAND.sub(b"&amp;", normalized)
+
+
+def _parse_law_xml(payload: bytes) -> ET.Element:
+    """법제처 응답을 정규화해 파싱하고 HTML 오류 응답을 구분한다."""
+    root = ET.fromstring(_xml_safe_bytes(payload))
+    if str(root.tag).lower().endswith("html"):
+        raise RuntimeError("법제처 API가 XML 대신 HTML 오류 페이지를 반환했습니다")
+    return root
 
 
 def normalize_council(council: str) -> str:
@@ -212,7 +248,11 @@ def fetch_local_ordinances(keyword: str, max_pages: int = 5) -> dict:
         for page in range(1, max_pages + 1):
             q = urllib.parse.urlencode({"OC": oc, "target": "ordin", "type": "XML", "query": keyword,
                                         "display": 100, "page": page})
-            root = ET.fromstring(_get(f"https://www.law.go.kr/DRF/lawSearch.do?{q}", "law_ordin", keyword))
+            response = _get(
+                f"https://www.law.go.kr/DRF/lawSearch.do?{q}",
+                "law_ordin", keyword,
+            )
+            root = _parse_law_xml(response)
             if (root.findtext("resultCode") or "00") != "00":
                 return {"source": src["name"], "error": f"법제처 API 오류: {root.findtext('resultMsg')}"}
             rows = root.findall("law")
