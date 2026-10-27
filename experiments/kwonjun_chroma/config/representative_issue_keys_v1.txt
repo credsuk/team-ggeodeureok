@@ -1,0 +1,10 @@
+birth_rate
+population_decline
+youth_jobs
+jeonse_fraud
+regional_healthcare
+care_policy
+school_violence
+flood_safety
+climate_neutrality
+small_business

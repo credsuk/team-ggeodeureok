@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--external-followup-dir", type=Path,
         default=PROJECT_ROOT / "outputs" / "external" / "followup_v1",
-        help="32a 결과 폴더. 없으면 외부 후속 흐름 없이 번들 생성",
+        help="32a 외부 후속 흐름 결과 폴더. 없으면 기존 데이터만으로 생성",
     )
     return parser.parse_args()
 
@@ -98,8 +98,13 @@ def main() -> None:
             followup = load_json(path)
         except (json.JSONDecodeError, OSError):
             continue
-        if followup.get("schema_version") in {"council_external_followup_v1", "council_external_followup_v2"}:
-            followups[str((followup.get("issue") or {}).get("issue_id") or "")] = followup
+        if followup.get("schema_version") not in {
+            "council_external_followup_v1", "council_external_followup_v2",
+        }:
+            continue
+        followup_issue_id = str((followup.get("issue") or {}).get("issue_id") or "")
+        if followup_issue_id:
+            followups[followup_issue_id] = followup
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     entries = []
@@ -111,6 +116,8 @@ def main() -> None:
             **forecast,
             "model_selection": model_report.get("selection"),
             "validation_metrics": model_report.get("metrics"),
+            "required_evaluation": model_report.get("required_evaluation"),
+            "rolling_backtest": model_report.get("rolling_backtest"),
             "method": model_report.get("method"),
             "leakage_control": model_report.get("leakage_control"),
             "limitations": model_report.get("limitations"),
@@ -141,8 +148,11 @@ def main() -> None:
             "selected_count_model": forecast.get("selected_count_model"),
             "single_issue_direction": single.get("direction"),
             "external_followup_candidates": (
-                [row["council"] for row in (followup.get("outlook") or {}).get("top_candidates") or []]
-                if followup else None
+                [
+                    row.get("council")
+                    for row in (followup.get("outlook") or {}).get("top_candidates") or []
+                    if row.get("council")
+                ] if followup else None
             ),
             "payload": str(output_path),
         })
@@ -159,6 +169,8 @@ def main() -> None:
         "model_summary": {
             "selection": model_report.get("selection"),
             "metrics": metrics,
+            "required_evaluation": model_report.get("required_evaluation"),
+            "rolling_backtest": model_report.get("rolling_backtest"),
             "method": model_report.get("method"),
             "leakage_control": model_report.get("leakage_control"),
             "training_rows": model_report.get("training_rows"),
