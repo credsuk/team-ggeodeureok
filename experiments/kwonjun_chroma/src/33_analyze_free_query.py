@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import council_groups as CG
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,6 +43,11 @@ COUNCIL_COORDINATES = {
     "경상남도의회": (35.4606, 128.2132),
     "제주특별자치도의회": (33.4996, 126.5312),
 }
+# 통합 의회(config/council_merges.json) 좌표
+COUNCIL_COORDINATES.update({
+    group["council"]: CG.coordinates(group["council"])
+    for group in CG.groups() if CG.coordinates(group["council"])
+})
 
 
 def parse_args() -> argparse.Namespace:

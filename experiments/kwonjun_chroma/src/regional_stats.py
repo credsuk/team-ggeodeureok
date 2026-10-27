@@ -39,7 +39,7 @@ SHORT = {"서울": "서울특별시의회", "부산": "부산광역시의회", "
          "광주": "광주광역시의회", "대전": "대전광역시의회", "울산": "울산광역시의회", "세종": "세종특별자치시의회",
          "경기": "경기도의회", "강원": "강원특별자치도의회", "충북": "충청북도의회", "충남": "충청남도의회",
          "전북": "전북특별자치도의회", "전남": "전라남도의회", "경북": "경상북도의회", "경남": "경상남도의회",
-         "제주": "제주특별자치도의회"}
+         "제주": "제주특별자치도의회", "전남광주": "전남광주통합특별시의회"}
 
 
 def catalog() -> list[dict[str, Any]]:
@@ -161,6 +161,10 @@ def extract_regions(rows: list, item_hint: str | None, year_max: int) -> dict | 
             continue
         cand.setdefault(prd, {}).setdefault(reg[0], ([], r.get("UNIT_NM", "")))[0].append(v)   # 월별이면 연평균
     cand = {p: {c: (round(sum(vs) / len(vs), 4), u) for c, (vs, u) in d.items()} for p, d in cand.items()}
+    for vals in cand.values():      # 통합 지역 행(전남광주통합특별시)과 전신 지역 행이 함께 있으면 전신 쪽만 (이중 집계 방지)
+        for merged in EXT.group_regions():
+            if merged in vals and any(m in vals for m in EXT.members_of(merged)):
+                del vals[merged]
     for prd in sorted(cand, reverse=True):          # 17개(통합 후 16개) 중 15개 이상 채워진 가장 최근 시점
         if len(cand[prd]) >= 15:
             vals = cand[prd]
