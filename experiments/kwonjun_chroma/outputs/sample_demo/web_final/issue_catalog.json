@@ -1,0 +1,83 @@
+{
+  "schema_version": "council_issue_catalog_v1",
+  "status": "complete",
+  "issue_count": 2,
+  "analysis_scope": "provided_2024_2025_council_minutes_only",
+  "model_summary": {
+    "selection": {
+      "classifier": "sample",
+      "count_model": "sample"
+    },
+    "metrics": {},
+    "method": "sample_demo",
+    "leakage_control": "합성 샘플",
+    "training_rows": null,
+    "validation_predictions": null
+  },
+  "issues": [
+    {
+      "issue_id": "SAMPLE_ISSUE_001",
+      "issue_key": "sample_birth_rate",
+      "issue_name": "저출생 대응 및 양육지원 확대",
+      "aliases": [
+        "돌봄",
+        "저출생",
+        "저출생 대응 및 양육지원 확대",
+        "출산지원"
+      ],
+      "first_observation_date": "2024-02-16",
+      "first_observation_councils": [
+        "경기도의회"
+      ],
+      "council_count": 3,
+      "evidence_unit_count": 12,
+      "target_month": "2026-01",
+      "discussion_active_probability": 0.54,
+      "predicted_mention_count": 3,
+      "selected_classifier": "sample",
+      "selected_count_model": "sample",
+      "single_issue_direction": "persistence",
+      "external_followup_candidates": [
+        "충청남도의회",
+        "인천광역시의회",
+        "전북특별자치도의회",
+        "충청북도의회",
+        "광주광역시의회"
+      ],
+      "payload": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\web_final\\sample_birth_rate.json"
+    },
+    {
+      "issue_id": "SAMPLE_ISSUE_002",
+      "issue_key": "sample_mobility",
+      "issue_name": "교통약자 이동지원 서비스 개선",
+      "aliases": [
+        "교통약자",
+        "교통약자 이동지원 서비스 개선",
+        "배차",
+        "이동지원"
+      ],
+      "first_observation_date": "2024-04-03",
+      "first_observation_councils": [
+        "서울특별시의회"
+      ],
+      "council_count": 2,
+      "evidence_unit_count": 7,
+      "target_month": "2026-01",
+      "discussion_active_probability": 0.31,
+      "predicted_mention_count": 1,
+      "selected_classifier": "sample",
+      "selected_count_model": "sample",
+      "single_issue_direction": "attenuation",
+      "external_followup_candidates": [
+        "광주광역시의회",
+        "전라남도의회"
+      ],
+      "payload": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\web_final\\sample_mobility.json"
+    }
+  ],
+  "source": {
+    "web_dir": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\web",
+    "multi_forecast": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\forecast\\multi_issue_forecast.json",
+    "external_followup_dir": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\external\\followup_v1"
+  }
+}

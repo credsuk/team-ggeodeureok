@@ -1,0 +1,101 @@
+{
+  "schema_version": "council_external_followup_summary_v2",
+  "mode": "backtest",
+  "as_of": "2025-12-31",
+  "minutes_cutoff": "2025-12-31",
+  "status": "partial",
+  "sources_available": {
+    "law_ordin": true,
+    "assembly_bills": true,
+    "kosis": true
+  },
+  "issue_count": 2,
+  "mean_post_cutoff_precision_at_k": 0.0,
+  "issues": [
+    {
+      "issue_key": "sample_birth_rate",
+      "issue_id": "SAMPLE_ISSUE_001",
+      "status": "partial",
+      "keywords": [
+        "돌봄",
+        "저출생",
+        "저출생 양육지원"
+      ],
+      "already_institutionalized": [
+        "서울특별시의회",
+        "부산광역시의회",
+        "대구광역시의회",
+        "대전광역시의회",
+        "울산광역시의회",
+        "세종특별자치시의회",
+        "경기도의회",
+        "강원특별자치도의회",
+        "경상북도의회",
+        "경상남도의회"
+      ],
+      "top_candidates": [
+        "충청남도의회",
+        "인천광역시의회",
+        "전북특별자치도의회",
+        "충청북도의회",
+        "광주광역시의회"
+      ],
+      "post_cutoff_check": {
+        "status": "complete",
+        "checked_until": "2026-09-30",
+        "enacted_councils": [
+          "경상북도의회",
+          "서울특별시의회"
+        ],
+        "top_k": 5,
+        "top_k_hits": [],
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0
+      },
+      "payload": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\external\\followup_backtest\\sample_birth_rate.json"
+    },
+    {
+      "issue_key": "sample_mobility",
+      "issue_id": "SAMPLE_ISSUE_002",
+      "status": "partial",
+      "keywords": [
+        "교통약자",
+        "교통약자 이동지원 서비스",
+        "배차"
+      ],
+      "already_institutionalized": [
+        "서울특별시의회",
+        "부산광역시의회",
+        "대구광역시의회",
+        "인천광역시의회",
+        "대전광역시의회",
+        "울산광역시의회",
+        "세종특별자치시의회",
+        "경기도의회",
+        "강원특별자치도의회",
+        "충청북도의회",
+        "충청남도의회",
+        "전북특별자치도의회",
+        "경상북도의회",
+        "경상남도의회",
+        "제주특별자치도의회"
+      ],
+      "top_candidates": [
+        "광주광역시의회",
+        "전라남도의회"
+      ],
+      "post_cutoff_check": {
+        "status": "complete",
+        "checked_until": "2026-02-27",
+        "enacted_councils": [
+          "경기도의회"
+        ],
+        "top_k": 5,
+        "top_k_hits": [],
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0
+      },
+      "payload": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\external\\followup_backtest\\sample_mobility.json"
+    }
+  ]
+}

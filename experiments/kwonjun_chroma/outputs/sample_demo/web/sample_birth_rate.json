@@ -1,0 +1,411 @@
+{
+  "schema_version": "council_issue_web_v1",
+  "status": "complete",
+  "issue": {
+    "issue_id": "SAMPLE_ISSUE_001",
+    "issue_name": "저출생 대응 및 양육지원 확대",
+    "aliases": [
+      "돌봄",
+      "저출생",
+      "저출생 대응 및 양육지원 확대",
+      "출산지원"
+    ],
+    "status": "fixed",
+    "scope": "합성 예시이며 실제 의회 분석 결과가 아닙니다."
+  },
+  "summary": {
+    "first_observation_date": "2024-02-16",
+    "first_observation_councils": [
+      "경기도의회"
+    ],
+    "last_observation_date": "2025-11-20",
+    "council_count": 3,
+    "evidence_unit_count": 12,
+    "calendar_month_count": 23
+  },
+  "map": {
+    "center": {
+      "latitude": 36.25,
+      "longitude": 127.85
+    },
+    "zoom": 6.0,
+    "nodes": [
+      {
+        "order": 1,
+        "council": "경기도의회",
+        "latitude": 37.4138,
+        "longitude": 127.5183,
+        "first_observation_date": "2024-02-16",
+        "lag_days": 0,
+        "stage": "first_observation",
+        "mention_count": 5
+      },
+      {
+        "order": 2,
+        "council": "충청남도의회",
+        "latitude": 36.6588,
+        "longitude": 126.6728,
+        "first_observation_date": "2024-06-12",
+        "lag_days": 117,
+        "stage": "later_observation",
+        "mention_count": 4
+      },
+      {
+        "order": 3,
+        "council": "부산광역시의회",
+        "latitude": 35.1796,
+        "longitude": 129.0756,
+        "first_observation_date": "2025-03-07",
+        "lag_days": 385,
+        "stage": "later_observation",
+        "mention_count": 3
+      }
+    ],
+    "edges": [
+      {
+        "from_order": 1,
+        "to_order": 2,
+        "from_council": "경기도의회",
+        "to_council": "충청남도의회",
+        "source": [
+          127.5183,
+          37.4138
+        ],
+        "target": [
+          126.6728,
+          36.6588
+        ],
+        "days_between_observations": 117
+      },
+      {
+        "from_order": 2,
+        "to_order": 3,
+        "from_council": "충청남도의회",
+        "to_council": "부산광역시의회",
+        "source": [
+          126.6728,
+          36.6588
+        ],
+        "target": [
+          129.0756,
+          35.1796
+        ],
+        "days_between_observations": 268
+      }
+    ],
+    "missing_coordinate_councils": [],
+    "interpretation": "화살표는 의회별 최초 관측의 시간 순서를 연결하며 인과관계를 의미하지 않음"
+  },
+  "propagation": [
+    {
+      "council": "경기도의회",
+      "first_observation_date": "2024-02-16",
+      "lag_days_from_first": 0,
+      "stage": "first_observation",
+      "mention_count": 5,
+      "last_observation_date": "2025-11-20",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_001:120-380",
+          "parent_chunk_id": null,
+          "council": "경기도의회",
+          "meeting_date": "2024-02-16",
+          "meeting_name": "합성 본회의 회의록",
+          "agenda_title": "저출생 대응 정책",
+          "centroid_similarity": 0.82,
+          "text": "이 문장은 공개 데모 형식을 설명하기 위해 만든 합성 발언입니다. 출산과 양육 부담을 줄이기 위한 돌봄 지원 확대 방안을 논의합니다."
+        }
+      ],
+      "observation_order": 1
+    },
+    {
+      "council": "충청남도의회",
+      "first_observation_date": "2024-06-12",
+      "lag_days_from_first": 117,
+      "stage": "later_observation",
+      "mention_count": 4,
+      "last_observation_date": "2025-11-20",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_002:80-310",
+          "parent_chunk_id": null,
+          "council": "충청남도의회",
+          "meeting_date": "2024-06-12",
+          "meeting_name": "합성 복지위원회 회의록",
+          "agenda_title": "지역 맞춤형 돌봄",
+          "centroid_similarity": 0.77,
+          "text": "지역의 보육 공백을 줄이고 양육 가구가 체감할 수 있는 지원 체계를 마련하자는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 2
+    },
+    {
+      "council": "부산광역시의회",
+      "first_observation_date": "2025-03-07",
+      "lag_days_from_first": 385,
+      "stage": "later_observation",
+      "mention_count": 3,
+      "last_observation_date": "2025-11-20",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_003:500-790",
+          "parent_chunk_id": null,
+          "council": "부산광역시의회",
+          "meeting_date": "2025-03-07",
+          "meeting_name": "합성 예산결산특별위원회 회의록",
+          "agenda_title": "출산·돌봄 예산",
+          "centroid_similarity": 0.73,
+          "text": "출산 지원 정책의 집행 효과와 돌봄 예산의 지속 가능성을 점검한다는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 3
+    }
+  ],
+  "monthly_series": [
+    {
+      "month": "2024-02",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 1,
+      "cumulative_council_count": 1,
+      "feature_ready": true
+    },
+    {
+      "month": "2024-03",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-04",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-05",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 1,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-06",
+      "mention_count": 3,
+      "active_council_count": 2,
+      "new_council_count": 1,
+      "cumulative_council_count": 2,
+      "feature_ready": true
+    },
+    {
+      "month": "2024-07",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-08",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-09",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-10",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2024-11",
+      "mention_count": 1,
+      "active_council_count": 1,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": true
+    },
+    {
+      "month": "2024-12",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-01",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-02",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 2,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-03",
+      "mention_count": 4,
+      "active_council_count": 2,
+      "new_council_count": 1,
+      "cumulative_council_count": 3,
+      "feature_ready": true
+    },
+    {
+      "month": "2025-04",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-05",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-06",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-07",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-08",
+      "mention_count": 2,
+      "active_council_count": 2,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": true
+    },
+    {
+      "month": "2025-09",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-10",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    },
+    {
+      "month": "2025-11",
+      "mention_count": 3,
+      "active_council_count": 2,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": true
+    },
+    {
+      "month": "2025-12",
+      "mention_count": 0,
+      "active_council_count": 0,
+      "new_council_count": 0,
+      "cumulative_council_count": 3,
+      "feature_ready": false
+    }
+  ],
+  "forecast": {
+    "target_month": "2026-01",
+    "direction": "persistence",
+    "predicted_mention_count": 3,
+    "prediction_interval_80": [
+      1,
+      5
+    ],
+    "selected_baseline": "sample",
+    "supporting_signals": {},
+    "method": "sample_demo",
+    "limitations": [
+      "최근 합성 시계열의 언급량을 기준으로 다음 달 논의가 유지될 가능성을 예시로 표시합니다. 실제 예측 결과가 아닙니다."
+    ]
+  },
+  "evidence": [
+    {
+      "chunk_id": "SYNTHETIC_DOC_001:120-380",
+      "parent_chunk_id": null,
+      "council": "경기도의회",
+      "meeting_date": "2024-02-16",
+      "committee": "",
+      "meeting_name": "합성 본회의 회의록",
+      "agenda_title": "저출생 대응 정책",
+      "similarity": 0.82,
+      "text": "이 문장은 공개 데모 형식을 설명하기 위해 만든 합성 발언입니다. 출산과 양육 부담을 줄이기 위한 돌봄 지원 확대 방안을 논의합니다."
+    },
+    {
+      "chunk_id": "SYNTHETIC_DOC_002:80-310",
+      "parent_chunk_id": null,
+      "council": "충청남도의회",
+      "meeting_date": "2024-06-12",
+      "committee": "",
+      "meeting_name": "합성 복지위원회 회의록",
+      "agenda_title": "지역 맞춤형 돌봄",
+      "similarity": 0.77,
+      "text": "지역의 보육 공백을 줄이고 양육 가구가 체감할 수 있는 지원 체계를 마련하자는 합성 예시 발언입니다."
+    },
+    {
+      "chunk_id": "SYNTHETIC_DOC_003:500-790",
+      "parent_chunk_id": null,
+      "council": "부산광역시의회",
+      "meeting_date": "2025-03-07",
+      "committee": "",
+      "meeting_name": "합성 예산결산특별위원회 회의록",
+      "agenda_title": "출산·돌봄 예산",
+      "similarity": 0.73,
+      "text": "출산 지원 정책의 집행 효과와 돌봄 예산의 지속 가능성을 점검한다는 합성 예시 발언입니다."
+    }
+  ],
+  "disclaimers": [
+    "모든 결과는 제공된 2024~2025 광역 지방의회 회의록 범위에 한정됨",
+    "지도 연결선은 최초 관측 순서이며 정책의 실제 인과적 전파를 증명하지 않음",
+    "2026년 1월 예측은 단일 이슈 소표본 기준선이며 확률은 비보정 상대 지표임",
+    "LLM은 수치 계산을 변경하지 않고 구조화 결과의 설명에만 사용"
+  ],
+  "source_files": {
+    "timeline": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_birth_rate\\01_timeline.json",
+    "forecast": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_birth_rate\\03_forecast.json",
+    "features": "C:\\TEST\\team-ggeodeureok\\experiments\\kwonjun_chroma\\outputs\\sample_demo\\issues\\sample_birth_rate\\monthly_features.csv"
+  }
+}

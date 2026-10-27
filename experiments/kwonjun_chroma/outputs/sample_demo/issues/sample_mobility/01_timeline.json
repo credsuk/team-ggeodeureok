@@ -1,0 +1,120 @@
+{
+  "status": "complete",
+  "issue": {
+    "issue_id": "SAMPLE_ISSUE_002",
+    "issue_name": "교통약자 이동지원 서비스 개선",
+    "aliases": [
+      "교통약자",
+      "교통약자 이동지원 서비스 개선",
+      "배차",
+      "이동지원"
+    ],
+    "id_status": "fixed",
+    "scope_note": "합성 예시이며 실제 의회 분석 결과가 아닙니다."
+  },
+  "quality": {
+    "valid_unique_member_count": 7,
+    "council_count": 2
+  },
+  "first_observation": {
+    "date": "2024-04-03",
+    "councils": [
+      "서울특별시의회"
+    ],
+    "evidence": [
+      {
+        "chunk_id": "SYNTHETIC_DOC_004:20-260",
+        "parent_chunk_id": null,
+        "council": "서울특별시의회",
+        "meeting_date": "2024-04-03",
+        "meeting_name": "합성 교통위원회 회의록",
+        "agenda_title": "이동지원센터 운영",
+        "centroid_similarity": 0.84,
+        "text": "교통약자 이동지원 차량의 대기시간과 배차 체계를 개선하자는 합성 예시 발언입니다."
+      }
+    ]
+  },
+  "last_observation_date": "2025-10-14",
+  "propagation_order": [
+    {
+      "council": "서울특별시의회",
+      "first_observation_date": "2024-04-03",
+      "lag_days_from_first": 0,
+      "stage": "first_observation",
+      "mention_count": 4,
+      "last_observation_date": "2025-10-14",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_004:20-260",
+          "parent_chunk_id": null,
+          "council": "서울특별시의회",
+          "meeting_date": "2024-04-03",
+          "meeting_name": "합성 교통위원회 회의록",
+          "agenda_title": "이동지원센터 운영",
+          "centroid_similarity": 0.84,
+          "text": "교통약자 이동지원 차량의 대기시간과 배차 체계를 개선하자는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 1
+    },
+    {
+      "council": "대전광역시의회",
+      "first_observation_date": "2025-01-22",
+      "lag_days_from_first": 294,
+      "stage": "later_observation",
+      "mention_count": 3,
+      "last_observation_date": "2025-10-14",
+      "evidence": [
+        {
+          "chunk_id": "SYNTHETIC_DOC_005:340-610",
+          "parent_chunk_id": null,
+          "council": "대전광역시의회",
+          "meeting_date": "2025-01-22",
+          "meeting_name": "합성 산업건설위원회 회의록",
+          "agenda_title": "교통약자 접근성",
+          "centroid_similarity": 0.75,
+          "text": "예약 절차를 단순화하고 서비스 접근성을 높이자는 합성 예시 발언입니다."
+        }
+      ],
+      "observation_order": 2
+    }
+  ],
+  "monthly_timeline": [
+    {
+      "month": "2024-04",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 1,
+      "new_councils": [
+        "서울특별시의회"
+      ],
+      "cumulative_council_count": 1
+    },
+    {
+      "month": "2024-09",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 0,
+      "new_councils": [],
+      "cumulative_council_count": 1
+    },
+    {
+      "month": "2025-01",
+      "mention_count": 2,
+      "active_council_count": 1,
+      "new_council_count": 1,
+      "new_councils": [
+        "대전광역시의회"
+      ],
+      "cumulative_council_count": 2
+    },
+    {
+      "month": "2025-10",
+      "mention_count": 1,
+      "active_council_count": 1,
+      "new_council_count": 0,
+      "new_councils": [],
+      "cumulative_council_count": 2
+    }
+  ]
+}

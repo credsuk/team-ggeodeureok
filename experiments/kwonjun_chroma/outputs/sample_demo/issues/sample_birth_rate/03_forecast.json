@@ -1,0 +1,20 @@
+{
+  "issue": {
+    "issue_id": "SAMPLE_ISSUE_001"
+  },
+  "forecast": {
+    "target_month": "2026-01",
+    "direction": "persistence",
+    "predicted_mention_count": 3,
+    "prediction_interval_80": [
+      1,
+      5
+    ]
+  },
+  "selected_count_baseline": "sample",
+  "supporting_signals": {},
+  "method": "sample_demo",
+  "limitations": [
+    "최근 합성 시계열의 언급량을 기준으로 다음 달 논의가 유지될 가능성을 예시로 표시합니다. 실제 예측 결과가 아닙니다."
+  ]
+}
