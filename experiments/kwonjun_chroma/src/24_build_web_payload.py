@@ -10,34 +10,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-import council_groups as CG
-
-
-COUNCIL_COORDINATES = {
-    "서울특별시의회": (37.5665, 126.9780),
-    "부산광역시의회": (35.1796, 129.0756),
-    "대구광역시의회": (35.8714, 128.6014),
-    "인천광역시의회": (37.4563, 126.7052),
-    "광주광역시의회": (35.1595, 126.8526),
-    "대전광역시의회": (36.3504, 127.3845),
-    "울산광역시의회": (35.5384, 129.3114),
-    "세종특별자치시의회": (36.4800, 127.2890),
-    "경기도의회": (37.4138, 127.5183),
-    "강원특별자치도의회": (37.8228, 128.1555),
-    "충청북도의회": (36.6357, 127.4917),
-    "충청남도의회": (36.6588, 126.6728),
-    "전북특별자치도의회": (35.8203, 127.1088),
-    "전라북도의회": (35.8203, 127.1088),
-    "전라남도의회": (34.8679, 126.9910),
-    "경상북도의회": (36.5760, 128.5056),
-    "경상남도의회": (35.4606, 128.2132),
-    "제주특별자치도의회": (33.4996, 126.5312),
-}
-# 통합 의회(config/council_merges.json) 좌표 — 통합 이후 관측이 들어와도 지도에서 빠지지 않게
-COUNCIL_COORDINATES.update({
-    group["council"]: CG.coordinates(group["council"])
-    for group in CG.groups() if CG.coordinates(group["council"])
-})
+from council_groups import COUNCIL_COORDINATES  # 의회 좌표 단일 출처(통합 의회 포함)
 
 
 def parse_args() -> argparse.Namespace:
