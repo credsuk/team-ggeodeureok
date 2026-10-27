@@ -210,6 +210,12 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
         st.warning("API 인증값이 없어 법제처·국회·KOSIS 자료 없이 회의록 관측만 반영했습니다.")
     for error in followup.get("errors") or []:
         st.warning(f"외부 조회 오류 ({error.get('source')} · {error.get('keyword')}): {error.get('error')}")
+    for merge in followup.get("council_merges") or []:
+        if merge.get("applied"):
+            st.info(
+                f"{'·'.join(merge['members'])}는 {merge['effective_date']}부터 {merge['council']}로 통합되어 "
+                "후속 흐름·후보에서 하나로 표시합니다. 회의록 관측(2024~2025)은 전신 의회 기록을 합산했습니다."
+            )
     top = view.get("top_candidates") or []
     cols = st.columns(4)
     cols[0].metric("광역 조례화 의회", f"{len(view.get('already_institutionalized') or [])}곳")
@@ -233,6 +239,11 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
         ])
         if not flows.empty:
             flows["단계"] = flows["stage"].map(lambda value: FOLLOWUP_STAGE_LABELS.get(value, value))
+            if "merged_from" in flows:
+                flows["council"] = [
+                    f"{council} ({'+'.join(members)})" if isinstance(members, list) and members else council
+                    for council, members in zip(flows["council"], flows["merged_from"])
+                ]
             st.dataframe(
                 flows[[
                     "council", "단계", "minutes_first_observation", "first_regional_ordinance",
