@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+import council_groups as CG
+
 
 COUNCIL_COORDINATES = {
     "서울특별시의회": (37.5665, 126.9780),
@@ -31,6 +33,11 @@ COUNCIL_COORDINATES = {
     "경상남도의회": (35.4606, 128.2132),
     "제주특별자치도의회": (33.4996, 126.5312),
 }
+# 통합 의회(config/council_merges.json) 좌표 — 통합 이후 관측이 들어와도 지도에서 빠지지 않게
+COUNCIL_COORDINATES.update({
+    group["council"]: CG.coordinates(group["council"])
+    for group in CG.groups() if CG.coordinates(group["council"])
+})
 
 
 def parse_args() -> argparse.Namespace:

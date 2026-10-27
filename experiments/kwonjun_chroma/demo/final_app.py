@@ -511,6 +511,13 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
             f"외부 조회 오류 ({error.get('source')} · {error.get('keyword')}): "
             f"{error.get('error')}"
         )
+    for merge in followup.get("council_merges") or []:
+        if merge.get("applied"):
+            st.info(
+                f"{'·'.join(merge['members'])}는 {merge['effective_date']}부터 "
+                f"{merge['council']}로 통합되어 후속 흐름·후보에서 하나로 표시합니다. "
+                "회의록 관측(2024~2025)은 전신 의회 기록을 합산했습니다."
+            )
 
     top = view.get("top_candidates") or []
     cols = st.columns(4)
@@ -541,6 +548,12 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
             flows["단계"] = flows["stage"].map(
                 lambda value: FOLLOWUP_STAGE_LABELS.get(value, value)
             )
+            if "merged_from" in flows:
+                flows["council"] = [
+                    f"{council} ({'+'.join(members)})"
+                    if isinstance(members, list) and members else council
+                    for council, members in zip(flows["council"], flows["merged_from"])
+                ]
             st.dataframe(
                 flows[[
                     "council", "단계", "minutes_first_observation",
