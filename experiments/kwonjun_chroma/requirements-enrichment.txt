@@ -1,0 +1,5 @@
+# requirements-base.txt 설치 후 사용합니다.
+ijson>=3.3,<4
+beautifulsoup4>=4.12,<5
+lxml>=5,<7
+

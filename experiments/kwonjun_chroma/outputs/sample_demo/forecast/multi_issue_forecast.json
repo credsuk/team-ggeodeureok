@@ -1,0 +1,31 @@
+{
+  "status": "complete",
+  "method": "sample_demo",
+  "forecasts": [
+    {
+      "issue_id": "SAMPLE_ISSUE_001",
+      "target_month": "2026-01",
+      "discussion_active_probability": 0.54,
+      "predicted_mention_count": 3,
+      "selected_classifier": "sample",
+      "selected_count_model": "sample"
+    },
+    {
+      "issue_id": "SAMPLE_ISSUE_002",
+      "target_month": "2026-01",
+      "discussion_active_probability": 0.31,
+      "predicted_mention_count": 1,
+      "selected_classifier": "sample",
+      "selected_count_model": "sample"
+    }
+  ],
+  "selection": {
+    "classifier": "sample",
+    "count_model": "sample"
+  },
+  "metrics": {},
+  "leakage_control": "합성 샘플",
+  "limitations": [
+    "합성 예시이며 실제 예측 결과가 아님"
+  ]
+}
