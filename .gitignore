@@ -19,3 +19,4 @@ env.js
 frontend/env.js
 
 *.pptx
+/경빈_pgvector테이블 덤프
