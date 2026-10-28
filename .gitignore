@@ -18,3 +18,4 @@ __pycache__/
 env.js
 frontend/env.js
 
+*.pptx
