@@ -1,0 +1,7 @@
+# 전체 파이프라인 재현용 통합 의존성
+-r requirements-base.txt
+-r requirements-enrichment.txt
+-r requirements-vector.txt
+-r requirements-forecast.txt
+-r requirements-app.txt
+

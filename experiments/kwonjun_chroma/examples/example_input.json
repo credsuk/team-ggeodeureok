@@ -1,0 +1,10 @@
+{
+  "query": "출산율 저하 대응 정책",
+  "top_k": 10,
+  "filters": {
+    "year_from": 2024,
+    "year_to": 2025,
+    "council": null
+  }
+}
+

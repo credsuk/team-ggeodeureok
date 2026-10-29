@@ -23,9 +23,11 @@ if command -v docker >/dev/null 2>&1; then
   docker compose up -d pgvector >/dev/null
 fi
 
-# 법제처·국회·KOSIS 중 하나라도 설정되면 외부 후속 흐름을 먼저 계산합니다.
-# 대회 기본 모드는 backtest이며 실패해도 기존 회의록 결과로 앱을 계속 실행합니다.
-if [[ -n "${LAW_OC:-}" || -n "${ASSEMBLY_API_KEY:-}" || -n "${KOSIS_API_KEY:-}" ]]; then
+# 공식 제출 모드에서는 외부 공공데이터를 자동 호출하지 않습니다. API 키가
+# 설정되어 있어도 COUNCIL_ENABLE_EXTERNAL_REFERENCE=1을 명시한 경우에만
+# 참고용 후속 흐름을 계산합니다. 수치 예측은 언제나 회의록 특징만 사용합니다.
+if [[ "${COUNCIL_ENABLE_EXTERNAL_REFERENCE:-0}" == "1" ]] && \
+   [[ -n "${LAW_OC:-}" || -n "${ASSEMBLY_API_KEY:-}" || -n "${KOSIS_API_KEY:-}" ]]; then
   python -u src/32a_external_followup_flow.py \
     --mode "${COUNCIL_FOLLOWUP_MODE:-backtest}" \
     || echo "안내: 외부 후속 흐름 계산 실패 — 기존 결과로 계속합니다." >&2

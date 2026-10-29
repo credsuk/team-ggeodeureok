@@ -1,0 +1,35 @@
+{
+  "schema_version": "council_issue_result_v1",
+  "result_type": "illustrative_schema_with_recorded_metrics",
+  "query": "출산율 저하 대응 정책",
+  "issue": {
+    "issue_id": "ISSUE_D1E2018E83D1",
+    "issue_name": "출산율 저하 대응 정책",
+    "first_observed_date": "2024-01-25",
+    "first_council": "경상북도의회",
+    "observed_council_count": 8
+  },
+  "forecast": {
+    "target_month": "2026-01",
+    "status": "persistence",
+    "predicted_mention_count": 11,
+    "evaluation": {
+      "discussion_persistence_f1": 0.8814,
+      "mention_count_mae": 7.1224,
+      "mention_count_rmse": 10.0425,
+      "directional_accuracy": 0.76
+    }
+  },
+  "evidence_schema": [
+    {
+      "council": "광역 지방의회명",
+      "meeting_date": "YYYY-MM-DD",
+      "committee": "위원회명",
+      "meeting_name": "공식 회의록명",
+      "agenda_title": "안건명",
+      "original_text": "실행 환경에서는 검색된 실제 원문 구간이 표시됩니다."
+    }
+  ],
+  "notice": "원문이 포함된 실제 결과는 데이터 이용조건에 따라 공개 Git 저장소에 포함하지 않습니다."
+}
+

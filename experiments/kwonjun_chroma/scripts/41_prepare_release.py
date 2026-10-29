@@ -15,10 +15,10 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 ROOT_FILES = [
-    "README.md", ".env.example", "docker-compose.yml",
+    "README.md", "SUBMISSION_README.md", ".env.example", "docker-compose.yml",
     "requirements-base.txt", "requirements-enrichment.txt",
     "requirements-vector.txt", "requirements-forecast.txt",
-    "requirements-app.txt", "requirements-issue-flow.txt",
+    "requirements-app.txt", "requirements-all.txt",
 ]
 
 ACTIVE_SRC = [
@@ -32,7 +32,7 @@ ACTIVE_SRC = [
     "15_load_chroma.py", "16_load_pgvector.py",
     "17_benchmark_vector_databases.py", "18_pgvector_retrieval.py",
     "19_rerank_candidates.py", "20_expand_cluster_issue.py",
-    "20_validate_embedding_artifact.py", "21_build_issue_timeline.py",
+    "21_build_issue_timeline.py",
     "22_build_forecast_features.py", "23_forecast_issue.py",
     "24_build_web_payload.py", "25_build_issue_candidates.py",
     "25a_show_candidate_status.py", "26_cluster_threshold_sweep.py",
@@ -43,11 +43,12 @@ ACTIVE_SRC = [
     "35_build_bm25_index.py", "bm25_runtime.py",
     "council_vector_runtime.py", "search_aliases.py",
     "external_policy_sources.py", "external_followup.py", "regional_stats.py",
+    "council_groups.py", "kosis_topic_catalog.py",
 ]
 
 ACTIVE_SCRIPTS = [
     "00_check_environment.py", "build_bm25_hybrid.sh",
-    "check_post_embedding_setup.py", "run_final_app.sh",
+    "run_final_app.sh", "export_environment_snapshot.sh",
     "run_forecast_evaluation.sh", "run_issue_review.sh",
     "run_representative_issues.sh", "41_prepare_release.py",
     "export_pgvector_for_share.sh", "restore_pgvector_from_dump.sh",
@@ -55,8 +56,10 @@ ACTIVE_SCRIPTS = [
 
 ACTIVE_DOCS = [
     "ACTIVE_PIPELINE.md", "BENCHMARK_PROTOCOL.md", "EXPERIMENT_LOG.md",
+    "PREPROCESSING.md", "AI_USAGE.md", "DEMO_VIDEO_GUIDE.md",
+    "SUBMISSION_CHECKLIST.md",
     "FORECAST_EVALUATION.md", "HYBRID_BM25_RUNBOOK.md",
-    "POST_EMBEDDING_RUNBOOK.md", "REPRESENTATIVE_ISSUES_AND_AGENT_RUNBOOK.md",
+    "REPRESENTATIVE_ISSUES_AND_AGENT_RUNBOOK.md",
     "EXTERNAL_DATA_INTEGRATION.md",
     "POSTGRES_DB_TEAM_SHARE.md",
     "FINAL_GITHUB_UPLOAD.md",
@@ -66,6 +69,19 @@ ACTIVE_DEMO = ["final_app.py", "issue_review_app.py"]
 ACTIVE_AGENT = [
     "__init__.py", "local_issue_agent.py", "tools.py",
     "query_pipeline.py", "followup_tools.py",
+]
+
+ACTIVE_EXAMPLES = ["example_input.json", "example_output.json"]
+ACTIVE_NOTEBOOKS = ["01_end_to_end_demo.ipynb"]
+
+# 공식 제출물에는 제공기간 이후의 외부 카탈로그와 행정구역 통합 규칙을
+# 넣지 않는다. 외부 참고 기능의 소스코드는 재현성 확인용으로 남기되,
+# 기본 실행에서는 COUNCIL_ENABLE_EXTERNAL_REFERENCE=0으로 비활성화한다.
+OFFICIAL_CONFIG = [
+    "data_contract.yaml", "experiment_registry.json",
+    "external_context_template.csv", "issue_seed_catalog_v1.csv",
+    "kosis_indicators.json", "representative_issue_keys_v1.txt",
+    "retrieval_queries_v1.json", "tsv_column_map.yaml",
 ]
 
 RELEASE_GITIGNORE = """.venv/
@@ -200,11 +216,21 @@ def copy_config(source: Path, output: Path) -> None:
     config_dir = source / "config"
     if not config_dir.is_dir():
         return
-    for path in sorted(config_dir.iterdir()):
-        if path.is_file() and path.suffix.lower() in {
-            ".csv", ".json", ".txt", ".yaml", ".yml",
-        }:
+    for name in OFFICIAL_CONFIG:
+        path = config_dir / name
+        if path.is_file():
             destination = output / "config" / path.name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+
+
+def copy_environment_snapshot(source: Path, output: Path) -> None:
+    directory = source / "environment"
+    if not directory.is_dir():
+        return
+    for path in sorted(directory.iterdir()):
+        if path.is_file() and path.suffix.lower() == ".txt":
+            destination = output / "environment" / path.name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, destination)
 
@@ -285,7 +311,10 @@ def main() -> None:
     copy_directory_files(source, output, "docs", ACTIVE_DOCS, missing)
     copy_directory_files(source, output, "demo", ACTIVE_DEMO, missing)
     copy_directory_files(source, output, "agent", ACTIVE_AGENT, missing)
+    copy_directory_files(source, output, "examples", ACTIVE_EXAMPLES, missing)
+    copy_directory_files(source, output, "notebooks", ACTIVE_NOTEBOOKS, missing)
     copy_config(source, output)
+    copy_environment_snapshot(source, output)
     copy_file(source, output, "eval/queries.csv", missing)
 
     figure_source = source / "모델 구조.png"
@@ -303,6 +332,7 @@ def main() -> None:
         atomic_json(output / "results" / "forecast_metrics.json", forecast)
 
     problems = validate_release(output)
+    problems.extend(f"필수 제출 파일 누락: {relative}" for relative in missing)
     files = []
     for path in sorted(output.rglob("*")):
         if path.is_file():
