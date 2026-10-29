@@ -1,0 +1,5 @@
+-r requirements-vector.txt
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+streamlit>=1.40,<2
+pydeck>=0.9,<1
