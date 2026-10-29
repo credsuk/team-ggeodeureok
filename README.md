@@ -1,435 +1,385 @@
-# 🏛️ 지방의회 회의록 전처리, 벡터 색인 및 시맨틱 검색 파이프라인 (`team-ggeodeureok`)
+# 🏛️ 의정이슈레이더 (Local Council Issue Radar)
 
-지방의회(광역의회: 경기도, 충청남도, 충청북도, 강원특별자치도 등)의 대규모 회의록 데이터를 **수집·정제·청킹**하고, 풍부한 메타데이터(일시, 의회, 안건, 화자 직함 및 성명 등)를 추출하여 **LangChain & ChromaDB**에 벡터 색인한 뒤 고성능 시맨틱 검색 및 필터링을 수행하는 엔드투엔드(End-to-End) 시스템입니다.
+> **광역 지방의회 회의록 시맨틱·하이브리드 검색 및 정책 이슈 시계열 확산 분석 플랫폼**
+
+**의정이슈레이더**는 전국 광역 지방의회(17개 시·도의회 등)의 대규모 회의록 데이터를 수집·정제·청킹하고, 고성능 한국어 임베딩(`Snowflake Arctic v2.0 ko`)과 **PostgreSQL/pgvector + BM25 하이브리드 검색**, **BGE Cross-Encoder 재순위**, **시계열 이슈 그래프 군집화**, 그리고 **로컬 LLM(Ollama)**을 결합하여 근거 중심의 정책 분석과 웹 대시보드를 제공하는 엔드투엔드(End-to-End) 로컬 AI 플랫폼입니다.
 
 ---
 
 ## 📑 목차
-1. [프로젝트 개요](#1-프로젝트-개요)
-2. [디렉토리 구조](#2-디렉토리-구조)
-3. [개발 및 실행 환경 설정](#3-개발-및-실행-환경-설정)
-4. [데이터 및 메타데이터 스키마](#4-데이터-및-메타데이터-스키마)
-5. [데이터 전처리 파이프라인 (`scripts/`)](#5-데이터-전처리-파이프라인-scripts)
-6. [로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)](#6-로컬-llm-정책-메타데이터-추출기-extract_llm_metadatapy)
-7. [ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)](#7-chromadb-벡터-적재-파이프라인-run_ingestpy)
-8. [시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)](#8-시맨틱-검색-및-메타데이터-필터링-query_searchpy)
-9. [임베딩 모델 손쉬운 변경 가이드](#9-임베딩-모델-손쉬운-변경-가이드)
-10. [모듈별 상세 구성 (`src/`)](#10-모듈별-상세-구성-src)
-11. [자주 묻는 질문 및 트러블슈팅](#11-자주-묻는-질문-및-트러블슈팅)
-12. [변경 및 작업 이력 (CHANGELOG)](#12-변경-및-작업-이력-changelog)
+
+1. [시스템 아키텍처](#1-시스템-아키텍처)
+2. [사전 준비사항 (Prerequisites)](#2-사전-준비사항-prerequisites)
+3. [환경 설정 (`.env`)](#3-환경-설정-env)
+4. [🚀 빠른 실행 가이드 (How to Run)](#4--빠른-실행-가이드-how-to-run)
+   - [방법 A. Docker Compose로 실행 (가장 권장)](#방법-a-docker-compose로-실행-가장-권장)
+   - [방법 B. 로컬 Python 환경에서 직접 실행 (개발 및 디버깅)](#방법-b-로컬-python-환경에서-직접-실행-개발-및-디버깅)
+   - [방법 C. Streamlit 분석 데모 앱 실행](#방법-c-streamlit-분석-데모-앱-실행)
+5. [데이터베이스(pgvector) 복원 및 준비](#5-데이터베이스pgvector-복원-및-준비)
+6. [BM25 하이브리드 인덱스 구축](#6-bm25-하이브리드-인덱스-구축)
+7. [주요 엔드포인트 및 API 명세](#7-주요-엔드포인트-및-api-명세)
+8. [전체 데이터 파이프라인 (`src/`)](#8-전체-데이터-파이프라인-src)
+9. [프로젝트 디렉토리 구조](#9-프로젝트-디렉토리-구조)
+10. [자주 묻는 질문 및 트러블슈팅 (FAQ)](#10-자주-묻는-질문-및-트러블슈팅-faq)
 
 ---
 
-## 1. 프로젝트 개요
+## 1. 시스템 아키텍처
 
-- **대용량 지방의회 데이터 처리**: 지자체별로 상이한 회의록 HTML 구조를 로컬 LLM을 통해 지능적으로 분석·정제하여 표준 TSV 데이터셋으로 변환합니다.
-- **발언 단위(Utterance) 의미 보존 청킹**: 의회 회의록 특성에 맞춰 발언 흐름과 문맥을 보존하며, 장문 발언에 한해 오버랩을 적용한 재귀적 서브청킹(Recursive Sub-chunking)을 수행합니다.
-- **다차원 메타데이터 필터링**: 시간(연/월/일), 지역(의회/시도), 안건, 발언자(성명/직함/구분) 등 다차원 메타데이터를 벡터와 함께 보존하여 정밀한 하이브리드 필터 검색(`where`)을 지원합니다.
-- **최신 고성능 한국어 임베딩 지원 (`Snowflake Arctic v2.0 한국어` 기본 탑재)**: 행정문서 훈련 데이터가 반영된 `dragonkue/snowflake-arctic-embed-l-v2.0-ko`를 기본 모델로 탑재하였으며, 긴 문서 특화 모델인 `nlpai-lab/KURE-v1` 등 다양한 고성능 프리셋을 지원합니다.
+```text
+[ 광역의회 회의록 원본 (HTML/JSON) ]
+                │
+                ▼ (정제 및 전처리)
+[ 표준 Canonical 발언 코퍼스 (901,358 청크) ]
+                │
+                ├───────────────────────────────────────┐
+                ▼ (Arctic v2.0 임베딩)                   ▼ (SQLite FTS5)
+      [ pgvector Dense HNSW ]                     [ BM25 Sparse 검색 ]
+                │                                       │
+                └───────────────────┬───────────────────┘
+                                    ▼
+                     [ RRF (Reciprocal Rank Fusion) ]
+                                    ▼ (Top-50 후보)
+                     [ BGE Reranker-v2-m3 재순위 ]
+                                    ▼ (Top-10 최종 근거)
+         ┌──────────────────────────┴──────────────────────────┐
+         ▼                                                     ▼
+[ 타임라인·전파 순서·시계열 예측 ]                  [ 로컬 LLM (Ollama Qwen) ]
+         │                                                     │
+         └──────────────────────────┬──────────────────────────┘
+                                    ▼
+         [ 웹 인터페이스 (FastAPI + SPA / Streamlit 데모) ]
+```
+
+- **임베딩 모델**: `dragonkue/snowflake-arctic-embed-l-v2.0-ko` (1,024차원, 행정/공공 문서 특화)
+- **벡터 데이터베이스**: PostgreSQL 17 + `pgvector` 0.8.7 (HNSW 코사인 인덱스)
+- **키워드 검색**: SQLite FTS5 BM25 + Reciprocal Rank Fusion(RRF)
+- **재순위 모델**: `BAAI/bge-reranker-v2-m3` Cross-Encoder
+- **로컬 생성 LLM**: Ollama 기반 `qwen3:8b` (외부 API 전송 없는 100% 로컬 보안 환경)
 
 ---
 
-## 2. 디렉토리 구조
+## 2. 사전 준비사항 (Prerequisites)
 
-```plaintext
-team-ggeodeureok/
-├── text/                      # 전처리 완료된 회의록 정제 텍스트(TSV 형식) 파일
-│   ├── cleaned_2024_강원특별자치도의회.txt
-│   ├── cleaned_2024_경기도의회.txt
-│   ├── cleaned_2024_충청남도의회.txt
-│   ├── cleaned_2024_충청북도의회.txt
-│   ├── cleaned_2025_경기도의회.txt
-│   ├── cleaned_2025_충청남도의회.txt
-│   └── cleaned_2025_충청북도의회.txt
-├── data/                      # LLM 추출 정책 메타데이터(JSONL) 저장 디렉토리
-│   ├── cleaned_2024_강원특별자치도의회.jsonl
-│   └── ...
-├── chroma_db/                 # LangChain Community Chroma 로컬 영구 벡터 저장소
-├── src/                       # 핵심 처리 모듈 패키지
-│   ├── __init__.py
-│   ├── config.py              # 경로, 청킹 파라미터, 임베딩 프리셋 및 모델 설정 (Snowflake Arctic v2.0 기본)
-│   ├── parser.py              # TSV 파싱, 화자 직함 분리, 날짜 분해, 정제
-│   ├── chunker.py             # 발언 단위 보존 및 장문 서브청킹 처리기
-│   └── indexer.py             # LangChain HuggingFaceEmbeddings & Chroma 관리자
-├── scripts/                   # 원본 HTML/JSON 전처리 및 LLM 기반 파싱 스크립트
-│   ├── _constant.py           # 전처리 파이프라인 공통 상수 및 Ollama 클라이언트 설정
-│   ├── 1_split_sample.py      # 원본 JSON에서 LLM 분석용 HTML 샘플 추출
-│   ├── 2_rules_make.py        # 로컬 LLM을 통한 의회별 CSS Selector 파싱 규칙 생성
-│   ├── 3_rules_summary.py     # 파싱 규칙 통일 및 엄격한 CSS 규칙 JSON 빌드
-│   ├── 4_to_csv.py / 4_to_csv_2.py # CSS 규칙 기반 텍스트 추출 및 정제 (TSV 생성)
-│   └── 5_create_master_csv.py # LLM 기반 정책분류/핵심이슈/키워드/요약 메타데이터 생성
-├── extract_llm_metadata.py    # 로컬 LLM 정책 키워드/쟁점 추출기 (체크포인트/파일명 기반 자동 저장)
-├── run_ingest.py              # 데이터 적재 실행 CLI (ETA 실시간 진행률, LLM 메타데이터 자동 병합)
-├── query_search.py            # Chroma 검색 및 메타데이터 필터링 테스트 CLI
-├── requirements.txt           # 필수 Python 패키지 의존성 목록
-├── forder.txt                 # 경진대회/제출물 디렉터리 규격 참조 문서
-├── CHANGELOG.md               # 프로젝트 개발 및 변경 상세 이력
-└── README.md                  # 프로젝트 사용법 및 상세 문서
+시스템을 구동하기 위해 아래 도구들이 필요합니다.
+
+1. **Docker & Docker Compose**: PostgreSQL(pgvector) 컨테이너 및 웹 컨테이너 구동용 ([Docker Desktop 설치](https://www.docker.com/products/docker-desktop/))
+2. **Python**: 3.11 또는 3.12 권장
+3. **NVIDIA GPU 및 CUDA** (선택, 권장): 임베딩 및 재순위 모델 고속 연산을 위해 CUDA 지원 GPU 권장
+4. **Ollama**: 로컬 LLM 구동용 ([Ollama 공식 사이트](https://ollama.ai/))
+   ```bash
+   # Ollama 설치 후 질의응답 모델 다운로드
+   ollama pull qwen3:8b
+   ```
+
+---
+
+## 3. 환경 설정 (`.env`)
+
+프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 아래 항목들을 설정합니다.
+
+```ini
+# ==========================================
+# 1. 데이터베이스 설정 (PostgreSQL + pgvector)
+# ==========================================
+# [Docker 내부 실행 시]
+# DATABASE_URL=postgresql://council:council-local-only@council-pgvector:5432/council_vectors
+
+# [로컬(호스트 PC) 직접 실행 시 (도커 포트 5433 매핑 기준)]
+DATABASE_URL=postgresql://council:council-local-only@localhost:5433/council_vectors
+
+POSTGRES_USER=council
+POSTGRES_PASSWORD=council-local-only
+POSTGRES_DB=council_vectors
+POSTGRES_PORT=5433
+DB_TABLE=public.council_arctic_raw_v1
+
+# ==========================================
+# 2. 임베딩 모델 설정
+# ==========================================
+# Hugging Face 모델 허브 식별자 또는 다운로드된 로컬 디렉토리 경로
+EMBEDDING_MODEL_PATH=dragonkue/snowflake-arctic-embed-l-v2.0-ko
+
+# ==========================================
+# 3. 로컬 LLM (Ollama) 설정
+# ==========================================
+# [Docker 내부 실행 시]
+# OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+# [로컬 직접 실행 시]
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen3:8b
+
+# ==========================================
+# 4. 검색 엔진 모드 설정 (Dense / Hybrid)
+# ==========================================
+COUNCIL_RETRIEVAL_MODE=hybrid
+COUNCIL_BM25_INDEX=data/bm25/arctic_raw_v1/bm25.sqlite3
+COUNCIL_RRF_K=60
+COUNCIL_DENSE_WEIGHT=1.0
+COUNCIL_BM25_WEIGHT=1.0
+
+# ==========================================
+# 5. 프론트엔드 지도 API 키 (선택)
+# ==========================================
+CARTO_API_KEY=your_carto_api_key_here
 ```
 
 ---
 
-## 3. 개발 및 실행 환경 설정
+## 4. 🚀 빠른 실행 가이드 (How to Run)
 
-### 1) Conda 가상환경 활성화
-본 프로젝트는 **Python 3.11** 기반의 `project01` 가상환경에서 동작합니다.
+### 방법 A. Docker Compose로 실행 (가장 권장)
 
+Docker를 사용하여 데이터베이스와 웹 애플리케이션을 간편하게 빌드하고 실행할 수 있습니다.
+
+#### 1단계: pgvector 데이터베이스 컨테이너 구동
 ```bash
-# 가상환경 활성화
-conda activate project01
+docker compose up -d pgvector
+```
+- 컨테이너 상태 확인: `docker compose ps`
+- 기본적으로 호스트의 `5433` 포트가 컨테이너의 PostgreSQL `5432` 포트에 바인딩됩니다.
+
+#### 2단계: 웹 서비스 컨테이너 구동
+```bash
+docker compose -f docker-compose.web.yml up -d --build
+```
+- Docker 내부에서 실행되므로 `.env`의 `DATABASE_URL`을 `postgresql://council:council-local-only@council-pgvector:5432/council_vectors`로 설정하거나 `docker-compose.web.yml` 환경변수를 따릅니다.
+
+#### 3단계: 브라우저 접속
+- **웹 대시보드 URL**: [http://localhost:8000](http://localhost:8000)
+- 회의록 검색, 로컬 AI 요약 답변, 정책 이슈 레이더 시각화를 바로 이용할 수 있습니다.
+
+---
+
+### 방법 B. 로컬 Python 환경에서 직접 실행 (개발 및 디버깅)
+
+로컬 머신(Windows / macOS / Linux)에서 소스코드를 직접 수정하며 디버깅할 때 사용합니다.
+
+#### 1단계: pgvector DB 컨테이너 실행
+```bash
+docker compose up -d pgvector
 ```
 
-### 2) 필수 의존성 패키지 설치
+#### 2단계: Python 가상환경 구성 및 패키지 설치
 ```bash
+# 가상환경 생성 (Python 3.11 권장)
+conda create -n council python=3.11 -y
+conda activate council
+
+# 필수 패키지 설치
 pip install -r requirements.txt
-```
 
-> **`requirements.txt` 주요 패키지**:
-> - `chromadb>=0.5.0`
-> - `langchain>=0.2.0`, `langchain-community>=0.2.0`, `langchain-text-splitters>=0.0.1`
-> - `transformers<5.0.0`, `sentence-transformers<4.0.0`
-> - `tqdm>=4.66.0`
-
-### 3) GPU(CUDA) 가속 설정 (권장)
-NVIDIA 그래픽 카드(예: RTX 4060 등)가 장착된 환경에서는 PyTorch CUDA 버전을 설치하면 임베딩 및 인덱싱 속도가 **10~30배 이상** 향상됩니다:
-
-```bash
-# CUDA 12.1 지원 PyTorch 설치 (NVIDIA GPU 환경)
+# (권장) NVIDIA CUDA 가속 PyTorch 설치 (CUDA 12.1 기준)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 ```
 
-### 4) 로컬 LLM 환경 (데이터 전처리 파이프라인 실행 시)
-`scripts/` 내 전처리 스크립트를 실행하려면 [Ollama](https://ollama.ai/)가 구동 중이어야 합니다:
+#### 3단계: Ollama 백엔드 실행 확인
+별도 터미널에서 Ollama가 정상 실행 중인지 확인합니다:
 ```bash
-# Ollama 실행 및 필요한 모델 pull
-ollama pull qwen2.5-coder:7b
-ollama pull huihui_ai/exaone3.5-abliterated
+ollama run qwen3:8b
+```
+
+#### 4단계: FastAPI 백엔드 및 웹 프론트엔드 실행
+```bash
+# Uvicorn 개발 서버 실행
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+- 브라우저에서 [http://localhost:8000](http://localhost:8000)으로 접속합니다.
+- `main.py`에 의해 `frontend/`의 단일 페이지 웹 애플리케이션(SPA)이 자동 서빙됩니다.
+
+---
+
+### 방법 C. Streamlit 분석 데모 앱 실행
+
+의정이슈레이더의 대표 10대 이슈 타임라인, 지도 전파 시각화, 지자체 통계 지표, 로컬 에이전트 인터뷰 기능을 담은 Streamlit 데모 앱입니다.
+
+```bash
+# Streamlit 데모 실행 (포트 8501)
+streamlit run demo/final_app.py --server.port 8501
+```
+- **접속 주소**: [http://localhost:8501](http://localhost:8501)
+- **기능**:
+  - 대표 이슈 10선 타임라인 분석 및 지도 전파 경로 시각화
+  - KOSIS 국가통계포털 연계 지역 통계 지표 비교
+  - 이슈 지속 여부(Classification) 및 언급량(Regression) 예측 결과 조회
+  - Qwen 에이전트 정책 질의응답
+
+---
+
+## 5. 데이터베이스(pgvector) 복원 및 준비
+
+공유받은 PostgreSQL 백업 덤프(`*.dump`) 파일이 있는 경우 아래 절차로 복원합니다.
+
+### 1) DB 덤프 복원 스크립트 실행
+```bash
+# Linux / WSL 환경
+bash scripts/restore_pgvector_from_dump.sh <다운로드한_덤프파일_경로>
+
+# 기존 DB 테이블을 덮어써야 하는 경우 (--replace)
+bash scripts/restore_pgvector_from_dump.sh <덤프파일_경로> --replace
+```
+
+### 2) 복원 상태 및 데이터 건수 확인
+```bash
+docker compose exec pgvector psql -U council -d council_vectors -c "SELECT count(*) FROM council_arctic_raw_v1;"
+```
+- 정상 복원 시 총 **901,358**개의 청크 행이 확인됩니다.
+
+---
+
+## 6. BM25 하이브리드 인덱스 구축
+
+Dense 벡터 검색과 함께 어휘 기반 키워드 검색(BM25)을 결합하여 고유명사, 조례명, 법률 번호 등의 검색 정확도를 극대화합니다.
+
+```bash
+# 1. 10,000건 샘플로 색인 테스트
+python src/35_build_bm25_index.py --limit 10000 --output data/bm25/arctic_raw_v1_test/bm25.sqlite3 --rebuild
+
+# 2. 전체 901,358개 청크 인덱스 빌드
+python src/35_build_bm25_index.py --rebuild
+```
+> 💡 BM25 인덱스 파일(`data/bm25/arctic_raw_v1/bm25.sqlite3`)이 존재하지 않아도, 시스템은 자동으로 pgvector Dense 단독 검색 모드로 안전하게 폴백(Fallback) 동작합니다.
+
+---
+
+## 7. 주요 엔드포인트 및 API 명세
+
+FastAPI 서버(`main.py`)가 제공하는 핵심 REST API 엔드포인트입니다.
+
+### 1) 헬스체크 (`GET /api/health`)
+- **응답**: `{"status": "ok"}`
+
+### 2) 통합 회의록 시맨틱 검색 (`POST /api/search`)
+- **요청 Body**:
+  ```json
+  {
+    "query": "청년 일자리 및 공공 임대주택 지원 조례",
+    "limit": 5,
+    "council": "경기도의회",
+    "year": 2024
+  }
+  ```
+- **응답 필드**:
+  - `answer`: Ollama Qwen이 회의록 근거를 바탕으로 생성한 종합 답변
+  - `results`: 검색된 상위 회의록 목록 (발언 일자, 의회명, 위원회, 안건, 유사도 스코어, 발언 본문)
+  - `count`: 검색 결과 건수
+  - `elapsed_ms`: 처리 소요 시간 (밀리초)
+
+### 3) 동적 이슈 확산 분석 (`POST /api/analyze`)
+- **요청 Body**:
+  ```json
+  {
+    "query": "인공지능 첨단 모빌리티 혁신"
+  }
+  ```
+- **동작**: 백그라운드에서 `src/33_analyze_free_query.py` 파이프라인을 실행하여 후보 검색 → 재순위 → 유사도 그래프 군집화 → 최초 관측 타임라인 및 시계열 확산 JSON을 실시간 반환합니다.
+
+---
+
+## 8. 전체 데이터 파이프라인 (`src/`)
+
+프로젝트는 회의록 원본에서 웹 서비스까지 단계별 모듈로 체계화되어 있습니다.
+
+| 번호 | 스크립트 | 설명 |
+| :---: | :--- | :--- |
+| **01~03** | `src/01_restart_inventory.py` ~ `03_validate_row_id_join.py` | 원본 회의록 TSV 및 메타데이터 무결성 검증 |
+| **04** | `src/04_build_direct_canonical.py` | 17개 지자체 통합 Canonical 코퍼스 구축 (`corpus.parquet`) |
+| **05** | `src/05_build_parent_child_chunks.py` | 발언 단위 부모 청크 및 검색용 자식 서브청킹 (총 901,358개) |
+| **06~12** | `src/06_make_embedding_eval_sample.py` ~ `12_compare_embedding_models.py` | 임베딩 성능 평가(Arctic vs KURE 등) 및 검증 |
+| **08** | `src/08_embed_full_corpus.py` | 확정 모델(`Snowflake Arctic v2.0 ko`) 전체 코퍼스 임베딩 |
+| **16** | `src/16_load_pgvector.py` | 벡터 및 메타데이터 PostgreSQL/pgvector HNSW 색인 적재 |
+| **17** | `src/17_benchmark_vector_databases.py` | pgvector vs ChromaDB 속도 및 재현율(Recall) 벤치마크 |
+| **18** | `src/18_pgvector_retrieval.py` | Dense + BM25 + RRF 후보 검색 파이프라인 |
+| **19** | `src/19_rerank_candidates.py` | BGE Cross-Encoder를 통한 후보 재순위화 |
+| **20~21** | `src/20_expand_cluster_issue.py` ~ `21_build_issue_timeline.py` | 중심 벡터 확장, 코사인 유사도 그래프 군집화 및 타임라인 도출 |
+| **22~23** | `src/22_build_forecast_features.py` ~ `23_forecast_issue.py` | 시계열 특징 추출 및 다음 달 이슈 지속·언급량 예측 |
+| **32** | `src/32_train_multi_issue_forecast.py` | 다중 이슈 패널 기반 예측 평가 (Logistic / Poisson 모델 백테스트) |
+| **33** | `src/33_analyze_free_query.py` | 임의 검색어에 대한 엔드투엔드 동적 이슈 분석 자동화 |
+| **35** | `src/35_build_bm25_index.py` | SQLite FTS5 기반 고속 BM25 인덱스 생성 |
+
+---
+
+## 9. 프로젝트 디렉토리 구조
+
+```plaintext
+c:\study\Projects\01\branches\gwonwoo/
+├── main.py                     # FastAPI 메인 웹/API 서버 (검색 & 동적 분석 서빙)
+├── config.py                   # 프로젝트 전역 환경 변수 로더 및 설정 검증기
+├── database.py                 # pgvector Dense 및 SQLite BM25 RRF 검색 모듈
+├── embedding.py                # Arctic v2.0 로컬 임베딩 로드 및 인코더
+├── llm.py                      # Ollama 연동 로컬 LLM 추론 및 답변 생성기
+├── frontend.py                 # 정적 파일 서빙 및 Standalone 대시보드 빌더
+│
+├── frontend/                   # 웹 대시보드 정적 파일
+│   ├── index.html              # SPA 대시보드 메인 마크업
+│   ├── app.js                  # 대시보드 UI 이벤트, 지도 렌더링, API 호출 로직
+│   └── dashboard_standalone.html # 오프라인 단독 구동용 통합 번들
+│
+├── agent/                      # 로컬 자율 분석 에이전트 패키지
+│   ├── local_issue_agent.py    # 회의록 분석 및 근거 탐색 에이전트
+│   ├── query_pipeline.py       # 하이브리드 검색 및 쿼리 파이프라인
+│   └── followup_tools.py       # 후속 정책 분석 도구
+│
+├── demo/                       # 시연 및 데모 애플리케이션
+│   ├── final_app.py            # Streamlit 기반 통합 의정이슈레이더 대시보드
+│   └── issue_review_app.py     # 이슈 클러스터 검수용 관리자 앱
+│
+├── src/                        # 핵심 파이프라인 단계별 모듈 (01 ~ 35)
+│   ├── bm25_runtime.py         # BM25 및 RRF 랭킹 알고리즘 구현체
+│   ├── council_vector_runtime.py # 벡터 런타임 공통 모듈
+│   └── 33_analyze_free_query.py # 동적 자유 질의 분석기
+│
+├── scripts/                    # 실행 및 자동화 쉘 스크립트
+│   ├── 00_check_environment.py # OS, GPU, CUDA 환경 점검 도구
+│   ├── export_pgvector_for_share.sh # DB 덤프 추출 스크립트
+│   └── restore_pgvector_from_dump.sh # DB 덤프 복원 스크립트
+│
+├── config/                     # 정책 시드 목록, 데이터 규약, KOSIS 지표 매핑 YAML
+├── docker-compose.yml          # PostgreSQL + pgvector 컨테이너 정의
+├── docker-compose.web.yml      # FastAPI 웹 서비스 컨테이너 정의
+├── Dockerfile                  # Web 서비스 컨테이너 빌드 파일
+├── requirements.txt            # Python 필수 의존성 목록
+└── README.md                   # 프로젝트 종합 설명서 (본 문서)
 ```
 
 ---
 
-## 4. 데이터 및 메타데이터 스키마
+## 10. 자주 묻는 질문 및 트러블슈팅 (FAQ)
 
-### 1) 입력 데이터 형식 (`text/*.txt`)
-탭(Tab, `\t`)으로 구분된 UTF-8 TSV 형식이며, 상단 1행은 헤더입니다:
+### Q1. `Docker DB council-pgvector:5432/council_vectors 연결이 필요합니다` 오류가 발생합니다.
+- `main.py`의 `lifespan` 검증 로직은 Docker 내부 통신 규격(`council-pgvector:5432`)을 기본 대상으로 점검합니다.
+- 호스트(로컬)에서 직접 `uvicorn main:app`을 실행하는 경우, `.env`의 `DATABASE_URL`을 로컬 포트(`localhost:5433`)에 맞추고 `main.py` 42~49행의 호스트네임 검사 부분을 로컬 환경에 맞게 조정하거나 Docker 컨테이너 환경(`docker compose -f docker-compose.web.yml up`)에서 실행하세요.
 
-| 컬럼명 | 설명 | 예시 |
-| :--- | :--- | :--- |
-| `date` | 회의 일자 (YYYYMMDD) | `20240123` |
-| `assembly` | 의회명 | `충청북도의회` |
-| `agenda_title` | 안건명 | `제414회 충청북도의회 임시회 제2차 본회의` |
-| `speaker_role` | 발언자 역할 | `위원장` |
-| `speaker_name` | 발언자 성명 | `이상정` |
-| `speaker_type` | 발언자 소속 구분 | `의회` / `집행부` / `미상` |
-| `utterance` | 발언 내용 본문 | `성원이 되었으므로 제414회 ... 개의를 선포합니다.` |
+### Q2. `EMBEDDING_MODEL_PATH is missing` 오류가 발생합니다.
+- `.env` 파일에 `EMBEDDING_MODEL_PATH`가 지정되어 있는지 확인하세요.
+- 기본값: `EMBEDDING_MODEL_PATH=dragonkue/snowflake-arctic-embed-l-v2.0-ko`
 
-### 2) ChromaDB 색인 메타데이터 스키마
-ChromaDB의 빠른 `where` 연산(단일 및 `$and` 복합 조건)에 최적화된 스칼라 데이터 타입을 가집니다:
-
-| 분류 | 필드명 | 데이터 타입 | 설명 및 예시 |
-| :--- | :--- | :--- | :--- |
-| **시간 축** | `date` | `str` | 정제된 일자 (`YYYY-MM-DD`, 예: `2024-01-23`) |
-| | `year` | `int` | 회의 연도 (예: `2024`) |
-| | `month` | `int` | 회의 월 (예: `1`) |
-| | `day` | `int` | 회의 일 (예: `23`) |
-| **지역/의회** | `assembly` | `str` | 전체 의회명 (예: `경기도의회`, `충청북도의회`) |
-| | `region` | `str` | 광역 지자체 약칭 (`경기`, `충북`, `충남`, `강원`, `기타`) |
-| **안건 축** | `agenda_title` | `str` | 정제된 안건 제목 (최대 250자) |
-| **발언자 축** | `speaker_name` | `str` | 순수 성명 (예: `김꽃임`, `김동연`) |
-| | `speaker_position` | `str` | 직함 (예: `위원장`, `도지사`, `의원`, `일반`) |
-| | `speaker_role` | `str` | 원본 역할 표기 |
-| | `speaker_type` | `str` | 소속 구분 (`의회`, `집행부`, `미상`) |
-| **추적/청킹** | `source_file` | `str` | 원본 소스 파일명 (예: `cleaned_2024_경기도의회.txt`) |
-| | `row_id` | `int` | 원본 TSV 행 번호 |
-| | `chunk_index` | `int` | 서브청크 순번 (0부터 시작) |
-| | `total_chunks` | `int` | 해당 발언의 총 서브청크 개수 |
-| | `char_length` | `int` | 청크 본문 문자 수 |
-| | `is_continuation` | `bool` | 앞선 청크에서 분할되어 이어지는지 여부 |
-
----
-
-## 5. 데이터 전처리 파이프라인 (`scripts/`)
-
-원본 지자체 회의록 JSON(HTML 본문 포함)에서 일관된 TSV를 구축하는 일련의 단계입니다.
-
-```
-[원본 JSON/HTML]
-       │
-       ▼
-[1_split_sample.py]        --> 의회별 대표 HTML 본문 샘플 추출
-       │
-       ▼
-[2_rules_make.py]          --> 로컬 LLM(Ollama)으로 안건/화자/발언 CSS Selector 추론
-       │
-       ▼
-[3_rules_summary.py]       --> 엄격한 CSS 규칙 JSON으로 통합 및 검증
-       │
-       ▼
-[4_to_csv_2.py]            --> 불필요한 의전 멘트 정리, 자간 오류 복원 후 TSV 변환 (text/ 저장)
-       │
-       ▼
-[5_create_master_csv.py]   --> (선택) LLM을 활용한 정책분류/키워드/요약 메타데이터 생성
-```
-
-- **실행 방법**:
+### Q3. Ollama 연결 오류 또는 AI 답변이 실패합니다 (`Ollama 호출 실패`).
+- Ollama 데몬이 실행 중인지 확인합니다:
   ```bash
-  # 1. 샘플 추출
-  python scripts/1_split_sample.py
+  curl http://localhost:11434/api/tags
+  ```
+- 지정된 모델(`qwen3:8b` 등)이 로컬에 다운로드되어 있는지 확인하세요:
+  ```bash
+  ollama list
+  ollama pull qwen3:8b
+  ```
+- Docker 컨테이너 내부에서 로컬 머신의 Ollama에 접근할 때는 `http://host.docker.internal:11434`를 사용해야 합니다.
 
-  # 2. LLM CSS 규칙 생성
-  python scripts/2_rules_make.py
-
-  # 3. 규칙 정리 및 JSON 생성
-  python scripts/3_rules_summary.py
-
-  # 4. TSV 정제 데이터 생성
-  python scripts/4_to_csv_2.py
+### Q4. PyTorch에서 GPU를 인식하지 못하고 CPU로 동작합니다.
+- `scripts/00_check_environment.py`를 실행하여 환경을 점검합니다:
+  ```bash
+  python scripts/00_check_environment.py
+  ```
+- CUDA 버전에 맞는 PyTorch를 다시 설치합니다:
+  ```bash
+  pip install torch torchvision --force-reinstall --index-url https://download.pytorch.org/whl/cu121
   ```
 
----
-
-## 6. 로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)
-
-지방의회 회의록 발언에서 로컬 LLM(Ollama `gemma4:e2b` / `gemma4:e4b` 등)을 활용하여 정책 분야(`policy_category`), 핵심 쟁점(`core_issue`), 2~4어절 복합 정책 키워드(`keywords`), 요약(`summary`)을 추출하여 구조화된 JSONL 데이터로 저장합니다.
-
-### 1) 주요 특징
-- **체크포인트(이어하기) & 실시간 Append**: 이미 처리된 `row_id`는 자동으로 건너뛰며, 중단 후 재실행 시 기존 JSONL 파일 뒤에 실시간으로 안전하게 이어서 덧붙입니다.
-- **원본 파일명 기반 자동 저장**: `--output`을 별도로 지정하지 않아도, 입력 파일명(확장자 제외)에 맞춰 `data/{파일명}.jsonl`로 파일별 자동 분리 저장됩니다.
-- **엄격한 금지 단어 필터링**: '사업', '예산', '지원', '조례' 등 모든 회의록에 흔히 나오는 1단어 명사를 배제하고 "농지제도 혁신", "미래 인구정책"과 같은 실질적 정책 의제 복합키워드만 추출합니다.
-- **멀티스레드 병렬 가속 (`--workers`)**: 여러 LLM 추론 요청을 병렬로 처리하여 속도를 대폭 단축합니다.
-
-### 2) 실행 방법 및 명령어 예시
-
-#### 기본 실행 (강원특별자치도의회, 기존 53건 자동 감지 후 이어서 진행)
-```bash
-# 100건만 테스트로 추가 추출
-python extract_llm_metadata.py --sample 100
-
-# 전체 발언 끝까지 이어서 추출
-python extract_llm_metadata.py --workers 2
-```
-
-#### 타 의회 파일별 추출 (`--input`만 지정하면 `data/{파일명}.jsonl`로 자동 저장)
-```bash
-# 경기도의회 2024 -> data/cleaned_2024_경기도의회.jsonl 로 자동 저장
-python extract_llm_metadata.py --input "text/cleaned_2024_경기도의회.txt" --sample 100 --workers 2
-
-# 충청남도의회 2024 -> data/cleaned_2024_충청남도의회.jsonl 로 자동 저장
-python extract_llm_metadata.py --input "text/cleaned_2024_충청남도의회.txt" --sample 100 --workers 2
-
-# 충청북도의회 2024 -> data/cleaned_2024_충청북도의회.jsonl 로 자동 저장
-python extract_llm_metadata.py --input "text/cleaned_2024_충청북도의회.txt" --sample 100 --workers 2
-```
-
-### 3) CLI 옵션 플래그
-| 인자 | 기본값 | 설명 |
-| :--- | :--- | :--- |
-| `--input` | `text/cleaned_2024_강원특별자치도의회.txt` | 입력 TSV 회의록 파일 경로 |
-| `--output` | `data/{입력파일명}.jsonl` | 출력 JSONL 파일 경로 (미지정 시 입력 파일명 기반 자동 생성) |
-| `-m`, `--model` | `gemma4:e2b` | 사용할 Ollama 로컬 LLM 모델명 (고성능 필요 시 `gemma4:e4b` 등) |
-| `--sample` | `0` (전체) | 처리할 발언 개수 (`0`이면 전체 처리) |
-| `--min-len` | `80` | 최소 발언 길이 (글자 수 미달 의전성 멘트 제외) |
-| `--workers` | `2` | 동시 병렬 요청 워커(스레드) 수 |
-| `--url` | `http://localhost:11434` | Ollama API 서버 엔드포인트 주소 |
-
----
-
-## 7. ChromaDB 벡터 적재 파이프라인 (`run_ingest.py`)
-
-정제된 회의록 텍스트(`text/*.txt`)를 읽어 청킹 및 임베딩을 수행하고, 로컬 `chroma_db/`에 배치 스트리밍 방식으로 적재합니다.
-> 💡 **LLM 정책 메타데이터 자동 병합**: `data/*.jsonl`에 생성된 모든 의회별 정책 키워드/분야/쟁점 데이터가 있는 경우, 적재 시 자동으로 감지하여 ChromaDB 벡터 청크의 메타데이터로 함께 결합됩니다.
-
-### 1) 빠른 동작 검증 (테스트 샘플 모드)
-전체 적재 전, 파일당 100행만 추출하여 적재 파이프라인이 정상 동작하는지 테스트합니다:
-```bash
-# 기본 Snowflake Arctic v2.0 모델로 테스트 적재
-python run_ingest.py --sample-lines 100 --reset
-```
-- `--reset`: 대상 ChromaDB 컬렉션을 삭제하고 처음부터 새로 생성합니다.
-- `--sample-lines 100`: 각 파일에서 최대 100행만 읽어옵니다.
-
-### 2) 전체 데이터 적재 실행
-약 26만 건 이상의 전체 회의록 데이터를 적재합니다:
-```bash
-python run_ingest.py --batch-size 500
-```
-
-### 3) 다른 임베딩 모델로 적재하기
-```bash
-# 예 1: 기본 Arctic-ko 모델 사용 (명시적 지정)
-python run_ingest.py -m arctic-ko -c council_arctic --reset
-
-# 예 2: 긴 문서 특화 KURE-v1 모델 사용
-python run_ingest.py -m kure -c council_kure --reset
-
-# 예 3: 경량 Ko-SBERT 모델 사용
-python run_ingest.py -m ko-sbert -c council_ko_sbert --reset
-```
-
-### 4) 주요 옵션 플래그
-| 인자 | 기본값 | 설명 |
-| :--- | :--- | :--- |
-| `-m`, `--model` | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` | 사용할 임베딩 모델명 또는 별칭 (예: `arctic-ko`, `kure`, `ko-sbert`) |
-| `-c`, `--collection` | `local_council_minutes` | 적재 대상 Chroma 컬렉션 이름 |
-| `--batch-size` | `500` | ChromaDB 1회 add 호출 시 전송할 문서 배치 크기 |
-| `--sample-lines` | `0` (비활성) | 파일당 최대 읽을 행 수 (테스트용, 0이면 전체) |
-| `--chunk-size` | `800` | 장문 발언 서브청킹 기준 크기 (문자 수) |
-| `--chunk-overlap` | `100` | 서브청킹 간 중첩 크기 (문자 수) |
-| `--min-len` | `40` | 단순 진행/의전성 초단문 필터링 기준 (문자 수) |
-| `--reset` | `False` | 적재 전 대상 컬렉션 초기화 여부 플래그 |
-
----
-
-## 8. 시맨틱 검색 및 메타데이터 필터링 (`query_search.py`)
-
-적재된 ChromaDB 벡터스토어를 대상으로 자연어 질의와 메타데이터 필터를 조합하여 유사도 기반 검색을 수행합니다.
-
-### 1) 기본 자연어 시맨틱 검색
-```bash
-python query_search.py "청년 일자리 및 주거 지원 방안"
-```
-
-### 2) 특정 의회 + 특정 연도 필터링
-```bash
-python query_search.py "예산안 심사 및 심의" --assembly "경기도의회" --year 2024
-```
-
-### 3) 특정 발언자 필터링 및 출력 개수 지정
-```bash
-python query_search.py "도정 질의 및 공공기관 이전" --speaker "김동연" -k 5
-```
-
-### 4) 특정 임베딩 모델 및 컬렉션 지정 검색
-인덱싱할 때 사용한 동일한 모델과 컬렉션을 지정하여 검색합니다:
-```bash
-# KURE-v1 컬렉션 검색
-python query_search.py "인공지능 첨단산업" -m kure -c council_kure
-
-# Arctic-ko 컬렉션 검색
-python query_search.py "행정사무감사 시정조치" -m arctic-ko -c council_arctic
-```
-
-### 5) CLI 파라미터 안내
-- `query` (필수): 검색할 자연어 질의어 (예: `"인공지능 산업 육성"`)
-- `-m`, `--model`: 임베딩 모델명 또는 별칭 (기본값: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`)
-- `-c`, `--collection`: 검색 대상 컬렉션명 (기본값: `local_council_minutes`)
-- `--assembly`: 의회명 필터 (예: `"경기도의회"`, `"충청북도의회"`, `"강원특별자치도의회"`)
-- `--year`: 연도 필터 (정수, 예: `2024`, `2025`)
-- `--speaker`: 발언자 성명 필터 (예: `"김동연"`, `"이상정"`)
-- `-k`, `--limit`: 출력할 유사 문서 수 (기본값: `3`)
-
----
-
-## 9. 임베딩 모델 손쉬운 변경 가이드
-
-본 프로젝트는 복잡한 코드 수정 없이 **프리셋 별칭**, **CLI 인자**, **환경변수**, **설정 파일**을 통해 임베딩 모델을 자유롭게 변경할 수 있도록 지원합니다.
-
-### 1) 지원 프리셋 별칭 목록
-
-| 별칭 (Alias) | 전체 Hugging Face 모델 식별자 | 벡터 차원 | 모델 특징 및 추천 용도 |
-| :--- | :--- | :---: | :--- |
-| **`arctic-ko`** *(기본값)* | `dragonkue/snowflake-arctic-embed-l-v2.0-ko` | 1024 | **기본 모델.** Snowflake's Arctic-embed-l-v2.0 기반. **행정문서가 훈련에 활용**되었으며, 단문 중심 행정 용어 및 지자체 정책 회의록 검색에 최적화. |
-| **`kure` / `kure-v1`** | `nlpai-lab/KURE-v1` | 1024 | BAAI/bge-m3 기반으로 **긴 문서 및 복잡한 의회 회의록에서 최고의 검색 성능** 발휘. |
-| **`ko-sbert`** | `jhgan/ko-sbert-nli` | 768 | 가볍고 빠른 한국어 문장 임베딩 모델 (저사양 환경 권장). |
-| **`kosimcse`** | `BM-K/KoSimCSE-roberta-multitask` | 768 | 한국어 RoBERTa 기반 SimCSE. 단어·문장의 의미적 유사도 검색에 탁월. |
-| **`bge-m3`** | `BAAI/bge-m3` | 1024 | 베이스 다국어/한국어 고성능 모델. |
-| **`bge-m3-ko`** | `dragonkyle/bge-m3-ko` | 1024 | BGE-M3의 한국어 집중 파인튜닝 버전. |
-| **`e5-base`** | `intfloat/multilingual-e5-base` | 768 | 다국어 검색 성능이 우수한 E5 시리즈 모델. |
-| **`kr-sbert`** | `snunlp/KR-SBERT-V40K-klue-subword` | 768 | 서울대 한국어 연구팀의 사전학습 SBERT 모델. |
-
-> 💡 **Hugging Face 직접 지정**: 별칭 외에도 Hugging Face에 존재하는 모든 한국어 임베딩 모델 경로(예: `"snunlp/KR-SBERT-V40K-klue-subword"`)를 그대로 입력하여 사용할 수 있습니다.
-
----
-
-### 2) 변경 방법 3가지
-
-#### 방법 A. CLI 명령행 인자로 즉시 변경 (가장 권장)
-스크립트 실행 시 `-m` 또는 `--model` 옵션으로 간편하게 지정합니다:
-```bash
-# 기본 Arctic-ko 모델 사용
-python run_ingest.py -m arctic-ko -c council_arctic --reset
-
-# KURE-v1 모델 사용
-python run_ingest.py -m kure -c council_kure --reset
-
-# 검색 시에도 동일한 모델 지정
-python query_search.py "청년 일자리" -m arctic-ko -c council_arctic
-```
-
-#### 방법 B. 환경변수로 전역 변경
-터미널 세션 전체에서 기본 임베딩 모델을 변경합니다:
-```powershell
-# Windows PowerShell 환경
-$env:EMBEDDING_MODEL_NAME = "kure"
-
-# 이후 옵션 없이 실행해도 kure가 기본 적용됨
-python query_search.py "미래 모빌리티 예산"
-```
-```bash
-# Linux/macOS 환경
-export EMBEDDING_MODEL_NAME="kure"
-```
-
-#### 방법 C. `src/config.py` 코드 한 줄 수정으로 영구 변경
-[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py) 파일 상단의 기본값을 원하는 모델로 변경합니다:
-```python
-# src/config.py 56번째 줄
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arctic-ko"])
-```
-
----
-
-### 3) ⚠️ 모델 변경 시 주의사항: 벡터 차원(Dimension) 불일치
-
-> [!WARNING]
-> 모델마다 벡터 임베딩 차원이 다릅니다. (예: `kure`/`arctic-ko`=1024차원, `ko-sbert`=768차원)
-> 이미 다른 모델로 적재된 동일한 컬렉션에 새 모델로 데이터를 넣거나 검색하면 **차원 불일치(Dimension mismatch) 오류**가 발생합니다.
-
-- **해결책 1 (컬렉션 분리 - 권장)**: 모델마다 다른 컬렉션 이름을 지정합니다 (`-c council_kure`, `-c council_arctic`).
-- **해결책 2 (컬렉션 초기화)**: 기존 데이터를 덮어쓰고 새로 적재할 때 `--reset` 옵션을 추가합니다.
-
----
-
-## 10. 모듈별 상세 구성 (`src/`)
-
-- **[`src/config.py`](file:///c:/study/Projects/team-ggeodeureok/src/config.py)**:
-  - 경로 및 하이퍼파라미터 정의
-  - 기본 모델: `dragonkue/snowflake-arctic-embed-l-v2.0-ko`
-  - `EMBEDDING_PRESETS` 딕셔너리 (`arctic-ko`, `kure` 등) 및 별칭 매핑 함수 `resolve_embedding_model()`
-- **[`src/parser.py`](file:///c:/study/Projects/team-ggeodeureok/src/parser.py)**:
-  - `clean_text()`: 비표준 공백(`\xa0` 등) 정규화
-  - `parse_speaker()`: `위원장이상정` -> `('위원장', '이상정')` 직함/성명 자동 분리
-  - `parse_date()`: `YYYYMMDD` 문자열을 정수형 `year`, `month`, `day`로 분해
-  - `parse_tsv_row()`: 7개 컬럼 TSV 레코드 파싱
-- **[`src/chunker.py`](file:///c:/study/Projects/team-ggeodeureok/src/chunker.py) (`CouncilMinuteChunker`)**:
-  - 발언 단위 기본 유지 + 800자 초과 시 문맥 유실 방지를 위한 재귀적 청킹
-  - 40자 미만 단순 의전 멘트 필터링
-- **[`src/indexer.py`](file:///c:/study/Projects/team-ggeodeureok/src/indexer.py) (`ChromaIndexer`)**:
-  - `HuggingFaceEmbeddings` 모델 로드 및 CUDA GPU 자동 감지
-  - 배치 단위 `add_batch()` 및 유사도 필터 검색 `query()`
-  - 차원 불일치 에러 시 친절한 원인/해결책 안내 예외 처리
-
----
-
-## 11. 자주 묻는 질문 및 트러블슈팅
-
-### Q1. `ModuleNotFoundError: No module named 'torch'` 오류가 발생합니다.
-- Conda 가상환경이 활성화되지 않았을 때 발생합니다. `conda activate project01`을 실행하세요.
-
-### Q2. Windows PowerShell에서 파일명이 깨져 보이거나 한글 출력 시 인코딩 오류가 발생합니다.
-- PowerShell에서 아래 명령어로 터미널 인코딩을 UTF-8로 설정하세요:
+### Q5. Windows PowerShell에서 한글 출력 깨짐 현상이 있습니다.
+- 터미널 세션의 인코딩을 UTF-8로 지정합니다:
   ```powershell
   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
   $OutputEncoding = [System.Text.Encoding]::UTF8
   ```
-
-### Q3. 임베딩 모델 변경 후 Dimension 오류가 발생합니다.
-- 모델 간 차원(예: 768 vs 1024)이 달라서 발생하는 오류입니다.
-- 새 모델로 적재 시 `-c <새_컬렉션명>`을 지정하거나, `--reset` 플래그로 기존 컬렉션을 초기화하세요.
-
----
-
-## 12. 변경 및 작업 이력 (CHANGELOG)
-
-전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
-
