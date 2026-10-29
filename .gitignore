@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+*.pptx
+/origin/**
+env.js
+/data2_backup
+/data/**
+/change_text/**
+/.vscode
