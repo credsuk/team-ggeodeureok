@@ -2,13 +2,15 @@
 
 본 브랜치(`feature/data-preprocessing`)는 광역의회 회의록 원천 데이터(JSON/HTML)를 정제하고, 한국어 형태소 분석기(Kiwi) 및 로컬 LLM을 활용하여 구조화된 정책 메타데이터(JSONL)로 일괄 변환하는 **데이터 전처리 파이프라인 전용 브랜치**입니다.
 
+모든 전처리 스크립트 및 텍스트 변환 파이프라인은 [`kb_preprocessing/`](file:///c:/study/Projects/team-ggeodeureok/kb_preprocessing) 디렉토리에 집중화되어 있습니다.
+
 ---
 
 ## 🌊 전체 파이프라인 흐름도
 
 ```mermaid
 flowchart TD
-    subgraph S1["[1단계] 회의록 원천 데이터 정제 (scripts/)"]
+    subgraph S1["[1단계] 회의록 원천 데이터 정제 (kb_preprocessing/scripts/)"]
         Raw["원본 회의록 JSON / HTML<br/>(origin/)"] --> Split["1_split_sample.py<br/>(샘플 추출)"]
         Split --> Rule["2_rules_make.py & 3_rules_summary.py<br/>(파싱 규칙 생성)"]
         Rule --> ToCSV["4_to_csv.py / 4_to_csv_2.py<br/>(HTML 정제 및 텍스트 추출)"]
@@ -24,8 +26,8 @@ flowchart TD
         KiwiSingle --> JsonlData
     end
 
-    subgraph S3["[3단계] 메타데이터 보정 및 정규화 (scripts2/)"]
-        JsonlData --> FixSpeaker["scripts2/fix_metadata_speakers.py<br/>(비정상 화자명 복원 & 투표 행 정규화)"]
+    subgraph S3["[3단계] 메타데이터 보정 및 정규화 (kb_preprocessing/)"]
+        JsonlData --> FixSpeaker["fix_metadata_speakers.py<br/>(비정상 화자명 복원 & 투표 행 정규화)"]
         FixSpeaker --> FinalJsonl["최종 정제 완료 메타데이터 (.jsonl)<br/>(data/*.jsonl)"]
     end
 ```
@@ -36,19 +38,18 @@ flowchart TD
 
 ```plaintext
 team-ggeodeureok/
-├── scripts/                            # [1단계] 원본 HTML 파싱 및 텍스트 정제 스크립트 모음
-│   ├── _constant.py                    # 경로, 연도, 로컬 Ollama 모델 설정
-│   ├── 1_split_sample.py               # 회의록 JSON에서 HTML 샘플 추출
-│   ├── 2_rules_make.py                 # LLM을 활용한 지자체별 HTML 파싱 규칙 생성
-│   ├── 3_rules_summary.py              # 파싱 규칙 요약 및 통합
-│   ├── 4_to_csv.py / 4_to_csv_2.py     # 파싱 규칙 기반 HTML 태그 제거 및 텍스트 변환
-│   └── 5_create_master_csv.py          # 지자체별 정제 파일 통합
-│
-├── batch_extract_kiwi_metadata.py      # [2단계-주력] change_text 폴더 전체를 data/*.jsonl로 일괄 고속 변환 (Multi-worker)
-├── extract_kiwi_metadata.py            # [2단계] Kiwi 형태소 분석기 기반 정책 카테고리/키워드/요약 추출 엔진
-├── extract_llm_metadata.py             # [2단계-대안] Ollama 로컬 LLM 기반 정책 메타데이터 추출기
-│
-├── scripts2/
+├── kb_preprocessing/                   # 🏛️ 전처리 파이프라인 통합 디렉토리
+│   ├── scripts/                        # [1단계] 원본 HTML 파싱 및 텍스트 정제 스크립트 모음
+│   │   ├── _constant.py                # 경로, 연도, 로컬 Ollama 모델 설정
+│   │   ├── 1_split_sample.py           # 회의록 JSON에서 HTML 샘플 추출
+│   │   ├── 2_rules_make.py             # LLM을 활용한 지자체별 HTML 파싱 규칙 생성
+│   │   ├── 3_rules_summary.py          # 파싱 규칙 요약 및 통합
+│   │   ├── 4_to_csv.py / 4_to_csv_2.py # 파싱 규칙 기반 HTML 태그 제거 및 텍스트 변환
+│   │   └── 5_create_master_csv.py      # 지자체별 정제 파일 통합
+│   │
+│   ├── batch_extract_kiwi_metadata.py  # [2단계-주력] change_text 폴더 전체를 data/*.jsonl로 일괄 고속 변환 (Multi-worker)
+│   ├── extract_kiwi_metadata.py        # [2단계] Kiwi 형태소 분석기 기반 정책 카테고리/키워드/요약 추출 엔진
+│   ├── extract_llm_metadata.py         # [2단계-대안] Ollama 로컬 LLM 기반 정책 메타데이터 추출기
 │   └── fix_metadata_speakers.py        # [3단계] data/*.jsonl 화자 오염 복원 및 전자투표 명단 정규화
 │
 ├── requirements.txt                    # 전처리 파이프라인 필수 의존성 패키지
@@ -76,19 +77,21 @@ pip install -r requirements.txt
 
 ## 🚀 단계별 실행 가이드
 
+> **참고**: 모든 명령어는 프로젝트 루트(`team-ggeodeureok/`)에서 실행하는 것을 기본으로 합니다.
+
 ### 1단계: 원시 데이터(HTML/JSON) ➔ 정제 텍스트(`change_text/`)
-`scripts/` 내의 파이프라인을 순차적으로 실행하여 원본 회의록 HTML 태그를 정제하고 텍스트(`change_text/*.txt`)를 추출합니다.
+`kb_preprocessing/scripts/` 내의 파이프라인을 순차적으로 실행하여 원본 회의록 HTML 태그를 정제하고 텍스트(`change_text/*.txt`)를 추출합니다.
 
 ```bash
-# 1. 설정 확인 (scripts/_constant.py 내 대상 연도 및 경로 확인)
+# 1. 설정 확인 (kb_preprocessing/scripts/_constant.py 내 대상 연도 및 경로 확인)
 # 2. 샘플 추출 및 규칙 생성
-python scripts/1_split_sample.py
-python scripts/2_rules_make.py
-python scripts/3_rules_summary.py
+python kb_preprocessing/scripts/1_split_sample.py
+python kb_preprocessing/scripts/2_rules_make.py
+python kb_preprocessing/scripts/3_rules_summary.py
 
 # 3. 텍스트/CSV 변환
-python scripts/4_to_csv_2.py
-python scripts/5_create_master_csv.py
+python kb_preprocessing/scripts/4_to_csv_2.py
+python kb_preprocessing/scripts/5_create_master_csv.py
 ```
 
 ### 2단계: 정제 텍스트(`change_text/`) ➔ 정책 메타데이터(`data/*.jsonl`)
@@ -97,18 +100,18 @@ python scripts/5_create_master_csv.py
 #### ⚡ Kiwi 형태소 분석기 일괄 변환 (권장, 초고속)
 ```bash
 # change_text/ 내의 모든 34개 지자체 회의록 일괄 변환
-python batch_extract_kiwi_metadata.py --input-dir change_text --output-dir data
+python kb_preprocessing/batch_extract_kiwi_metadata.py --input-dir change_text --output-dir data
 
 # 연도별 선택 변환 (예: 2024년도만)
-python batch_extract_kiwi_metadata.py --input-dir change_text --output-dir data --year 2024 --workers 4
+python kb_preprocessing/batch_extract_kiwi_metadata.py --input-dir change_text --output-dir data --year 2024 --workers 4
 
 # 단일 파일 변환 테스트
-python extract_kiwi_metadata.py --input change_text/2024_광역의회/cleaned_2024_강원특별자치도의회.txt --output data/2024_광역의회/cleaned_2024_강원특별자치도의회.jsonl
+python kb_preprocessing/extract_kiwi_metadata.py --input change_text/2024_광역의회/cleaned_2024_강원특별자치도의회.txt --output data/2024_광역의회/cleaned_2024_강원특별자치도의회.jsonl
 ```
 
 #### 🤖 로컬 LLM 기반 추출 (선택 사항)
 ```bash
-python extract_llm_metadata.py --input change_text/2024_광역의회/cleaned_2024_강원특별자치도의회.txt --output data/llm_output.jsonl
+python kb_preprocessing/extract_llm_metadata.py --input change_text/2024_광역의회/cleaned_2024_강원특별자치도의회.txt --output data/llm_output.jsonl
 ```
 
 ### 3단계: 화자명 및 전자투표 결과 메타데이터 보정
@@ -116,10 +119,10 @@ python extract_llm_metadata.py --input change_text/2024_광역의회/cleaned_202
 
 ```bash
 # 보정 대상 사전 점검 (Dry-run)
-python scripts2/fix_metadata_speakers.py --dry-run
+python kb_preprocessing/fix_metadata_speakers.py --dry-run
 
 # 실제 일괄 보정 적용
-python scripts2/fix_metadata_speakers.py
+python kb_preprocessing/fix_metadata_speakers.py
 ```
 
 ---
