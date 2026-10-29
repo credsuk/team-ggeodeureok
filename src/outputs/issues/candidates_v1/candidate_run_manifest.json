@@ -1,0 +1,68 @@
+{
+  "status": "partial",
+  "catalog": "/mnt/c/project/mini/src/config/issue_seed_catalog_v1.csv",
+  "issue_count_requested": 10,
+  "issue_count_completed": 0,
+  "automatic_approval": false,
+  "review_queue": "/mnt/c/project/mini/src/outputs/issues/candidates_v1/issue_review_queue.csv",
+  "parameters": {
+    "candidate_k": 50,
+    "rerank_top_k": 10,
+    "expansion_k": 500,
+    "ef_search": 500,
+    "min_centroid_similarity": 0.45,
+    "cluster_similarity": 0.68
+  },
+  "runs": [
+    {
+      "issue_key": "birth_rate",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '출산율 저하 대응 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/birth_rate/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "population_decline",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '인구감소 지역소멸 대응 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/population_decline/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "youth_jobs",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '청년 일자리 지역정착 지원 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/youth_jobs/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "jeonse_fraud",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '전세사기 피해자 지원 대책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/jeonse_fraud/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "regional_healthcare",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '지역의료 공백 필수의료 대책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/regional_healthcare/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "care_policy",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '돌봄 공백 통합돌봄 지원 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/care_policy/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "school_violence",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '학교폭력 예방 피해자 보호 대책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/school_violence/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "climate_neutrality",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '기후위기 탄소중립 대응 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/climate_neutrality/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "flood_safety",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '집중호우 침수 피해 예방 대책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/flood_safety/01_retrieval.json']' returned non-zero exit status 1."
+    },
+    {
+      "issue_key": "small_business",
+      "status": "failed",
+      "error": "CalledProcessError: Command '['/home/admin11/.hermes/installs/2fe93f8c46a661a1/environments/b161adfc56af4fd7aed52a4214f77c22/venv/bin/python', '-u', 'src/18_pgvector_retrieval.py', '--query', '소상공인 경영 안정 지원 정책', '--top-k', '10', '--candidate-k', '50', '--ef-search', '500', '--device', 'cpu', '--output', '/mnt/c/project/mini/src/outputs/issues/candidates_v1/small_business/01_retrieval.json']' returned non-zero exit status 1."
+    }
+  ]
+}
