@@ -1,0 +1,16 @@
+﻿services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: council-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - "C:/Users/Admin/.cache/huggingface/hub/models--dragonkue--snowflake-arctic-embed-l-v2.0-ko:/models/arctic-cache:ro"
+      - "C:/2026_data_ai_analysis_competition/models/bge-reranker-v2-m3:/models/reranker:ro"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"

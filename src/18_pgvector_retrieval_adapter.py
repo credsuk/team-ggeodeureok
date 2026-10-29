@@ -1,0 +1,141 @@
+﻿"""?? FastAPI ?? ??? ???? ZIP 18? ?? ???."""
+import argparse
+import asyncio
+import json
+import os
+import time
+from pathlib import Path
+from urllib.parse import urlparse
+
+# ?? BM25 ???? ?? ??? ??? ???? ???.
+os.environ["COUNCIL_RETRIEVAL_MODE"] = "dense"
+
+from pathlib import Path
+import sys
+
+PROJECT_ROOT = str(Path(__file__).resolve().parents[1])
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from config import settings
+from database import connect_db, close_db, search_minutes
+from embedding import load_embedding_model, encode_query
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--query", required=True)
+    parser.add_argument("--top-k", type=int, default=10)
+    parser.add_argument("--candidate-k", type=int, default=50)
+    parser.add_argument("--ef-search", type=int, default=200)
+    parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="cpu")
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+
+    query = " ".join(args.query.split())
+    if not query:
+        raise ValueError("???? ?????.")
+    if args.candidate_k < 1 or args.top_k < 1:
+        raise ValueError("?? ?? ?? ?? ?? 1 ????? ???.")
+
+    # Docker DB ?? ?? ??? ????.
+    target = urlparse(settings.database_url)
+    if (
+        target.hostname != "council-pgvector"
+        or target.port != 5432
+        or target.path.lstrip("/") != "council_vectors"
+    ):
+        raise RuntimeError(
+            "?? ??: Docker DB council-pgvector:5432/council_vectors? ?????."
+        )
+
+    os.environ["PGVECTOR_DSN"] = settings.database_url
+    started = time.perf_counter()
+    model = load_embedding_model(settings.embedding_model_path)
+    vector = encode_query(model, query)
+
+    async def retrieve():
+        pool = await connect_db(settings.database_url)
+        try:
+            rows = await search_minutes(
+                pool,
+                vector,
+                limit=min(args.candidate_k, 100),
+                query=query,
+            )
+            return rows
+        finally:
+            await close_db(pool)
+
+    rows = asyncio.run(retrieve())
+    candidates = []
+    for rank, row in enumerate(rows, start=1):
+        text = str(row.get("document") or row.get("summary") or "").strip()
+        if not text:
+            continue
+        metadata = {
+            "council": row.get("council") or row.get("assembly") or "",
+            "meeting_date": row.get("meeting_date") or row.get("date") or "",
+            "year": row.get("year"),
+            "committee": row.get("committee") or row.get("speaker") or "",
+            "meeting_name": row.get("meeting_name") or "",
+            "agenda_title": row.get("agenda_title") or row.get("agenda") or "",
+        }
+        score = float(row.get("similarity") or 0.0)
+        candidates.append({
+            "rank": rank,
+            "candidate_rank": rank,
+            "dense_rank": rank,
+            "chunk_id": str(row.get("chunk_id") or row.get("row_id") or ""),
+            "text": text,
+            "metadata": metadata,
+            "similarity": score,
+            "dense_similarity": score,
+            "retrieval_sources": ["dense"],
+        })
+
+    if not candidates:
+        raise RuntimeError("Docker DB?? ??? ?? ??? ?? ?????.")
+
+    output = args.output.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    report = {
+        "status": "complete",
+        "query": query,
+        "backend": "docker-postgresql+pgvector",
+        "retrieval_stage": "dense_baseline_before_bge_reranking",
+        "database": {
+            "host": target.hostname,
+            "port": target.port,
+            "database": target.path.lstrip("/"),
+            "table": settings.db_table,
+            "distance": "cosine",
+        },
+        "retrieval": {
+            "mode": "dense",
+            "dense_candidate_count": len(candidates),
+            "bm25_candidate_count": 0,
+            "fused_candidate_count": len(candidates),
+            "bm25_index": None,
+        },
+        "top_k": args.top_k,
+        "candidate_k": args.candidate_k,
+        "candidate_count": len(candidates),
+        "selection": "Docker DB dense retrieval; BGE reranker not applied yet",
+        "timing_ms": {
+            "total": round((time.perf_counter() - started) * 1000, 1)
+        },
+        "results": candidates[:args.top_k],
+        "candidates": candidates,
+    }
+    output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"Docker DB ?? ?? ??: {len(candidates)}?")
+    print(f"JSON: {output}")
+
+
+if __name__ == "__main__":
+    main()
+

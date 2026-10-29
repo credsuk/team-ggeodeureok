@@ -1,0 +1,23 @@
+﻿import torch
+from sentence_transformers import SentenceTransformer
+
+
+def load_embedding_model(model_path: str):
+    """로컬 임베딩 모델을 로딩한다."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    return SentenceTransformer(
+        model_path,
+        device=device,
+        local_files_only=True,
+    )
+
+
+def encode_query(model, query: str):
+    """모델의 query 프롬프트를 적용해 검색어를 임베딩한다."""
+    return model.encode(
+        query,
+        prompt_name="query",
+        convert_to_numpy=True,
+        normalize_embeddings=False,
+    )

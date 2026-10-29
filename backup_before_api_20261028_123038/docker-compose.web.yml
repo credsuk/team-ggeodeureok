@@ -1,0 +1,11 @@
+﻿services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: council-web
+    restart: unless-stopped
+    environment:
+      HTML_ONLY: "1"
+    ports:
+      - "8000:8000"

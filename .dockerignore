@@ -1,0 +1,11 @@
+﻿.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+data/postgres
+models
+.cache
+.huggingface
+.ipynb_checkpoints

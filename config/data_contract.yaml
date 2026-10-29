@@ -1,0 +1,59 @@
+contract_version: "1.1.0"
+description: "ChromaDB와 PostgreSQL+pgvector가 공동 사용하는 광역 지방의회 청크 데이터 계약"
+
+required_columns:
+  chunk_id: string
+  document_id: string
+  council: string
+  meeting_date: date
+  text: string
+  embedding_text: string
+
+recommended_columns:
+  parent_chunk_id: string
+  year: int
+  committee: string
+  agenda_title: string
+  speaker: string
+  speaker_role: string
+  speaker_type: string
+  meeting_name: string
+  chunk_type: string
+  priority: string
+  char_start: int
+  char_end: int
+  source_file: string
+
+optional_llm_metadata:
+  issue_name: string
+  policy_domain: string
+  policy_target: string
+  policy_action: string
+  keywords_json: string
+  summary: string
+  metadata_source: string
+  metadata_version: string
+  metadata_confidence: float
+
+aliases:
+  chunk_id: [chunk_id, CHUNK_ID, id]
+  document_id: [document_id, doc_id, DOCUMENT_ID]
+  council: [council, assembly, RASMBLY_NM, rasmbly_nm]
+  meeting_date: [meeting_date, MTG_DE, mtg_de, date]
+  meeting_name: [meeting_name, MINTS_NM, mints_nm]
+  committee: [committee, MTGNM, mtgnm]
+  agenda_title: [agenda_title, agenda, agenda_name]
+  speaker: [speaker, speaker_name]
+  speaker_role: [speaker_role]
+  speaker_type: [speaker_type]
+  text: [text, chunk_text, cleaned_text, content, body]
+  embedding_text: [embedding_text]
+
+rules:
+  id_policy: "source_key, 원본 행 번호, 정규화된 7개 필드의 SHA-256으로 고정"
+  date_format: "YYYY-MM-DD"
+  text_policy: "text는 정제 발언 원문, embedding_text는 안건명과 발언 본문을 결합"
+  list_policy: "복수 값은 정렬된 JSON 문자열로 저장"
+  null_policy: "없는 선택 필드는 null, 의미 없는 문자열 '없음' 사용 금지"
+  leakage_policy: "제공 데이터 수록 기간 이후 외부 정보 결합 금지"
+

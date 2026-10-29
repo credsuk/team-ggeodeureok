@@ -1,10 +1,16 @@
-chromadb>=0.5.0
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-text-splitters>=0.0.1
-tqdm>=4.66.0
-transformers<5.0.0
-sentence-transformers<4.0.0
-kiwipiepy>=0.20.0
-wordcloud>=1.9.0
-matplotlib>=3.8.0
+﻿fastapi
+uvicorn[standard]
+asyncpg
+python-dotenv
+sentence-transformers
+psycopg[binary]
+pgvector
+
+# ZIP requirements-base.txt: analysis pipeline dependencies
+numpy>=1.26,<3
+pandas>=2.2,<3
+pyarrow>=16,<22
+duckdb>=1.1,<2
+PyYAML>=6,<7
+psutil>=5.9,<8
+tqdm>=4.66,<5

@@ -1,5 +1,1 @@
-"""
-지방의회 회의록 ChromaDB 적재 및 메타데이터 파이프라인 패키지
-"""
-
-__version__ = "1.0.0"
+"""Retrieval helpers for the council minutes application."""
