@@ -82,7 +82,7 @@ python extract_kiwi_metadata.py --input ../change_text/2024_광역의회/cleaned
 ```
 
 ### 3. 로컬 LLM 기반 메타데이터 추출 (선택 사항)
-Ollama에 `gemma4:e2b` 등의 모델이 준비되어 있는 경우 로컬 LLM을 통한 정밀 추출을 수행할 수 있습니다:
+Ollama에 `exaone3.5:7.8b` 등의 모델이 준비되어 있는 경우 로컬 LLM을 통한 정밀 추출을 수행할 수 있습니다:
 
 ```bash
 python extract_llm_metadata.py --input ../change_text/2024_광역의회/cleaned_2024_강원특별자치도의회.txt --output ../data/llm_output.jsonl

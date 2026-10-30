@@ -18,6 +18,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from typing import Any
 
+import council_groups as CG
 import external_policy_sources as EXT
 
 
@@ -207,6 +208,10 @@ def regional_need(indicator_ids: list[str], as_of: date, mode: str) -> dict[str,
         used.append({key: result.get(key) for key in (
             "indicator", "name", "need", "period", "item", "unit", "attribution")}
             | {"pinned": (result.get("table") or {}).get("pinned")})
+    for group in CG.groups():   # 통합 후 시점이면 통합 의회 = 전신 의회 점수 평균
+        scores = [s for m in CG.member_councils(group) for s in per_council.get(m, [])]
+        if CG.is_effective(group, as_of) and scores:
+            per_council[group["council"]] = scores
     return {
         "by_council": {council: round(sum(v) / len(v), 3) for council, v in per_council.items()},
         "indicators": used,
@@ -214,17 +219,49 @@ def regional_need(indicator_ids: list[str], as_of: date, mode: str) -> dict[str,
     }
 
 
-def council_flow(
-    propagation: list[dict[str, Any]], ordinances: list[dict], minutes_cutoff: date, recent_months: int,
-) -> list[dict[str, Any]]:
-    observed = {}
+def merge_observations(propagation: list[dict[str, Any]], as_of: date) -> dict[str, dict[str, Any]]:
+    """의회별 회의록 관측을 as_of 기준 표시 의회로 묶는다 (통합 후면 전신 의회 관측을 합침)"""
+    observed: dict[str, dict[str, Any]] = {}
     for row in propagation:
         council = EXT.normalize_council(row.get("council"))
-        if council:
-            observed[council] = row
+        if not council:
+            continue
+        council = CG.display_council(council, as_of)
+        if council not in observed:
+            observed[council] = dict(row)
+            continue
+        merged = observed[council]
+        merged["first_observation_date"] = min(
+            filter(None, [merged.get("first_observation_date"), row.get("first_observation_date")]), default=None)
+        merged["last_observation_date"] = max(
+            filter(None, [merged.get("last_observation_date"), row.get("last_observation_date")]), default=None)
+        merged["mention_count"] = int(merged.get("mention_count") or 0) + int(row.get("mention_count") or 0)
+    return observed
+
+
+def display_councils(as_of: date) -> list[str]:
+    """출력 의회 목록: 통합 시행일 이후면 전신 의회 자리에 통합 의회 하나"""
+    return list(dict.fromkeys(CG.display_council(council, as_of) for council in EXT.REGION))
+
+
+def applied_merges(as_of: date) -> list[dict[str, Any]]:
+    return [
+        {"council": group["council"], "members": CG.member_councils(group),
+         "effective_date": group["effective_date"], "applied": CG.is_effective(group, as_of)}
+        for group in CG.groups()
+    ]
+
+
+def council_flow(
+    propagation: list[dict[str, Any]], ordinances: list[dict], minutes_cutoff: date, recent_months: int,
+    as_of: date | None = None,
+) -> list[dict[str, Any]]:
+    as_of = as_of or minutes_cutoff
+    observed = merge_observations(propagation, as_of)
+    ordinances = [{**item, "council": CG.display_council(item["council"], as_of)} for item in ordinances]
     recent_from = months_before(minutes_cutoff, recent_months)
     flows = []
-    for council in EXT.REGION:
+    for council in display_councils(as_of):
         regional = sorted(
             (item for item in ordinances if item["council"] == council and item["level"] == "광역"),
             key=lambda item: item["promulgated"],
@@ -253,6 +290,7 @@ def council_flow(
             stage = "미관측"
         flows.append({
             "council": council,
+            "merged_from": [m for m in CG.members_of(council) if m != council],
             "stage": stage,
             "minutes_first_observation": first_minutes.isoformat() if first_minutes else None,
             "minutes_last_observation": last_minutes.isoformat() if last_minutes else None,
@@ -334,7 +372,9 @@ def post_cutoff_check(candidates: list[dict], after_enacted: list[dict], top_k: 
     if not enacted:
         return {"status": "no_new_regional_enactment", "enacted_councils": []}
     top = [row["council"] for row in candidates[:top_k]]
-    hits = sorted(set(top) & set(enacted))
+    # 통합 의회의 제정은 전신 의회 후보의 적중으로, 그 반대도 적중으로 본다
+    expanded = {name for council in enacted for name in (council, *CG.members_of(council))}
+    hits = sorted(council for council in top if {council, *CG.members_of(council)} & expanded)
     return {
         "status": "complete",
         "checked_until": max(item["promulgated"] for item in after_enacted),
@@ -488,7 +528,7 @@ def build_followup(
     momentum_from = months_before(as_of, momentum_months)
     need = regional_need(indicator_ids or [], as_of, mode)
     errors += need["errors"]
-    flows = council_flow(propagation, parts["visible"], minutes_cutoff, recent_months)
+    flows = council_flow(propagation, parts["visible"], minutes_cutoff, recent_months, as_of)
     # live에서는 회의록 기준 모델 확률(기준일 직후 1개월 대상)이 조회일 이후 전망에 맞지 않아 점수에서 뺀다
     probability = forecast.get("discussion_active_probability") if mode == "backtest" else None
     view = outlook(flows, need["by_council"], probability, top_k)
@@ -528,6 +568,7 @@ def build_followup(
             "used_in_score": probability is not None,
         },
         "external_counts": external_counts,
+        "council_merges": applied_merges(as_of),
         "followup_flow": flows,
         "regional_need": regional_result,
         "outlook": {key: value for key, value in view.items() if key != "all_candidates"},
@@ -551,13 +592,17 @@ def build_followup(
 def compact_for_llm(result: dict[str, Any], max_flows: int = 8, councils: list[str] | None = None) -> dict[str, Any]:
     """LLM 컨텍스트용 요약: 미관측 의회와 긴 목록은 빼고 계산된 값만 전달 (councils를 주면 그 의회를 우선)"""
     rows = [row for row in result.get("followup_flow") or [] if row.get("stage") != "미관측"]
-    if councils:
+    if councils:   # 통합 후 결과에서 전신 의회를 물으면 통합 의회 행을 우선
+        councils = list(councils) + [
+            row["council"] for row in result.get("followup_flow") or []
+            if set(row.get("merged_from") or []) & set(councils)
+        ]
         rows = [row for row in result.get("followup_flow") or [] if row["council"] in councils] + [
             row for row in rows if row["council"] not in councils
         ]
     flows = [
-        {key: row[key] for key in (
-            "council", "stage", "minutes_first_observation", "minutes_mention_count",
+        {key: row.get(key) for key in (
+            "council", "merged_from", "stage", "minutes_first_observation", "minutes_mention_count",
             "first_regional_ordinance", "regional_after_minutes_cutoff",
             "lag_days_minutes_to_ordinance", "basic_ordinance_count",
         )}

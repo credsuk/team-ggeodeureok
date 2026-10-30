@@ -41,7 +41,7 @@ After startup completes, open the local dashboard at `http://127.0.0.1:8000/`. T
 - `COUNCIL_MODEL_CACHE`: 로컬 SentenceTransformers 모델 캐시 폴더
 - `COUNCIL_ALLOW_DOWNLOAD`: 기본 `0`은 로컬 캐시만 사용
 - `COUNCIL_DEVICE`: `auto`, `cpu`, 또는 `cuda`
-- `OLLAMA_URL`, `COUNCIL_AGENT_MODEL`: 기본 `http://127.0.0.1:11434`, `qwen3:8b`
+- `OLLAMA_URL`, `COUNCIL_AGENT_MODEL`: 기본 `http://127.0.0.1:11434`, `exaone3.5:7.8b`
 - `HOST`, `PORT`: 기본 `127.0.0.1`, `8000`
 
 PostgreSQL 테이블은 프로젝트의 적재 스크립트가 정의한 컬럼을 가져야 합니다: `chunk_id`, `parent_chunk_id`, `document_id`, `council`, `meeting_date`, `year`, `committee`, `meeting_name`, `agenda_title`, `priority`, `document`, `metadata`, `embedding`. `requirements-app.txt`에는 API에 필요한 FastAPI/Uvicorn 및 벡터 검색 의존성이 포함됩니다.

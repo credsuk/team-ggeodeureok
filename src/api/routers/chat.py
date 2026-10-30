@@ -16,7 +16,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 def chat_status() -> dict[str, object]:
     """Called once when the client is about to open/use chat; no polling is implied."""
     url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-    model = os.environ.get("COUNCIL_AGENT_MODEL", "qwen3:8b")
+    model = os.environ.get("COUNCIL_AGENT_MODEL", "exaone3.5:7.8b")
     result = probe_ollama(url, model, timeout_seconds=3.0)
     return {"reachable": result["reachable"], "model_available": result["model_available"],
             "model": model, "error": result["error"]}
