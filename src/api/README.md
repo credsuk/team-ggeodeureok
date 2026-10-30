@@ -8,6 +8,14 @@ python src/main.py
 
 After startup completes, open the local dashboard at `http://127.0.0.1:8000/`. The page and `/api/v1/...` requests are served from the same FastAPI origin; no separate npm/Vite server or CORS setup is needed. The frontend files are in `src/api/frontend/` (`index.html`, `app.js`, `api-client.js`). Startup loads the issue catalog but does not automatically analyze the first issue or run its database search. The top search and chatbot input submit on Enter; every non-empty top search switches to the radar tab before requesting results and remains there on errors. The top search button is anchored with local CSS so it stays inside the input even if the utility stylesheet does not load. Font-size controls mark the selected size visibly and expose it with `aria-pressed`. Map-point selection is independent of playback; it scrolls to the matching council card and loads/opens that council's matching full evidence. Monthly document counts use a horizontally scrollable SVG line chart with always-visible month and count labels. The chat send button keeps its compact fixed dimensions while busy; a small CSS spinner appears without replacing the send icon or wrapping a long loading label. Radar analysis shows a screen-level spinner and disables its action button without changing its label; the loading overlay stacks above the Leaflet map while the search header remains above the overlay. The dashboard uses the API for the fixed issue list/detail, free-form radar search, filtered source search, evidence/document detail, and local Ollama chat. The observation map keeps its Leaflet markers and paths and uses OpenFreeMap's Positron style through MapLibre. Tailwind, icons, fonts, map libraries, and map tiles are loaded from external CDNs/services, so those assets require internet access; the API itself remains local.
 
+## 최근 UI 동작
+
+- 챗봇은 답변 생성 중 입력창을 잠그고, 응답 성공이나 오류 후 잠금을 해제합니다.
+- 월별 매칭 문서 그래프의 세로축 상한은 관측 최대 문서 수에 50건을 더한 값입니다.
+- 상위 근거의 상세 보기와 같은 회의록 청크 목록은 폭·높이를 제한하고 긴 텍스트를 줄바꿈합니다. 청크 요청 중에는 안내 문장 대신 접근성 레이블이 있는 움직이는 로딩 바가 나타납니다.
+- 타임라인 재생은 관측 의회 카드 선택·근거 열기와 분리되어 있습니다. 카드와 지도 지점 선택은 재생 위치를 바꾸지 않고, 카드에는 날짜순 번호 배지와 순서별 색상을 표시합니다.
+- 글자 크기 컨트롤은 헤더에서 줄바꿈되지 않도록 고정하며, 화면 너비가 1023px 이하이면 `A−`, `A`, `A+` 기호로 바뀝니다. 각 버튼의 접근성 이름과 툴팁은 유지됩니다.
+
 런처는 `src/.env`를 읽고(이미 셸에 있는 변수는 덮어쓰지 않음), 기본 설정에서는 로컬 Ollama를 준비한 뒤 PostgreSQL 연결·테이블 스키마·질의 임베딩 차원을 확인합니다. 확인에 실패하면 오류와 traceback을 콘솔에 출력하고 API 서버를 시작하지 않습니다. 대표 이슈 결과 JSON, 웹 번들, 로컬 parents.parquet, 임베딩 `.npy`, SQLite BM25 인덱스는 이 API 시작 요건이 아닙니다. PostgreSQL은 자동으로 시작하지 않고 모델도 자동 다운로드하지 않습니다.
 
 ## 검색 방식과 예측 범위

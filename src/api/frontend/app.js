@@ -301,12 +301,8 @@
     const plotWidth = width - padding.left - padding.right;
     const plotHeight = height - padding.top - padding.bottom;
     const maxCount = Math.max(0, ...values.map((row) => row.count));
-    const rawStep = maxCount > 0 ? maxCount / 3.5 : 1;
-    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
-    const normalizedStep = rawStep / magnitude;
-    const stepFactor = normalizedStep <= 1 ? 1 : (normalizedStep <= 2 ? 2 : (normalizedStep <= 5 ? 5 : 10));
-    const tickStep = stepFactor * magnitude;
-    const scaleMax = tickStep * 4;
+    const scaleMax = maxCount + 50;
+    const tickStep = scaleMax / 4;
     const pointX = (index) => values.length === 1
       ? padding.left + plotWidth / 2
       : padding.left + (index / (values.length - 1)) * plotWidth;
@@ -318,6 +314,7 @@
     svg.setAttribute("height", String(height));
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "월별 매칭 문서 수 선형 그래프, 단위 건");
+    svg.setAttribute("data-y-max", String(scaleMax));
     const add = (tag, attributes, label = null) => {
       const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
       Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, String(value)));
@@ -327,8 +324,8 @@
     };
 
     for (let tick = 0; tick <= 4; tick += 1) {
-      const value = tickStep * tick;
-      const y = padding.top + plotHeight - (value / scaleMax) * plotHeight;
+      const value = Math.round(tickStep * tick);
+      const y = padding.top + plotHeight - (tick / 4) * plotHeight;
       add("line", { x1: padding.left, y1: y, x2: width - padding.right, y2: y, stroke: "#cbd5e1", "stroke-width": 1 });
       add("text", { x: padding.left - 10, y: y + 4, fill: "#475569", "font-size": 12, "text-anchor": "end" }, value.toLocaleString("ko-KR"));
     }
@@ -364,10 +361,13 @@
       card.dataset.council = row.council;
       card.setAttribute("aria-selected", "false");
       const evidence = evidenceForCouncil(row.council);
+      const orderHue = state.observations.length > 1
+        ? 35 + Math.round((index / (state.observations.length - 1)) * 215)
+        : 35;
       card.innerHTML = `
-        <div class="flex justify-between gap-3 items-start"><div><div class="font-black text-slate-950">${index + 1}. ${escapeHtml(row.council)}</div><div class="text-xs text-slate-600 mt-1">가장 이른 매칭 날짜: ${escapeHtml(row.date || "날짜 없음")}</div></div><span class="shrink-0 text-xs font-bold rounded bg-sky-50 text-sky-900 px-2 py-1">${row.documentCount.toLocaleString()}개 문서</span></div>
+        <div class="flex justify-between gap-3 items-start"><div><div class="font-black text-slate-950"><span class="observation-order-badge" style="--order-hue: ${orderHue}" aria-label="${index + 1}번째 관측">${index + 1}위</span>${escapeHtml(row.council)}</div><div class="text-xs text-slate-600 mt-1">가장 이른 매칭 날짜: ${escapeHtml(row.date || "날짜 없음")}</div></div><span class="shrink-0 text-xs font-bold rounded bg-sky-50 text-sky-900 px-2 py-1">${row.documentCount.toLocaleString()}개 문서</span></div>
         <div class="mt-2 text-xs text-slate-700">${evidence ? escapeHtml((evidence.text || "").slice(0, 240)) : "상위 검색 근거 목록에 이 의회의 발언이 포함되지 않았습니다."}</div>`;
-      card.addEventListener("click", () => renderTimelineStep(index));
+      card.addEventListener("click", () => focusObservation(index));
       if (evidence?.chunk_id) {
         const button = document.createElement("button");
         button.type = "button";
@@ -424,13 +424,25 @@
     });
   }
 
+  function createLoadingBar(label) {
+    const bar = document.createElement("div");
+    bar.className = "chunk-loading-bar";
+    bar.setAttribute("role", "progressbar");
+    bar.setAttribute("aria-label", label);
+    bar.setAttribute("aria-valuemin", "0");
+    bar.setAttribute("aria-valuemax", "100");
+    return bar;
+  }
+
   async function loadEvidenceInto(button, chunkId) {
     if (!button || button.dataset.evidenceLoading === "true") return null;
     if (button.dataset.evidenceOpened === "true") return null;
     const panel = document.createElement("pre");
-    panel.className = "mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800";
+    panel.className = "evidence-detail-panel";
     panel.setAttribute("aria-live", "polite");
-    panel.textContent = "근거를 불러오는 중…";
+    panel.setAttribute("aria-busy", "true");
+    panel.setAttribute("aria-label", "근거 상세");
+    panel.appendChild(createLoadingBar("근거 상세 불러오는 중"));
     button.insertAdjacentElement("afterend", panel);
     button.disabled = true;
     button.dataset.evidenceLoading = "true";
@@ -439,9 +451,11 @@
     try {
       const result = await api.getEvidence(chunkId);
       const meta = result.metadata || {};
+      panel.setAttribute("aria-busy", "false");
       panel.textContent = `${meta.council || "의회 미상"} · ${meta.meeting_date || "날짜 미상"}\n${meta.meeting_name || ""}\n\n${result.text || ""}`;
     } catch (error) {
       panel.textContent = `근거 조회 실패: ${error.message}`;
+      panel.setAttribute("aria-busy", "false");
       delete button.dataset.evidenceOpened;
       button.setAttribute("aria-expanded", "false");
     } finally {
@@ -452,24 +466,47 @@
   }
 
   async function loadDocumentInto(button, documentId) {
-    const panel = document.createElement("div");
-    panel.className = "mt-2 space-y-2 rounded-lg bg-slate-50 border border-slate-200 p-3";
-    panel.textContent = "회의록 청크를 불러오는 중…";
+    const panel = document.createElement("section");
+    panel.className = "document-chunk-panel";
+    panel.setAttribute("role", "region");
+    panel.setAttribute("aria-label", "같은 회의록의 청크 목록");
+    panel.setAttribute("aria-busy", "true");
+    panel.appendChild(createLoadingBar("회의록 청크 불러오는 중"));
     button.insertAdjacentElement("afterend", panel);
     button.disabled = true;
     try {
       const result = await api.getDocument(documentId, 100);
+      const items = Array.isArray(result.items) ? result.items : [];
       panel.replaceChildren();
-      (result.items || []).forEach((item) => {
-        const block = document.createElement("p");
-        const meta = item.metadata || {};
-        block.className = "whitespace-pre-wrap text-xs text-slate-800 border-b border-slate-200 pb-2";
-        block.textContent = `${meta.meeting_date || ""} · ${meta.committee || ""}\n${item.text || ""}`;
-        panel.appendChild(block);
-      });
-      if (!result.items?.length) panel.textContent = "이 회의록의 청크가 없습니다.";
+      panel.setAttribute("aria-busy", "false");
+      if (!items.length) {
+        panel.textContent = "이 회의록의 청크가 없습니다.";
+      } else {
+        const heading = document.createElement("div");
+        heading.className = "document-chunk-heading";
+        heading.textContent = `회의록 청크 ${items.length}개`;
+        const list = document.createElement("div");
+        list.className = "document-chunk-list";
+        items.forEach((item) => {
+          const block = document.createElement("article");
+          const meta = item.metadata || {};
+          block.className = "document-chunk-item";
+          const metaLine = document.createElement("div");
+          metaLine.className = "document-chunk-meta";
+          metaLine.textContent = `${meta.meeting_date || ""} · ${meta.committee || ""}`;
+          const content = document.createElement("p");
+          content.className = "document-chunk-text";
+          content.textContent = item.text || "";
+          block.appendChild(metaLine);
+          block.appendChild(content);
+          list.appendChild(block);
+        });
+        panel.appendChild(heading);
+        panel.appendChild(list);
+      }
     } catch (error) {
       panel.textContent = `회의록 조회 실패: ${error.message}`;
+      panel.setAttribute("aria-busy", "false");
     } finally {
       button.disabled = false;
     }
@@ -516,10 +553,6 @@
       notice.textContent = state.observations.length ? `관측 의회 ${state.observations.length}곳 · 날짜순 표시` : "관측 자료가 없습니다.";
       notice.classList.toggle("hidden", Boolean(state.observations.length));
     }
-    document.querySelectorAll("[data-observation-index]").forEach((card) => {
-      card.classList.toggle("ring-2", Number(card.dataset.observationIndex) === state.timelineIndex);
-      card.classList.toggle("ring-sky-500", Number(card.dataset.observationIndex) === state.timelineIndex);
-    });
   }
 
   async function focusObservation(index) {
@@ -686,6 +719,9 @@
     if (!message) return;
     const button = $("chatSendButton");
     if (button?.disabled) return;
+    const input = $("agentInputQuery");
+    const inputWasDisabled = Boolean(input?.disabled);
+    if (input) input.disabled = true;
     appendChatMessage("user", message);
     const finishLoading = beginLoading(button, "답변 생성 중…", false, false);
     try {
@@ -708,6 +744,7 @@
       appendChatMessage("assistant", `답변 생성에 실패했습니다: ${error.message}`);
     } finally {
       finishLoading();
+      if (input) input.disabled = inputWasDisabled;
     }
   }
 

@@ -28,3 +28,13 @@ Result: 29 tests passed after the final implementation edits. Coverage includes 
 - Visual browser inspection was blocked because Chromium cannot start in this environment (`libnspr4.so` missing); no pixel-level rendering claim is made.
 
 Additional checks: `python -m py_compile` on the launcher, API service/backend, and routers passed; the fixed-keyword configuration loaded as 10 entries; path-limited `git diff --check` passed for the API files. The WSL interpreter lacks `psycopg`, `pgvector`, `sentence_transformers`, and `torch`, so no live PostgreSQL/model/Ollama integration was run here. These tests do not establish database compatibility, production performance, Ollama answer quality, or forecast accuracy.
+
+## 2026-10-30 — UI playback, loading, chart, and responsive controls
+
+- Separated the playback timeline from council-card selection and evidence expansion: advancing or scrubbing the map timeline no longer highlights/opens the matching council card, and selecting a council card or map point does not move playback.
+- Added visible ordinal badges with distinct sequential hues to council first-observation cards. Font-size controls now stay on one row with fixed button dimensions; at viewport widths up to 1023px, labels compact to `A−`, `A`, and `A+` while accessible names and titles remain.
+- Chat input is disabled through answer generation and restored on both success and error. The monthly chart axis maximum is exactly the observed maximum plus 50.
+- Same-meeting chunk loading uses an accessible animated bar instead of visible loading copy. Evidence and document expansion panels now constrain height/width and wrap long text to avoid breaking the layout.
+- `node --test src/api/tests/*.test.cjs`: 21 tests passed, including exact chart maximum, pending/success/error chat states, timeline/list independence, order indicators, responsive control hooks, loading bar, and long-text panel layout.
+- From `src/`, `python -m unittest discover -s api/tests -v`: 32 tests passed. Temporary Uvicorn HTTP smoke returned 200 for `/`, `/app.js`, and `/api-client.js`; the server was stopped after the check.
+- Pixel-level browser inspection remains blocked: Chromium exits because `libnspr4.so` is missing. Tests verify DOM behavior and CSS hooks, but the changed appearance was not visually rendered here. No live PostgreSQL/model/Ollama query was run.
