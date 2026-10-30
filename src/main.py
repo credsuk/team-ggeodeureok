@@ -144,76 +144,22 @@ def ensure_ollama(
     return False
 
 
-def prepare_web_bundle(environ: MutableMapping[str, str] | None = None) -> bool:
-    """Build the cached issue catalog when its inputs are already available."""
-    env = os.environ if environ is None else environ
-    web_dir = Path(env.get("COUNCIL_FINAL_WEB_DIR", SRC_ROOT / "outputs" / "web_final")).expanduser()
-    if (web_dir / "issue_catalog.json").is_file():
-        print("대표 이슈 웹 번들이 준비되어 있습니다.")
-        return True
-    source_web = Path(env.get("COUNCIL_WEB_DIR", SRC_ROOT / "outputs" / "web")).expanduser()
-    forecast = Path(env.get(
-        "COUNCIL_MULTI_FORECAST",
-        SRC_ROOT / "outputs" / "forecast" / "multi_issue_v1" / "model" / "multi_issue_forecast.json",
-    )).expanduser()
-    if not forecast.is_file() or not source_web.is_dir() or not any(source_web.glob("*.json")):
-        print("오류: 대표 이슈 결과 파일이 없어 웹 번들을 만들 수 없습니다. 분석 결과와 예측 파일을 먼저 준비해 주세요.")
-        return False
-    command = [sys.executable, "-u", "src/34_build_final_web_bundle.py",
-               "--web-dir", str(source_web.resolve()), "--multi-forecast", str(forecast.resolve()),
-               "--output-dir", str(web_dir.resolve())]
-    try:
-        subprocess.run(command, cwd=SRC_ROOT, check=True, capture_output=True, text=True,
-                       timeout=int(env.get("COUNCIL_BUNDLE_TIMEOUT_SECONDS", "120")))
-    except subprocess.CalledProcessError as exc:
-        print(f"오류: 번들 생성 실패 (exit code {exc.returncode}). 실행 로그:")
-        for label, value in (("stdout", exc.stdout), ("stderr", exc.stderr)):
-            if value:
-                text = value.decode(errors="replace") if isinstance(value, bytes) else value
-                print(f"--- {label} ---")
-                print(text[-12000:])
-        return False
-    except (OSError, subprocess.SubprocessError) as exc:
-        print(f"오류: 대표 이슈 번들 자동 생성에 실패했습니다: {type(exc).__name__}: {exc}")
-        return False
-    ready = (web_dir / "issue_catalog.json").is_file()
-    if not ready:
-        print("오류: 번들 생성 후 카탈로그 파일을 찾지 못했습니다.")
-        return False
-    print("대표 이슈 웹 번들 생성 완료.")
-    return True
-
-
 def validate_api_prerequisites() -> None:
-    """Load the API's shared search runtime and verify the configured PG table."""
-    dsn = os.environ.get("PGVECTOR_DSN")
-    if not dsn:
+    """Validate the configured PostgreSQL table and local query encoder before serving."""
+    if not os.environ.get("PGVECTOR_DSN"):
         raise RuntimeError("PGVECTOR_DSN이 설정되지 않았습니다.")
-    parent_path = Path(os.environ.get(
-        "COUNCIL_PARENT_PATH", SRC_ROOT / "data" / "canonical_v3" / "chunks_v1" / "parents.parquet"
-    )).expanduser().resolve()
-    if not parent_path.is_file():
-        raise FileNotFoundError(f"부모 문맥 파일이 없습니다: {parent_path}")
 
-    import psycopg
-    from psycopg import sql
     from api.dependencies import get_api_service
 
     service = get_api_service()
-    payloads = service._load_payloads()
-    if not payloads:
-        raise RuntimeError("대표 이슈 payload를 읽지 못했습니다.")
-    search = service.search_service()
-    if search is None:
-        raise RuntimeError("검색 서비스를 초기화하지 못했습니다.")
-
-    table_name = os.environ.get("COUNCIL_PG_TABLE", "council_arctic_raw_v1")
-    statement = sql.SQL(
-        "SELECT chunk_id, document, metadata, embedding FROM {} LIMIT 0"
-    ).format(sql.Identifier(table_name))
-    with psycopg.connect(dsn, connect_timeout=5) as connection:
-        connection.execute(statement)
-    print("대표 이슈 자료·검색 모델·pgvector 연결 확인 완료.")
+    issues = service.list_issues()
+    if len(issues) != 10:
+        raise RuntimeError(f"고정 키워드 설정은 10개여야 합니다. 현재 {len(issues)}개입니다")
+    database = service.validate_database()
+    print(
+        "PostgreSQL/pgvector 연결 및 질의 임베딩 확인 완료 "
+        f"(테이블 {database['table']}, 벡터 {database['vector_dimensions']}차원, 고정 키워드 10개)."
+    )
 
 
 def main() -> None:
@@ -227,8 +173,6 @@ def main() -> None:
         ollama_ready = ensure_ollama()
         if _auto_ollama_enabled(os.environ) and not ollama_ready:
             raise RuntimeError("Ollama 준비에 실패했습니다. 위 Ollama 로그를 확인하세요.")
-        if not prepare_web_bundle():
-            raise RuntimeError("대표 이슈 웹 번들 준비에 실패했습니다. 위 로그를 확인하세요.")
         validate_api_prerequisites()
 
         import uvicorn

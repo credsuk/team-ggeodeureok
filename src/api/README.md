@@ -1,41 +1,57 @@
-# FastAPI API
+# FastAPI 백엔드
 
-FastAPI HTTP layer over the existing council issue radar code. It lives beside `agent/`, `demo/`, and `src/` and does not modify the Streamlit demo or data preparation scripts.
-
-## 실행
-
-프로젝트 루트에서 `python src/main.py`만 실행하면 런처가 `src/`로 이동하고, `src/.env`를 읽은 뒤, 필요하면 로컬 Ollama 서버를 시작하고, 입력 결과 파일이 준비돼 있으면 대표 이슈 웹 번들을 생성한 다음 FastAPI를 실행한다. PostgreSQL/pgvector는 자동 시작하지 않는다. Ollama 모델 자체도 자동 다운로드하지 않는다.
+`src/main.py`가 실행 런처이고, `src/api/main.py`는 FastAPI 앱을 정의합니다. 프로젝트 루트에서 다음 명령으로 시작합니다.
 
 ```bash
 python src/main.py
 ```
 
-`src/` 폴더 안에서 실행한다면 다음과 같다.
+런처는 `src/.env`를 읽고(이미 셸에 있는 변수는 덮어쓰지 않음), 기본 설정에서는 로컬 Ollama를 준비한 뒤 PostgreSQL 연결·테이블 스키마·질의 임베딩 차원을 확인합니다. 확인에 실패하면 오류와 traceback을 콘솔에 출력하고 API 서버를 시작하지 않습니다. 대표 이슈 결과 JSON, 웹 번들, 로컬 parents.parquet, 임베딩 `.npy`, SQLite BM25 인덱스는 이 API 시작 요건이 아닙니다. PostgreSQL은 자동으로 시작하지 않고 모델도 자동 다운로드하지 않습니다.
+
+## 검색 방식과 예측 범위
+
+- Dense 검색은 PostgreSQL `pgvector`의 `embedding`을 사용합니다.
+- 키워드 검색은 같은 테이블의 `document`에 PostgreSQL `to_tsvector`/`ts_rank_cd`를 적용합니다. 두 검색 순위를 RRF로 합칩니다.
+- 이 구성은 PostgreSQL 내 하이브리드 검색이지만, 현재는 엄밀한 BM25가 아닙니다. 테이블 생성 코드에는 BM25 점수/인덱스 컬럼이 없으므로, 응답의 텍스트 검색 부분은 PostgreSQL 기본 전문검색 점수입니다.
+- 월별 예측은 PostgreSQL 전문검색에 매칭된 원문에서 `document_id`의 월별 개수를 세고, 최근 3개월 평균을 다음 달 기준선으로 반환합니다. 결과 `basis`는 `postgresql_full_text_matches`, `count_unit`은 `distinct_document_id`입니다. 이는 가벼운 기준선이지 기존 학습 모델의 예측이나 확률이 아닙니다. 응답의 `forecast.method`에 방식을 표시합니다.
+- 이슈 키·이름·검색어는 `config/representative_issue_keys_v1.txt`와 `config/issue_seed_catalog_v1.csv`의 작은 설정 목록에서 읽습니다. 분석 결과는 매 요청 시 PostgreSQL에서 계산합니다.
+
+## 엔드포인트
+
+- `GET /api/v1/issues`: 설정된 고정 키워드 10개 목록
+- `GET /api/v1/issues/{issue_key}`: 고정 이슈의 PostgreSQL 하이브리드 검색 근거, 월별 집계, 다음 달 기준선
+- `POST /api/v1/radar/search` — `{"query":"저출생 정책"}`: 고정 이슈 매칭이면 해당 DB 질의를 사용하고, 아니면 입력 문장을 그대로 동적 검색합니다. `match_type`으로 경로를 표시합니다.
+- `GET /api/v1/documents/search?q=...&council=...&year=...&committee=...&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&top_k=10`: 필터를 적용한 하이브리드 검색
+- `GET /api/v1/documents/{document_id}?limit=100`: DB에서 해당 원문의 청크를 가져옴
+- `GET /api/v1/evidence/{chunk_id}`: DB에서 특정 검색 청크를 조회
+- `POST /api/v1/chat` — `{"message":"...","history":[],"top_k":6}`: PostgreSQL에서 근거를 검색한 뒤 localhost Ollama로 한국어 답변을 생성하고 근거 목록을 반환
+- `GET /api/v1/chat/status`: Ollama 연결과 모델 상태 확인
+
+대화 이력은 요청에 포함된 `history`로만 전달되며 서버 메모리에 보관하지 않습니다. 회의록 본문은 외부 LLM API로 보내지 않습니다.
+
+## 필수 환경 설정
+
+`src/.env.example`을 참고하되 비밀 값은 채팅이나 로그에 붙이지 마세요.
+
+- `PGVECTOR_DSN`: PostgreSQL 연결 문자열
+- `COUNCIL_PG_TABLE`: 기본 `council_arctic_raw_v1`
+- `COUNCIL_PG_EF_SEARCH`: HNSW 검색 깊이, 기본 `200` (후보 개수 이상으로 적용)
+- `COUNCIL_MODEL_CACHE`: 로컬 SentenceTransformers 모델 캐시 폴더
+- `COUNCIL_ALLOW_DOWNLOAD`: 기본 `0`은 로컬 캐시만 사용
+- `COUNCIL_DEVICE`: `auto`, `cpu`, 또는 `cuda`
+- `OLLAMA_URL`, `COUNCIL_AGENT_MODEL`: 기본 `http://127.0.0.1:11434`, `qwen3:8b`
+- `HOST`, `PORT`: 기본 `127.0.0.1`, `8000`
+
+PostgreSQL 테이블은 프로젝트의 적재 스크립트가 정의한 컬럼을 가져야 합니다: `chunk_id`, `parent_chunk_id`, `document_id`, `council`, `meeting_date`, `year`, `committee`, `meeting_name`, `agenda_title`, `priority`, `document`, `metadata`, `embedding`. `requirements-app.txt`에는 API에 필요한 FastAPI/Uvicorn 및 벡터 검색 의존성이 포함됩니다.
+
+성공적으로 바인딩되면 Uvicorn이 서버 주소를 출력합니다. 문서는 `http://127.0.0.1:8000/docs`에서 볼 수 있습니다.
+
+## 검증
+
+테스트 실행 위치는 `src/`입니다.
 
 ```bash
-python main.py
+python -m unittest discover -s api/tests -v
 ```
 
-Interactive docs: `http://127.0.0.1:8000/docs`. FastAPI and Uvicorn are included by `requirements-app.txt`. Existing shell environment variables take precedence over values in `.env`.
-
-## Endpoints
-
-- `GET /api/v1/issues`: safe, compact list of curated issue keys and summary fields.
-- `GET /api/v1/issues/{issue_key}`: full precomputed issue analysis, evidence, forecast and any precomputed `external_followup`.
-- `POST /api/v1/radar/search` with `{"query":"저출생"}`: reuses a curated issue payload when the existing string matcher finds a match (score threshold 0.5); otherwise runs `src/33_analyze_free_query.py`. `match_type`, `matched_issue_id`, and `routing_score` identify the path. Dynamic results are provisional. The external follow-up result is included when the existing follow-up tools can calculate it; otherwise `external_followup_status` explains availability.
-- `GET /api/v1/documents/search?q=...&council=...&year=...&committee=...&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&top_k=10`: existing dense/hybrid search and parent context.
-- `GET /api/v1/documents/{document_id}?limit=100`: up to 500 matching stored chunks for a document, not a rendered HTML transcript.
-- `GET /api/v1/evidence/{chunk_id}`: exact chunk and parent context.
-- `POST /api/v1/chat` with `{"message":"...","conversation_id":null,"history":[],"top_k":6}`: existing local Agent response, citations, execution plan and policy fields. The client sends prior turns in `history`; the API does not keep server-side conversation state. It returns a conversation ID for client-side continuity.
-- `GET /api/v1/chat/status`: checks local Ollama and the configured model once when the client is about to use chat. No periodic polling is performed.
-
-## Operational notes
-
-- `main.py` prints startup failures and their tracebacks/logs to the console, then exits without binding the API port. It also checks the issue bundle, initializes the search assets/model, and verifies the configured pgvector table before Uvicorn starts; DB errors are therefore caught before the server is exposed.
-- Uvicorn's `Uvicorn running on http://...` console line is emitted only after the server successfully binds. Ollama startup output is written to `logs/ollama.log`; if Ollama does not become reachable, its last log lines are also printed and API startup stops.
-- Search and chat use the same local assets/configuration as the demo. The required embedding files, BM25 index (in hybrid mode), parent metadata, PostgreSQL table, and representative issue bundle must exist before starting.
-- Free-query analysis can take a long time; `COUNCIL_DYNAMIC_TIMEOUT_SECONDS` controls its timeout (default 1800 seconds). Existing result files are reused.
-- The chat status endpoint reports Ollama model availability; the API launcher starts the Ollama server but does not automatically download a missing model.
-- External follow-up is supplementary/reference data and may be unavailable without credentials or source data. Meeting text is not sent to external services.
-- `date_from` and `date_to` use ISO `YYYY-MM-DD` format. Search `top_k` is limited to 1–50; document chunk retrieval is limited to 1–500.
-- No summary-comparison, standalone regional-statistics, review-queue, or service-health endpoints are included, per design.
+현재 자동 검증은 PostgreSQL 연결을 모의한 테스트입니다. 실제 데이터베이스·모델·Ollama 연결은 실행 환경의 `.env`와 서비스가 있어야 별도로 확인할 수 있습니다.

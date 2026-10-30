@@ -52,36 +52,6 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(args[0], ["/usr/bin/ollama", "serve"])
             self.assertEqual(kwargs["env"]["OLLAMA_HOST"], "127.0.0.1:11435")
 
-    def test_bundle_failure_prints_subprocess_stdout_and_stderr(self):
-        import io
-        import subprocess
-        from contextlib import redirect_stdout
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source_web = root / "web"
-            source_web.mkdir()
-            (source_web / "seed.json").write_text("{}", encoding="utf-8")
-            forecast = root / "forecast.json"
-            forecast.write_text("{}", encoding="utf-8")
-            output_dir = root / "final"
-            output = io.StringIO()
-            failure = subprocess.CalledProcessError(2, ["builder"], output="bundle stdout", stderr="bundle stderr")
-            with (
-                patch.object(launcher, "SRC_ROOT", root),
-                patch.object(launcher.subprocess, "run", side_effect=failure),
-                redirect_stdout(output),
-            ):
-                ready = launcher.prepare_web_bundle({
-                    "COUNCIL_FINAL_WEB_DIR": str(output_dir),
-                    "COUNCIL_WEB_DIR": str(source_web),
-                    "COUNCIL_MULTI_FORECAST": str(forecast),
-                })
-
-        self.assertFalse(ready)
-        self.assertIn("bundle stdout", output.getvalue())
-        self.assertIn("bundle stderr", output.getvalue())
-
     def test_main_aborts_before_uvicorn_if_ollama_start_fails(self):
         import io
         import uvicorn
@@ -92,7 +62,6 @@ class LauncherTests(unittest.TestCase):
             patch.object(launcher.os, "chdir"),
             patch.object(launcher, "load_env_file", return_value=0),
             patch.object(launcher, "ensure_ollama", return_value=False),
-            patch.object(launcher, "prepare_web_bundle") as prepare_bundle,
             patch.dict(launcher.os.environ, {"AUTO_START_OLLAMA": "1"}),
             patch.object(uvicorn, "run") as run_server,
             redirect_stdout(output),
@@ -101,7 +70,6 @@ class LauncherTests(unittest.TestCase):
             launcher.main()
 
         self.assertEqual(raised.exception.code, 1)
-        prepare_bundle.assert_not_called()
         run_server.assert_not_called()
         self.assertIn("서버를 시작하지 않았습니다", output.getvalue())
 
@@ -115,7 +83,6 @@ class LauncherTests(unittest.TestCase):
             patch.object(launcher.os, "chdir"),
             patch.object(launcher, "load_env_file", return_value=0),
             patch.object(launcher, "ensure_ollama", return_value=True),
-            patch.object(launcher, "prepare_web_bundle", return_value=True),
             patch.object(launcher, "validate_api_prerequisites", side_effect=RuntimeError("DB 연결 실패")),
             patch.dict(launcher.os.environ, {"AUTO_START_OLLAMA": "1"}),
             patch.object(uvicorn, "run") as run_server,
@@ -135,7 +102,6 @@ class LauncherTests(unittest.TestCase):
             patch.object(launcher.os, "chdir"),
             patch.object(launcher, "load_env_file", return_value=0),
             patch.object(launcher, "ensure_ollama", return_value=True),
-            patch.object(launcher, "prepare_web_bundle", return_value=True),
             patch.object(launcher, "validate_api_prerequisites"),
             patch.dict(launcher.os.environ, {"HOST": "127.0.0.1", "PORT": "8011", "AUTO_START_OLLAMA": "1"}),
             patch.object(uvicorn, "run") as run_server,

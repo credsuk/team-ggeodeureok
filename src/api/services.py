@@ -1,251 +1,301 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
-import subprocess
-import sys
-import threading
-from datetime import date
-from functools import lru_cache
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+from uuid import uuid4
 
-from agent.followup_tools import FollowupTools
-from agent.local_issue_agent import LocalCouncilAgent, route_fixed_issue
-from agent.query_pipeline import QuestionPipeline
+from agent.local_issue_agent import route_fixed_issue
+from api.postgres_backend import PostgresHybridSearch, forecast_monthly_counts
 
 SRC_ROOT = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = SRC_ROOT.parent
-INTERNAL_SRC = SRC_ROOT / "src"
-if str(INTERNAL_SRC) not in sys.path:
-    sys.path.insert(0, str(INTERNAL_SRC))
 
 
-
-def _json_file(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as stream:
-        value = json.load(stream)
-    if not isinstance(value, dict):
-        raise ValueError(f"JSON 최상위 값이 object가 아닙니다: {path}")
-    return value
+def load_issue_definitions() -> list[dict[str, str]]:
+    """Read the small, version-controlled keyword catalog, not generated result JSON."""
+    keys_path = SRC_ROOT / "config" / "representative_issue_keys_v1.txt"
+    catalog_path = SRC_ROOT / "config" / "issue_seed_catalog_v1.csv"
+    keys = {
+        line.split("#", 1)[0].strip()
+        for line in keys_path.read_text(encoding="utf-8-sig").splitlines()
+        if line.split("#", 1)[0].strip()
+    }
+    with catalog_path.open("r", encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    selected = []
+    for row in rows:
+        if row.get("issue_key") not in keys or str(row.get("enabled", "1")).lower() not in {"1", "true", "yes"}:
+            continue
+        selected.append({
+            "issue_key": row["issue_key"],
+            "issue_name": row["issue_name"],
+            "query": row["query"],
+            "aliases": row.get("aliases", ""),
+            "category": row.get("category", ""),
+        })
+    if len(selected) != 10:
+        raise RuntimeError(f"대표 이슈 설정은 10개여야 합니다. 현재 {len(selected)}개입니다")
+    return selected
 
 
 class RadarApiService:
-    """Existing demo/data pipeline adapter. Heavy services are initialized lazily."""
+    """FastAPI service backed by the configured PostgreSQL/pgvector table."""
 
-    def __init__(self) -> None:
-        self.web_dir = Path(os.environ.get("COUNCIL_FINAL_WEB_DIR", SRC_ROOT / "outputs" / "web_final")).expanduser().resolve()
-        self.dynamic_dir = Path(os.environ.get("COUNCIL_DYNAMIC_OUTPUT_DIR", SRC_ROOT / "outputs" / "dynamic_issues")).expanduser().resolve()
-        self._catalog: dict[str, Any] | None = None
-        self._payloads: list[dict[str, Any]] | None = None
-        self._search: Any | None = None
-        self._followup: FollowupTools | None = None
-        self._lock = threading.RLock()
+    def __init__(
+        self,
+        repository: Any | None = None,
+        issue_definitions: list[dict[str, str]] | None = None,
+    ) -> None:
+        self._repository = repository
+        self._issues = issue_definitions
 
-    def _load_catalog(self) -> dict[str, Any]:
-        if self._catalog is None:
-            path = self.web_dir / "issue_catalog.json"
-            if not path.is_file():
-                raise FileNotFoundError(f"대표 이슈 카탈로그가 없습니다: {path}")
-            catalog = _json_file(path)
-            if catalog.get("schema_version") != "council_issue_catalog_v1":
-                raise ValueError("지원하지 않는 대표 이슈 카탈로그 schema_version")
-            self._catalog = catalog
-        return self._catalog
+    @property
+    def issue_definitions(self) -> list[dict[str, str]]:
+        if self._issues is None:
+            self._issues = load_issue_definitions()
+        return self._issues
 
-    def _load_payloads(self) -> list[dict[str, Any]]:
-        with self._lock:
-            if self._payloads is None:
-                loaded = []
-                for entry in self._load_catalog().get("issues", []):
-                    value = entry.get("payload")
-                    if not value:
-                        continue
-                    path = Path(value)
-                    if not path.is_absolute():
-                        path = self.web_dir / path
-                    path = path.resolve()
-                    if not path.is_file():
-                        continue
-                    payload = _json_file(path)
-                    if payload.get("schema_version") == "council_issue_web_v2":
-                        loaded.append(payload)
-                self._payloads = loaded
-            return self._payloads
+    def search_service(self) -> Any:
+        if self._repository is None:
+            self._repository = PostgresHybridSearch()
+        return self._repository
+
+    def validate_database(self) -> dict[str, Any]:
+        service = self.search_service()
+        database = service.validate()
+        vector = service.embed_query("의정 이슈 검색 시작 점검")
+        if len(vector) != database["vector_dimensions"]:
+            raise RuntimeError(
+                "질의 임베딩과 PostgreSQL 벡터 차원이 다릅니다: "
+                f"{len(vector)} != {database['vector_dimensions']}"
+            )
+        return database
 
     def list_issues(self) -> list[dict[str, Any]]:
-        catalog = self._load_catalog()
-        public_fields = {
-            "issue_key", "issue_id", "issue_name", "aliases",
-            "first_observation_date", "first_observation_councils",
-            "council_count", "evidence_unit_count", "target_month",
-            "discussion_active_probability", "predicted_mention_count",
-            "selected_classifier", "selected_count_model", "single_issue_direction",
-            "external_followup_candidates",
-        }
-        return [{key: value for key, value in row.items() if key in public_fields}
-                for row in (catalog.get("issues") or [])]
+        return [
+            {
+                "issue_key": row["issue_key"],
+                "issue_name": row["issue_name"],
+                "query": row["query"],
+                "aliases": [part for part in row["aliases"].split("|") if part],
+                "category": row["category"],
+            }
+            for row in self.issue_definitions
+        ]
 
     def get_issue(self, issue_key: str) -> dict[str, Any] | None:
-        key = issue_key.casefold()
-        entry = next((row for row in self.list_issues()
-                      if key in {str(row.get("issue_key", "")).casefold(),
-                                 str(row.get("issue_id", "")).casefold()}), None)
-        if entry is None:
-            return None
-        payload = next((item for item in self._load_payloads()
-                        if str((item.get("issue") or {}).get("issue_id")) == str(entry.get("issue_id"))), None)
-        if payload is None:
-            raise FileNotFoundError(f"대표 이슈 payload가 없습니다: {issue_key}")
-        return {key: value for key, value in payload.items() if key != "source_files"}
-
-    def _new_search_service(self):
-        from council_vector_runtime import CouncilSearchService
-
-        return CouncilSearchService(
-            backend="pgvector",
-            embedding_dir=Path(os.environ.get("COUNCIL_EMBEDDING_DIR", SRC_ROOT / "data" / "embeddings" / "arctic_raw_v1")).expanduser().resolve(),
-            parent_path=Path(os.environ.get("COUNCIL_PARENT_PATH", SRC_ROOT / "data" / "canonical_v3" / "chunks_v1" / "parents.parquet")).expanduser().resolve(),
-            pg_dsn=os.environ.get("PGVECTOR_DSN"),
-            pg_table=os.environ.get("COUNCIL_PG_TABLE", "council_arctic_raw_v1"),
-            pg_ef_search=int(os.environ.get("COUNCIL_PG_EF_SEARCH", "200")),
-            retrieval_mode=os.environ.get("COUNCIL_RETRIEVAL_MODE", "hybrid"),
-            bm25_index=Path(os.environ.get("COUNCIL_BM25_INDEX", SRC_ROOT / "data" / "bm25" / "arctic_raw_v1" / "bm25.sqlite3")).expanduser().resolve(),
-            rrf_k=int(os.environ.get("COUNCIL_RRF_K", "60")),
-            dense_weight=float(os.environ.get("COUNCIL_DENSE_WEIGHT", "1.0")),
-            bm25_weight=float(os.environ.get("COUNCIL_BM25_WEIGHT", "1.0")),
-            device=os.environ.get("COUNCIL_DEVICE", "auto"),
-            model_cache=Path(os.environ.get("COUNCIL_MODEL_CACHE", SRC_ROOT / "models" / "huggingface")).expanduser().resolve(),
-            local_files_only=os.environ.get("COUNCIL_ALLOW_DOWNLOAD", "0") != "1",
+        definition = next(
+            (row for row in self.issue_definitions if row["issue_key"].casefold() == issue_key.casefold()),
+            None,
         )
+        if definition is None:
+            return None
+        return self._build_analysis(definition["query"], definition)
 
-    def search_service(self, required: bool = True) -> Any | None:
-        with self._lock:
-            if self._search is None:
-                try:
-                    self._search = self._new_search_service()
-                except Exception:
-                    if required:
-                        raise
-                    return None
-            return self._search
-
-    def _followup_tools(self, search: Any = None) -> FollowupTools:
-        with self._lock:
-            if self._followup is None:
-                self._followup = FollowupTools(issue_payloads=self._load_payloads(), search_service=search)
-            elif search is not None:
-                self._followup.search_service = search
-            return self._followup
+    def _build_analysis(
+        self,
+        query: str,
+        definition: dict[str, str] | None = None,
+        *,
+        top_k: int = 10,
+    ) -> dict[str, Any]:
+        service = self.search_service()
+        search = service.search(query, top_k=top_k, candidate_k=max(50, top_k * 5))
+        monthly = service.monthly_counts(query)
+        council_observations = service.council_first_observations(query)
+        forecast = forecast_monthly_counts(monthly)
+        forecast["basis"] = "postgresql_full_text_matches"
+        forecast["count_unit"] = "distinct_document_id"
+        councils = sorted({str(row.get("council")) for row in council_observations if row.get("council")})
+        first = monthly[0] if monthly else {}
+        issue_key = definition["issue_key"] if definition else None
+        issue_name = definition["issue_name"] if definition else query
+        aliases = (
+            [part for part in definition["aliases"].split("|") if part]
+            if definition else []
+        )
+        total_documents = sum(int(row.get("document_count") or 0) for row in monthly)
+        propagation = council_observations
+        return {
+            "schema_version": "council_issue_db_v1",
+            "status": "complete" if monthly else "no_matching_history",
+            "issue": {
+                "issue_id": issue_key or hashlib.sha256(query.encode("utf-8")).hexdigest()[:12],
+                "issue_key": issue_key,
+                "issue_name": issue_name,
+                "aliases": aliases,
+                "status": "fixed" if definition else "provisional",
+            },
+            "query": query,
+            "summary": {
+                "first_observation_date": str(first.get("first_observation_date") or first.get("month") or "")[:10] or None,
+                "first_observation_councils": first.get("councils") or [],
+                "council_count": len(councils),
+                "evidence_unit_count": total_documents,
+                "analysis_scope": "postgresql_minutes_table",
+            },
+            "monthly_counts": monthly,
+            "forecast": forecast,
+            "evidence": search.get("results") or [],
+            "retrieval": {
+                "backend": search.get("backend"),
+                "mode": search.get("retrieval_mode"),
+                "result_count": search.get("result_count", 0),
+                "search_ms": search.get("search_ms"),
+            },
+            "propagation": propagation,
+            "external_followup": None,
+            "external_followup_status": "not_configured",
+        }
 
     def _attach_fixed_followup(self, payload: dict[str, Any]) -> dict[str, Any]:
         response = dict(payload)
-        existing = payload.get("external_followup")
-        response["external_followup_status"] = "available" if existing else "not_precomputed"
+        response.setdefault(
+            "external_followup_status",
+            "available" if response.get("external_followup") else "not_configured",
+        )
         return response
 
+    def _route_profiles(self) -> list[dict[str, Any]]:
+        return [
+            {"issue": {
+                "issue_id": row["issue_key"],
+                "issue_name": row["issue_name"],
+                "aliases": [part for part in row["aliases"].split("|") if part],
+            }}
+            for row in self.issue_definitions
+        ]
+
     def radar_search(self, query: str) -> dict[str, Any]:
-        payload, score = route_fixed_issue(query, self._load_payloads())
-        if payload is not None:
-            result = self._attach_fixed_followup(payload)
-            return {
-                **result,
+        profile, score = route_fixed_issue(query, self._route_profiles())
+        if profile is not None:
+            key = str((profile.get("issue") or {}).get("issue_id"))
+            definition = next(row for row in self.issue_definitions if row["issue_key"] == key)
+            result = self._build_analysis(definition["query"], definition)
+            result.update({
                 "match_type": "fixed_issue",
-                "matched_issue_id": (payload.get("issue") or {}).get("issue_id"),
+                "matched_issue_id": key,
                 "routing_score": score,
                 "query": query,
-            }
-        output_path = self._dynamic_result_path(query)
-        if not output_path.is_file():
-            command = [sys.executable, "-u", "src/33_analyze_free_query.py", "--query", query,
-                       "--output-dir", str(self.dynamic_dir),
-                       "--device", os.environ.get("COUNCIL_DEVICE", "auto"), "--reuse"]
-            if os.environ.get("COUNCIL_ALLOW_DOWNLOAD", "0") == "1":
-                command.append("--allow-download")
-            timeout = int(os.environ.get("COUNCIL_DYNAMIC_TIMEOUT_SECONDS", "1800"))
-            subprocess.run(command, cwd=SRC_ROOT, check=True, capture_output=True,
-                           text=True, timeout=timeout)
-        if not output_path.is_file():
-            raise FileNotFoundError(f"자유검색 결과 파일이 생성되지 않았습니다: {output_path}")
-        loaded = _json_file(output_path)
-        result = {key: value for key, value in loaded.items() if key != "source_files"}
-        followup_status = "unavailable"
-        try:
-            search = self.search_service(required=False)
-            followup = self._followup_tools(search).topic_followup(query, [query],
-                        os.environ.get("COUNCIL_FOLLOWUP_MODE", "backtest"), [])
-            result["external_followup"] = followup.get("result")
-            followup_status = "available" if followup.get("result") else "unavailable"
-        except Exception as exc:
-            result["external_followup_error"] = f"{type(exc).__name__}: {exc}"
-        result.update({"match_type": "dynamic", "matched_issue_id": None,
-                       "routing_score": score, "query": query,
-                       "external_followup_status": followup_status})
+            })
+            return result
+        result = self._build_analysis(query)
+        result.update({
+            "match_type": "dynamic",
+            "matched_issue_id": None,
+            "routing_score": score,
+            "query": query,
+            "status": "provisional_until_review" if result["status"] == "complete" else result["status"],
+        })
         return result
 
-    def _dynamic_result_path(self, query: str) -> Path:
-        digest = hashlib.sha256(" ".join(query.split()).encode("utf-8")).hexdigest()[:12]
-        return self.dynamic_dir / f"query_{digest}" / "05_dynamic_result.json"
-
-    def document_search(self, query: str, *, council: str | None = None,
-                        year: int | None = None, committee: str | None = None,
-                        date_from: str | None = None, date_to: str | None = None,
-                        top_k: int = 10) -> dict[str, Any]:
-        from council_vector_runtime import SearchFilters
-        filters = SearchFilters(council=council, year=year, committee=committee,
-                                date_from=date_from, date_to=date_to)
-        service = self.search_service()
-        result = service.search(query=query, top_k=top_k,
-                                candidate_k=max(50, top_k * 10), filters=filters,
-                                include_parent=True)
-        return {"query": query, "result_count": result.get("result_count", len(result.get("results") or [])),
-                "results": result.get("results") or [], "search_ms": result.get("search_ms"),
-                "query_embedding_ms": result.get("query_embedding_ms")}
+    def document_search(
+        self,
+        query: str,
+        *,
+        council: str | None = None,
+        year: int | None = None,
+        committee: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        top_k: int = 10,
+    ) -> dict[str, Any]:
+        filters = {
+            "council": council,
+            "year": year,
+            "committee": committee,
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+        return self.search_service().search(
+            query, top_k=top_k, candidate_k=max(50, top_k * 5), filters=filters,
+        )
 
     def evidence(self, chunk_id: str) -> dict[str, Any] | None:
-        service = self.search_service()
-        from council_vector_runtime import rows_by_chunk_ids, parent_contexts
-        row = rows_by_chunk_ids(service.artifact.paths.metadata, [chunk_id]).get(chunk_id)
-        if not row:
-            return None
-        parent_id = row.get("parent_chunk_id")
-        parent = parent_contexts(service.parent_path, [parent_id]).get(str(parent_id)) if parent_id else None
-        return {"chunk_id": chunk_id, "parent_chunk_id": parent_id,
-                "text": row.get("text"), "metadata": {k: v for k, v in row.items()
-                if k not in {"text", "embedding_text"}}, "parent_context": parent}
+        return self.search_service().get_evidence(chunk_id)
 
     def document(self, document_id: str, limit: int = 100) -> dict[str, Any] | None:
-        service = self.search_service()
-        import duckdb
-        con = duckdb.connect()
-        try:
-            table = con.execute("SELECT * FROM read_parquet(?) WHERE CAST(document_id AS VARCHAR)=? LIMIT ?",
-                                [str(service.artifact.paths.metadata), document_id, limit]).fetch_arrow_table()
-        finally:
-            con.close()
-        rows = table.to_pylist()
+        rows = self.search_service().get_document(document_id, limit=limit)
         if not rows:
             return None
-        return {"document_id": document_id, "result_count": len(rows),
-                "items": [{"chunk_id": r.get("chunk_id"), "text": r.get("text"),
-                           "metadata": {k: v for k, v in r.items() if k not in {"text", "embedding_text"}}}
-                          for r in rows]}
+        return {"document_id": document_id, "result_count": len(rows), "items": rows}
 
     def chat(self, request: Any) -> dict[str, Any]:
-        payloads = self._load_payloads()
-        if not payloads:
-            raise FileNotFoundError("챗봇에 필요한 대표 이슈 payload가 없습니다")
-        search = self.search_service(required=False)
-        tools = self._followup_tools(search)
-        pipeline = QuestionPipeline(issue_payloads=payloads, tools=tools, search_service=search)
-        agent = LocalCouncilAgent(issue_payload={}, search_service=search,
-            ollama_url=os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434"),
-            model=os.environ.get("COUNCIL_AGENT_MODEL", "qwen3:8b"),
-            timeout_seconds=int(os.environ.get("COUNCIL_AGENT_TIMEOUT", "90")),
-            pipeline=pipeline, parser_model=os.environ.get("COUNCIL_PARSER_MODEL") or None,
-            parser_timeout_seconds=int(os.environ.get("COUNCIL_PARSER_TIMEOUT", "120")))
-        response = agent.ask(request.message,
-            history=[item.model_dump() for item in request.history], top_k=request.top_k)
-        response.pop("issue_payload", None)
-        return {**response, "conversation_id": request.conversation_id or hashlib.sha256(os.urandom(24)).hexdigest()[:24]}
+        service = self.search_service()
+        found = service.search(
+            request.message,
+            top_k=request.top_k,
+            candidate_k=max(50, request.top_k * 5),
+        )
+        evidence = found.get("results") or []
+        if not evidence:
+            raise RuntimeError("PostgreSQL 검색 결과가 없어 답변 근거를 찾지 못했습니다")
+        host = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+        if (urlparse(host).hostname or "").lower() not in {"localhost", "127.0.0.1", "::1"}:
+            raise RuntimeError("보안 정책상 localhost Ollama만 사용할 수 있습니다")
+        model = os.environ.get("COUNCIL_AGENT_MODEL", "qwen3:8b")
+        citations = []
+        evidence_blocks = []
+        for index, row in enumerate(evidence, start=1):
+            metadata = row.get("metadata") or {}
+            citations.append({
+                "citation": index,
+                "chunk_id": row.get("chunk_id"),
+                "council": metadata.get("council"),
+                "meeting_date": metadata.get("meeting_date"),
+                "meeting_name": metadata.get("meeting_name"),
+                "agenda_title": metadata.get("agenda_title"),
+                "text": row.get("text"),
+            })
+            evidence_blocks.append(
+                f"[근거 {index}] {metadata.get('council', '미상')} | "
+                f"{metadata.get('meeting_date', '날짜 미상')}\n{str(row.get('text') or '')[:1800]}"
+            )
+        messages = [{
+            "role": "system",
+            "content": "지방의회 회의록 근거를 사용해 한국어로 답하세요. 근거에 없는 사실이나 숫자는 만들지 말고, 각 사실 뒤에 [근거 N]을 표시하세요. 근거가 부족하면 그렇게 말하세요.",
+        }]
+        for item in request.history:
+            messages.append({"role": item.role, "content": item.content})
+        messages.append({
+            "role": "user",
+            "content": f"질문: {request.message}\n\nPostgreSQL 검색 근거:\n" + "\n\n".join(evidence_blocks),
+        })
+        body = json.dumps({"model": model, "stream": False, "messages": messages}, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(
+            host + "/api/chat", data=body,
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=int(os.environ.get("COUNCIL_AGENT_TIMEOUT", "90"))) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError, TimeoutError) as exc:
+            raise RuntimeError(f"로컬 Ollama 답변 생성 실패: {type(exc).__name__}: {exc}") from exc
+        answer = str((payload.get("message") or {}).get("content") or "").strip()
+        if not answer:
+            raise RuntimeError("Ollama가 빈 답변을 반환했습니다")
+        return {
+            "answer": answer,
+            "citations": citations,
+            "conversation_id": request.conversation_id or uuid4().hex[:24],
+            "retrieval_mode": found.get("retrieval_mode"),
+            "generation_mode": f"ollama:{model}",
+            "warning": None,
+            "plan": {
+                "backend": found.get("backend"),
+                "result_count": found.get("result_count", len(evidence)),
+                "query_embedding_ms": found.get("query_embedding_ms"),
+            },
+            "policy": {
+                "external_llm_api_used": False,
+                "meeting_text_sent_externally": False,
+                "answer_grounded_in_retrieved_evidence": True,
+            },
+            "search_ms": found.get("search_ms"),
+        }
