@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from api.routers.chat import router as chat_router
 from api.routers.documents import evidence_router, router as documents_router
@@ -12,3 +15,6 @@ app = FastAPI(
 )
 for router in (issues_router, radar_router, documents_router, evidence_router, chat_router):
     app.include_router(router, prefix="/api/v1")
+
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

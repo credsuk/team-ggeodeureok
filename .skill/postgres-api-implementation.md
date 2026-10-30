@@ -10,6 +10,12 @@ The fixed-keyword list is read from `src/config/representative_issue_keys_v1.txt
 
 Chat retrieves PostgreSQL evidence and sends that context only to the configured localhost Ollama service. It does not send meeting text to an external LLM service. Conversation history is client-supplied and is not stored server-side.
 
+## Local dashboard
+
+FastAPI serves the browser UI from `src/api/frontend/` at `/` and serves the API from `/api/v1/` on the same origin. `index.html` loads `api-client.js` and `app.js`; the client uses relative `/api/v1` URLs, so no CORS or separate frontend server is required. The interface reads its issue list and analysis, radar searches, document searches, evidence/document details, and chat replies from the API. The UI uses actual API results and labels the forecast only as the existing three-month mean baseline; the old downloaded demo contained hard-coded sample issue/forecast values, which are not used for live output.
+
+The frontend is plain HTML/JavaScript (no npm build step). Tailwind, icons, fonts, Leaflet, and CARTO tiles come from external CDNs; the page layout and local API remain available without a database-backed frontend build, but map tiles and CDN styling require internet access.
+
 ## Routes
 
 - `GET /api/v1/issues`

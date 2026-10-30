@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>의정이슈레이더 | FastAPI 로컬 대시보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            DEFAULT: '#0284c7'
+                        },
+                        radar: {
+                            dark: '#0a0d14',
+                            panel: '#111726',
+                            border: '#1f293d',
+                            highlight: '#38bdf8',
+                            coral: '#f43f5e',
+                            amber: '#f59e0b',
+                            emerald: '#10b981',
+                            indigo: '#6366f1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Pretendard & JetBrains Mono Fonts -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- OpenFreeMap Positron basemap through MapLibre's Leaflet adapter -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
+    <script type="importmap">
+      {"imports":{"leaflet":"https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js","maplibre-gl":"https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"}}
+    </script>
+    <script type="module">
+      import * as L from "leaflet";
+      import { maplibreGL } from "https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/dist/leaflet-maplibre-gl.mjs";
+      window.L = L;
+      window.maplibreGLLeaflet = maplibreGL;
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        .top-search-wrap {
+            position: relative !important;
+            flex: 1 1 42rem;
+            max-width: 42rem;
+            min-width: 0;
+        }
+        .top-search-input {
+            display: block;
+            width: 100%;
+            padding-right: 5rem;
+        }
+        .top-search-button {
+            position: absolute !important;
+            right: 0.375rem !important;
+            top: 0.375rem !important;
+            bottom: 0.375rem !important;
+            z-index: 1;
+            white-space: nowrap;
+        }
+        .monthly-chart-wrap {
+            min-height: 16.5rem;
+            padding: 0.75rem;
+            overflow-x: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            background: #f8fafc;
+        }
+        .monthly-line-chart {
+            display: block;
+            height: 15.5rem;
+            max-width: none;
+        }
+        .observation-card.is-selected {
+            border-color: #0284c7 !important;
+            background: #f0f9ff !important;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.22);
+        }
+        .font-scale-button.is-active,
+        .font-scale-button.is-active:hover {
+            background: #0369a1;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+        }
+        .chat-send-button {
+            position: relative;
+            display: inline-flex;
+            width: 3.5rem;
+            min-width: 3.5rem;
+            height: 3rem;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        .chat-send-button[aria-busy="true"]::after {
+            content: "";
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: chatSendSpin 0.7s linear infinite;
+        }
+        @keyframes chatSendSpin { to { transform: rotate(360deg); } }
+        .chat-composer input {
+            min-width: 0;
+            width: 100%;
+            height: 3rem;
+            min-height: 3rem;
+            padding: 0.5rem 0.75rem !important;
+            line-height: 1.25;
+        }
+        html {
+            font-size: 18px; /* 기본 18px 스케일 (보통 폰트 가독성 확대) */
+            transition: font-size 0.2s ease;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: #f1f5f9; /* 고대비 밝은 슬레이트 배경 */
+            color: #0f172a; /* 최고 대비 딥 네이비 텍스트 */
+            overflow-x: hidden;
+            font-size: 1.05rem;
+            line-height: 1.65;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+
+
+        /* Light Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+        /* Light Theme Card Panels */
+        .glass-panel {
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+        }
+        .glass-card {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        }
+
+        /* High Visibility Animated Diffusion Arcs */
+        @keyframes flowGlow {
+            0% { stroke-dashoffset: 100; opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0.6; }
+        }
+        .flow-line {
+            stroke-dasharray: 8 6;
+            animation: flowGlow 2.5s linear infinite;
+        }
+
+        /* Leaflet & Carto Positron Custom Theme */
+        .leaflet-container {
+            background-color: #f6f5f1 !important;
+            font-family: 'Pretendard', sans-serif !important;
+        }
+        .leaflet-control-zoom {
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+            border-radius: 10px !important;
+            overflow: hidden;
+        }
+        .leaflet-control-zoom a {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            font-weight: 900 !important;
+            transition: all 0.15s ease !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background-color: #f1f5f9 !important;
+            color: #0284c7 !important;
+        }
+
+        /* Final App Tooltip (Dark Olive Sage Theme: #393e2e, 1.5배 확대 및 반응형 스케일) */
+        .leaflet-tooltip.final-app-tooltip {
+            background: #393e2e !important;
+            color: #fffaf0 !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45) !important;
+            padding: 0 !important;
+            font-family: 'Pretendard', sans-serif !important;
+            line-height: 1.55 !important;
+            pointer-events: none;
+            transition: transform 0.15s ease-out;
+        }
+        .leaflet-tooltip-top.final-app-tooltip:before {
+            border-top-color: #393e2e !important;
+            border-width: 8px 8px 0 !important;
+            margin-left: -8px !important;
+        }
+        .leaflet-tooltip-bottom.final-app-tooltip:before {
+            border-bottom-color: #393e2e !important;
+            border-width: 0 8px 8px !important;
+            margin-left: -8px !important;
+        }
+
+        /* Final App Council Node Markers (ScatterplotLayer + TextLayer) */
+        .custom-council-divicon {
+            background: transparent !important;
+            border: none !important;
+        }
+        .council-marker-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        .council-marker-wrapper:hover {
+            transform: scale(1.18);
+            z-index: 1000 !important;
+        }
+        .council-node-circle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            background: #e95b4c; /* final_app coral fill */
+            color: #ffffff;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', 'Pretendard', sans-serif;
+            border: 2.5px solid #fff9ee; /* final_app line color */
+            box-shadow: 0 3px 12px rgba(233, 91, 76, 0.5);
+            transition: all 0.2s ease;
+        }
+        .council-marker-wrapper.is-origin .council-node-circle {
+            background: #f59e0b;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35), 0 3px 14px rgba(245, 158, 11, 0.55);
+        }
+        .council-marker-wrapper.is-selected .council-node-circle {
+            background: #0284c7;
+            border-color: #ffffff;
+            box-shadow: 0 0 0 5px rgba(2, 132, 199, 0.45), 0 4px 18px rgba(2, 132, 199, 0.65);
+            transform: scale(1.15);
+        }
+        .council-marker-wrapper.is-predict .council-node-circle {
+            background: rgba(244, 63, 94, 0.9);
+            border: 2px dashed #ffffff;
+            box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.35);
+            animation: pulsePredict 2s infinite ease-in-out;
+        }
+        .council-pill-label {
+            margin-top: 3px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 800;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.96);
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+            pointer-events: none;
+            letter-spacing: -0.02em;
+        }
+        .council-marker-wrapper.is-selected .council-pill-label {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+        @keyframes pulsePredict {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); }
+        }
+
+        /* Arc Overlay SVG Styling */
+        .arc-line-path {
+            fill: none;
+            stroke-linecap: round;
+            filter: drop-shadow(0 2px 6px rgba(238, 94, 76, 0.35));
+        }
+        .arc-moving-orb {
+            filter: drop-shadow(0 1px 4px rgba(238, 94, 76, 0.6));
+        }
+
+        /* Map Node Hover */
+        .map-node {
+            transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .map-node:hover {
+            filter: drop-shadow(0 2px 10px rgba(2, 132, 199, 0.5));
+        }
+
+        #policyTooltip {
+            pointer-events: auto;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            transform: translate(-50%, -100%);
+            z-index: 100;
+        }
+
+        /* Light Theme High Affordance Tabs */
+        .tab-btn {
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: #334155;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            white-space: nowrap;
+            user-select: none;
+            position: relative;
+        }
+        .tab-btn:hover {
+            background: #f8fafc;
+            border-color: #0284c7;
+            color: #0284c7;
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+        }
+        .tab-btn:active {
+            transform: translateY(0.5px);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+        }
+        .tab-btn.active {
+            background: #0284c7;
+            border-color: #0284c7;
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35);
+        }
+        .tab-btn.active span[class*="rounded"] {
+            background: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+        }
+        .tab-btn.active i {
+            color: #ffffff !important;
+        }
+
+        /* Floating Chatbot Pulse Glow */
+        @keyframes chatFloatGlow {
+            0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.6); }
+            70% { box-shadow: 0 0 0 14px rgba(2, 132, 199, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+        }
+        .floating-chat-btn {
+            animation: chatFloatGlow 3s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+  <header class="sticky top-0 z-40 bg-white border-b-2 border-slate-300 px-4 lg:px-6 py-3 flex items-center justify-between gap-4 shadow-sm" style="z-index: 1300">
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-rose-500 flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-satellite-dish text-xl"></i></div>
+      <div><div class="text-xs font-black tracking-widest text-sky-700">LOCAL API DASHBOARD</div><h1 class="text-lg font-black text-slate-950">의정이슈레이더</h1></div>
+    </div>
+    <div class="relative max-w-2xl w-full top-search-wrap">
+      <input id="globalSearchInput" type="search" maxlength="200" placeholder="정책 이슈 검색 (예: 저출생, 전세사기)" class="w-full pl-4 pr-20 py-2.5 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-950 focus:outline-none focus:border-sky-600 font-bold shadow-sm top-search-input">
+      <button id="globalSearchButton" onclick="handleGlobalSearch()" class="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-sky-700 hover:bg-sky-600 text-white rounded-lg text-sm font-black top-search-button"><span>분석</span></button>
+    </div>
+    <div id="apiStatus" class="shrink-0 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 text-slate-700" role="status">API 확인 중</div>
+    <div class="hidden md:flex items-center gap-1 bg-slate-100 border border-slate-300 p-1 rounded-xl text-xs" role="group" aria-label="글자 크기">
+      <span class="px-2 font-bold text-slate-700">글자</span>
+      <button type="button" data-font-scale="small" aria-pressed="false" onclick="setFontScale('small')" class="font-scale-button px-2 py-1 rounded-lg hover:bg-white">작게</button>
+      <button type="button" data-font-scale="normal" aria-pressed="true" onclick="setFontScale('normal')" class="font-scale-button is-active px-2 py-1 rounded-lg">보통</button>
+      <button type="button" data-font-scale="large" aria-pressed="false" onclick="setFontScale('large')" class="font-scale-button px-2 py-1 rounded-lg hover:bg-white">크게</button>
+    </div>
+  </header>
+
+  <nav class="bg-white border-b-2 border-slate-300 px-4 lg:px-6 py-2.5 flex items-center gap-3 overflow-x-auto text-sm shrink-0 shadow-sm">
+    <button onclick="switchTab('catalog')" id="tab-catalog" class="tab-btn active shrink-0"><i class="fa-solid fa-fire text-amber-700"></i><span>대표 키워드</span></button>
+    <button onclick="switchTab('radar')" id="tab-radar" class="tab-btn shrink-0"><i class="fa-solid fa-chart-line"></i><span>이슈 레이더</span></button>
+    <button onclick="switchTab('search')" id="tab-search" class="tab-btn shrink-0"><i class="fa-solid fa-file-lines text-purple-700"></i><span>회의록 원문 검색</span></button>
+    <span id="ollamaStatus" class="ml-auto shrink-0 text-xs text-slate-600">Ollama 상태 확인 중</span>
+  </nav>
+
+  <div id="globalNotice" class="hidden mx-4 lg:mx-6 mt-3 max-w-[1800px] w-[calc(100%-2rem)] lg:w-[calc(100%-3rem)] self-center rounded-xl border px-4 py-3 text-sm font-semibold" role="alert"></div>
+
+  <main class="flex-1 px-4 lg:px-6 py-4 max-w-[1800px] w-full mx-auto space-y-4">
+    <section id="tabContent-catalog" class="tab-content flex flex-col space-y-4">
+      <div class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-3 gap-3">
+          <div><h2 class="text-xl font-black text-slate-950"><i class="fa-solid fa-fire text-amber-700 mr-2"></i>고정 분석 키워드</h2><p class="text-sm text-slate-700 mt-1">키워드를 선택하면 PostgreSQL 검색 결과와 실제 집계·예측을 불러옵니다.</p></div>
+          <span id="catalogCount" class="text-xs font-mono px-3 py-1 rounded-lg bg-amber-100 text-amber-950 border border-amber-300 font-bold">불러오는 중</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-900">
+            <thead class="bg-slate-100 text-slate-800 text-xs uppercase border-b-2 border-slate-300 font-bold"><tr><th class="p-3">이슈</th><th class="p-3">분류</th><th class="p-3">대표 검색어</th><th class="p-3 text-center">분석</th></tr></thead>
+            <tbody id="catalogTableBody" class="divide-y divide-slate-200"><tr><td colspan="4" class="p-5 text-center text-slate-500">API에서 목록을 불러오는 중입니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tabContent-radar" class="tab-content hidden flex-col space-y-4">
+      <div class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3 mb-4">
+          <div><div id="radarState" class="text-xs font-bold text-sky-800">검색 대기</div><h2 id="radarTitle" class="text-xl font-black text-slate-950 mt-1">이슈를 선택하거나 검색하세요</h2><p id="radarQuery" class="text-sm text-slate-700 mt-1"></p></div>
+          <button onclick="switchTab('search')" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-bold hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>근거 원문 검색</button>
+        </div>
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">관측된 의회</div><div id="kpiCouncilCount" class="text-2xl font-black text-sky-800">—</div></div>
+          <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">월별 매칭 문서 합계</div><div id="kpiEvidenceCount" class="text-2xl font-black text-emerald-800">—</div></div>
+          <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">가장 이른 관측일</div><div id="kpiFirstObservation" class="text-xl font-black text-slate-900">—</div></div>
+          <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">다음 달 기준선</div><div id="kpiForecastValue" class="text-2xl font-black text-rose-700">—</div></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <section class="xl:col-span-7 glass-panel rounded-2xl overflow-hidden shadow-sm bg-white">
+          <div class="px-4 py-3 border-b border-slate-300 flex items-center justify-between bg-slate-50 gap-2">
+            <div><h3 class="font-black text-slate-950"><i class="fa-solid fa-map-location-dot text-rose-600 mr-1"></i>의회별 최초 관측 순서</h3><p class="text-xs text-slate-600">연결선은 날짜순 표시이며 정책의 인과관계를 뜻하지 않습니다.</p></div>
+            <button onclick="resetMapView()" class="px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs font-bold">전국 보기</button>
+          </div>
+          <div class="relative h-[430px] bg-slate-50"><div id="koreaLeafletMap" class="w-full h-full"></div><div id="mapNotice" class="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-slate-600 pointer-events-none">지도 준비 중</div></div>
+          <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+            <div class="flex items-center justify-between gap-2 text-sm"><span id="playerStateText" class="font-bold text-sky-900">관측 자료를 불러오면 타임라인을 사용할 수 있습니다.</span><span><span id="totalStepCount">0</span>개 의회</span></div>
+            <div class="flex items-center gap-3"><button onclick="toggleTimelinePlay()" id="playToggleBtn" class="w-10 h-10 rounded-lg bg-sky-700 text-white"><i id="playToggleIcon" class="fa-solid fa-play"></i></button><button onclick="stepTimeline(-1)" class="w-9 h-9 rounded-lg border border-slate-300 bg-white" title="이전"><i class="fa-solid fa-backward-step"></i></button><button onclick="stepTimeline(1)" class="w-9 h-9 rounded-lg border border-slate-300 bg-white" title="다음"><i class="fa-solid fa-forward-step"></i></button><button onclick="resetTimelineToStart()" class="w-9 h-9 rounded-lg border border-slate-300 bg-white" title="처음"><i class="fa-solid fa-rotate-left"></i></button><input id="timelineSlider" type="range" min="0" max="0" value="0" step="1" oninput="onTimelineSliderChange(this.value)" class="flex-1 accent-sky-700"><span id="mapCurrentStepDate" class="text-xs font-mono text-slate-700">—</span></div>
+          </div>
+        </section>
+        <section id="councilEvidenceSection" class="xl:col-span-5 glass-panel rounded-2xl p-4 shadow-sm bg-white">
+          <div class="border-b border-slate-200 pb-3 mb-3"><h3 class="font-black text-slate-950">관측 의회 및 검색 근거</h3><p class="text-xs text-slate-600">DB에서 반환한 최초 관측일과 매칭 문서 수를 표시합니다.</p></div>
+          <div id="councilFlowList" class="space-y-2 overflow-y-auto max-h-[600px]"><div class="text-sm text-slate-500">이슈를 선택하면 관측 결과가 표시됩니다.</div></div>
+        </section>
+      </div>
+
+      <section class="glass-panel rounded-2xl p-4 shadow-sm bg-white">
+        <div class="flex items-center justify-between gap-2 mb-3"><div><h3 class="font-black text-slate-950">월별 매칭 문서 수</h3><p id="monthlyChartLegend" class="text-sm font-semibold text-sky-900">● 매칭 문서 수 (건)</p></div><span id="monthlyCountCaption" class="text-sm font-semibold text-slate-700">PostgreSQL 전문검색 집계</span></div>
+        <div id="monthlyChartBars" class="monthly-chart-wrap"><span class="text-sm text-slate-500">검색 결과가 여기에 표시됩니다.</span></div>
+      </section>
+      <section id="forecastPanel" class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
+        <h3 class="font-black text-slate-950"><i class="fa-solid fa-chart-line text-rose-600 mr-1"></i>다음 달 기준선</h3>
+        <div id="topForecastBriefCard" class="mt-3 text-sm text-slate-700">최근 3개월 매칭 문서 수 평균을 표시합니다. 외부 조례·통계 예측은 이 API가 제공하지 않습니다.</div>
+        <div id="forecastMethod" class="mt-2 text-xs text-slate-500"></div>
+      </section>
+      <section class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
+        <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-3 mb-3"><div><h3 class="font-black text-slate-950">상위 검색 근거</h3><p class="text-xs text-slate-600">검색 점수는 확률이 아니라 순위 결합 점수입니다.</p></div><span id="radarEvidenceCount" class="text-xs font-bold text-slate-600">0건</span></div>
+        <div id="radarEvidenceList" class="space-y-3"><p class="text-sm text-slate-500">이슈를 선택하면 근거가 표시됩니다.</p></div>
+      </section>
+    </section>
+
+    <section id="tabContent-search" class="tab-content hidden flex-col space-y-4">
+      <section class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
+        <div class="border-b border-slate-200 pb-3 mb-4"><h2 class="text-xl font-black text-slate-950"><i class="fa-solid fa-file-lines text-purple-700 mr-2"></i>회의록 원문 검색</h2><p class="text-sm text-slate-700 mt-1">PostgreSQL pgvector와 전문검색을 결합한 실제 검색 결과입니다.</p></div>
+        <form id="documentSearchForm" onsubmit="executeRawVectorSearch(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <label class="md:col-span-5 text-xs font-bold text-slate-700">검색어<input id="rawSearchQuery" type="search" maxlength="500" required class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm" placeholder="검색할 정책·현안"></label>
+          <label class="md:col-span-3 text-xs font-bold text-slate-700">의회 이름<input id="rawSearchCouncilFilter" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm" placeholder="예: 서울특별시의회"></label>
+          <label class="md:col-span-2 text-xs font-bold text-slate-700">연도<select id="rawSearchYearFilter" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm"><option value="">전체</option><option value="2024">2024</option><option value="2025">2025</option></select></label>
+          <label class="md:col-span-2 text-xs font-bold text-slate-700">표시 수<select id="rawSearchTopK" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm"><option>10</option><option selected>20</option><option>50</option></select></label>
+          <label class="md:col-span-3 text-xs font-bold text-slate-700">위원회<input id="rawSearchCommitteeFilter" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm" placeholder="선택 입력"></label>
+          <label class="md:col-span-3 text-xs font-bold text-slate-700">시작일<input id="rawSearchDateFrom" type="date" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm"></label>
+          <label class="md:col-span-3 text-xs font-bold text-slate-700">종료일<input id="rawSearchDateTo" type="date" class="mt-1 w-full px-3 py-2.5 border-2 border-slate-300 rounded-lg text-sm"></label>
+          <div class="md:col-span-3 flex items-end"><button id="documentSearchButton" type="submit" class="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-sm font-black"><i class="fa-solid fa-magnifying-glass mr-1"></i>검색</button></div>
+        </form>
+        <div class="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-700 border-t border-slate-200 pt-3 mt-4"><span>결과 <b id="rawSearchResultCount">0</b>건</span><span>응답 <b id="rawSearchDbMs">—</b> ms</span><span id="documentSearchStatus" class="text-slate-500"></span></div>
+        <div id="rawSearchResultsContainer" class="space-y-3 mt-4"><p class="text-sm text-slate-500">검색어를 입력하세요.</p></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="screenLoadingOverlay" class="hidden fixed inset-0 bg-slate-950/25 backdrop-blur-[1px] flex items-center justify-center p-6" style="z-index: 1200" role="status" aria-live="polite" aria-hidden="true">
+    <div class="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xl">
+      <svg class="h-9 w-9 animate-spin text-sky-700" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+      <span id="screenLoadingMessage" class="font-black text-slate-900">분석 중…</span>
+    </div>
+  </div>
+
+  <div class="fixed bottom-6 right-6 z-50"><button onclick="toggleFloatingChat()" id="floatingChatBtn" title="AI 의정 비서" class="floating-chat-btn w-14 h-14 rounded-full bg-gradient-to-tr from-sky-600 via-indigo-600 to-rose-600 text-white shadow-2xl"><i class="fa-solid fa-comments text-2xl"></i></button></div>
+  <section id="floatingChatModal" class="hidden fixed bottom-24 right-6 w-[410px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-8rem)] bg-white border-2 border-sky-500 rounded-2xl shadow-2xl flex-col z-50 overflow-hidden">
+    <header class="px-4 py-3 bg-sky-50 border-b border-slate-200 flex items-center justify-between"><div><h2 class="text-sm font-black text-slate-950">로컬 의정 AI 에이전트</h2><p id="chatStatus" class="text-xs text-slate-600">Ollama 상태 확인 중</p></div><button onclick="toggleFloatingChat()" aria-label="닫기" class="p-2 text-slate-600"><i class="fa-solid fa-xmark"></i></button></header>
+    <div id="agentChatContainer" class="flex-1 overflow-y-auto space-y-3 p-3.5 text-sm bg-slate-100"><div class="rounded-xl bg-white border border-slate-200 p-3 text-slate-800">질문에 답할 때 PostgreSQL 회의록 근거를 함께 찾습니다. 회의록 내용은 외부 LLM API로 보내지 않습니다.</div><div class="flex flex-wrap gap-2"><button onclick="askAgentPredefined('저출생 관련 논의 흐름과 근거를 알려줘')" class="text-xs p-2 rounded-lg bg-white border border-slate-300">저출생 논의 흐름</button><button onclick="askAgentPredefined('전세사기 피해 지원 논의 근거를 찾아줘')" class="text-xs p-2 rounded-lg bg-white border border-slate-300">전세사기 근거</button></div></div>
+    <form onsubmit="handleAgentSubmit(event)" class="chat-composer p-3 bg-white border-t border-slate-200 flex gap-2"><input id="agentInputQuery" maxlength="4000" required placeholder="질문 입력" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm"><button id="chatSendButton" type="submit" aria-label="질문 보내기" class="chat-send-button bg-sky-700 hover:bg-sky-600 text-white rounded-xl" title="답변 생성"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button></form>
+  </section>
+
+  <footer class="bg-white border-t border-slate-200 px-6 py-4 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2"><span>의정이슈레이더 · FastAPI local frontend</span><span><a class="text-sky-700 underline" href="/docs" target="_blank" rel="noopener">API 문서 열기</a></span></footer>
+  <script src="api-client.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
