@@ -102,7 +102,7 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 `scripts/` 내 전처리 스크립트를 실행하려면 [Ollama](https://ollama.ai/)가 구동 중이어야 합니다:
 ```bash
 # Ollama 실행 및 필요한 모델 pull
-ollama pull qwen2.5-coder:7b
+ollama pull exaone3.5:7.8b
 ollama pull huihui_ai/exaone3.5-abliterated
 ```
 
@@ -190,7 +190,7 @@ ChromaDB의 빠른 `where` 연산(단일 및 `$and` 복합 조건)에 최적화�
 
 ## 6. 로컬 LLM 정책 메타데이터 추출기 (`extract_llm_metadata.py`)
 
-지방의회 회의록 발언에서 로컬 LLM(Ollama `gemma4:e2b` / `gemma4:e4b` 등)을 활용하여 정책 분야(`policy_category`), 핵심 쟁점(`core_issue`), 2~4어절 복합 정책 키워드(`keywords`), 요약(`summary`)을 추출하여 구조화된 JSONL 데이터로 저장합니다.
+지방의회 회의록 발언에서 로컬 LLM(Ollama `exaone3.5:7.8b` / `gemma4:e4b` 등)을 활용하여 정책 분야(`policy_category`), 핵심 쟁점(`core_issue`), 2~4어절 복합 정책 키워드(`keywords`), 요약(`summary`)을 추출하여 구조화된 JSONL 데이터로 저장합니다.
 
 ### 1) 주요 특징
 - **체크포인트(이어하기) & 실시간 Append**: 이미 처리된 `row_id`는 자동으로 건너뛰며, 중단 후 재실행 시 기존 JSONL 파일 뒤에 실시간으로 안전하게 이어서 덧붙입니다.
@@ -226,7 +226,7 @@ python extract_llm_metadata.py --input "text/cleaned_2024_충청북도의회.txt
 | :--- | :--- | :--- |
 | `--input` | `text/cleaned_2024_강원특별자치도의회.txt` | 입력 TSV 회의록 파일 경로 |
 | `--output` | `data/{입력파일명}.jsonl` | 출력 JSONL 파일 경로 (미지정 시 입력 파일명 기반 자동 생성) |
-| `-m`, `--model` | `gemma4:e2b` | 사용할 Ollama 로컬 LLM 모델명 (고성능 필요 시 `gemma4:e4b` 등) |
+| `-m`, `--model` | `exaone3.5:7.8b` | 사용할 Ollama 로컬 LLM 모델명 (고성능 필요 시 `gemma4:e4b` 등) |
 | `--sample` | `0` (전체) | 처리할 발언 개수 (`0`이면 전체 처리) |
 | `--min-len` | `80` | 최소 발언 길이 (글자 수 미달 의전성 멘트 제외) |
 | `--workers` | `2` | 동시 병렬 요청 워커(스레드) 수 |
@@ -433,3 +433,8 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", EMBEDDING_PRESETS["arct
 
 전체 기능 구현, 모듈화, 임베딩 모델 프리셋 연동 및 기본 모델 설정(`Snowflake Arctic v2.0 한국어`)에 관한 상세한 커밋 및 개발 내역은 [CHANGELOG.md](file:///c:/study/Projects/team-ggeodeureok/CHANGELOG.md)를 참고하세요.
 
+
+
+## 최종 로컬 생성 모델
+
+최종 실행 모델은 공식 LG AI Research 계열 `exaone3.5:7.8b`로 통일합니다. 설치: `ollama pull exaone3.5:7.8b`. 초기 실험에 사용한 다른 모델명은 실험 이력 문서에만 남기며, 운영 기본값과 구분합니다.

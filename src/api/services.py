@@ -239,7 +239,7 @@ class RadarApiService:
         host = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
         if (urlparse(host).hostname or "").lower() not in {"localhost", "127.0.0.1", "::1"}:
             raise RuntimeError("보안 정책상 localhost Ollama만 사용할 수 있습니다")
-        model = os.environ.get("COUNCIL_AGENT_MODEL", "qwen3:8b")
+        model = os.environ.get("COUNCIL_AGENT_MODEL", "exaone3.5:7.8b")
         citations = []
         evidence_blocks = []
         for index, row in enumerate(evidence, start=1):

@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir", type=Path,
         default=PROJECT_ROOT / "outputs" / "retrieval_eval" / "arctic_raw_vs_enriched_v1" / "auto_judgements",
     )
-    parser.add_argument("--model", default="qwen3:8b")
+    parser.add_argument("--model", default="exaone3.5:7.8b")
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
     parser.add_argument("--batch-size", type=int, default=6)
     parser.add_argument("--max-text-chars", type=int, default=1400)

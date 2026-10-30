@@ -1,5 +1,5 @@
 """
-지방의회 회의록에서 로컬 LLM(Ollama gemma4:e2b)을 활용하여 구체적 정책 의제 및 복합 키워드(메타데이터용)를 추출하는 스크립트
+지방의회 회의록에서 로컬 LLM(Ollama exaone3.5:7.8b)을 활용하여 구체적 정책 의제 및 복합 키워드(메타데이터용)를 추출하는 스크립트
 (체크포인트 이어하기, 멀티스레드 병렬 가속, 실시간 flush 지원)
 """
 import argparse
@@ -237,7 +237,7 @@ def process_single_record(
 def process_council_file(
     input_file: str,
     output_file: str,
-    model_name: str = "gemma4:e2b",
+    model_name: str = "exaone3.5:7.8b",
     base_url: str = "http://localhost:11434",
     sample_limit: int = 0,
     min_char_len: int = 80,
@@ -265,7 +265,7 @@ def process_council_file(
         print(f"[경고] 요청 모델 '{model_name}'이 로컬에 없습니다. 'ollama pull {model_name}'을 권장합니다.")
         fallback = available_models[0]
         for m in available_models:
-            if "gemma" in m.lower():
+            if "exaone" in m.lower():
                 fallback = m
                 break
         print(f"▶ 로컬 대체 모델 '{fallback}'으로 진행합니다.\n")
@@ -386,8 +386,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m", "--model",
         type=str,
-        default="gemma4:e2b",
-        help="사용할 Ollama 모델명 (기본: gemma4:e2b, 고성능 모델 필요 시 gemma4:e4b 선택 가능)",
+        default="exaone3.5:7.8b",
+        help="사용할 Ollama 모델명 (기본: exaone3.5:7.8b, 고성능 모델 필요 시 gemma4:e4b 선택 가능)",
     )
     parser.add_argument(
         "--sample",

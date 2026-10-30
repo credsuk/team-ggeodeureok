@@ -13,7 +13,6 @@ import html.entities
 import json
 import os
 import re
-import sys
 import time
 import urllib.parse
 import urllib.request
@@ -23,13 +22,10 @@ from pathlib import Path
 from typing import Any
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import council_groups as CG  # 의회 통합 규칙(config/council_merges.json): 전남광주통합특별시의회 = 광주 + 전남
 
-try:  # 의회 통합 규칙(전남광주통합특별시의회 = 광주 + 전남). 없으면 단일 의회로만 처리
-    sys.path.insert(0, str(PROJECT_ROOT.parent / "llm_baseline"))
-    import assembly_groups as AG  # noqa: E402
-except ImportError:
-    AG = None
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_dotenv(path: Path = PROJECT_ROOT / ".env") -> None:
@@ -204,27 +200,23 @@ def _key(env: str) -> str | None:
 
 
 def group_regions() -> dict:
-    """통합 의회 → 통합 지자체 표기 목록 (assembly_groups가 없으면 빈 dict)"""
-    if AG is None:
-        return {}
-    out = {}
-    for g in AG._groups():
-        names = [g["name"]] + g.get("aliases", [])
-        forms = {n[:-2] if n.endswith("의회") else n for n in names}
-        out[g["name"]] = sorted(forms, key=len, reverse=True)
-    return out
+    """통합 의회 → 통합 지자체 표기 목록"""
+    return CG.region_forms()
 
 
 def members_of(council: str) -> list:
     """통합 의회면 전신 의회 목록, 아니면 [자기 자신]"""
-    g = AG.find_group(council or "") if AG is not None else None
-    return [m["assembly"] for m in g["members"]] if g else [council]
+    return CG.members_of(council or "")
 
 
 def region_of_org(org: str) -> tuple:
-    """자치법규 지자체기관명 → (광역의회, 단계)   단계: '광역'(도·시 본청/교육청) / '기초'(시·군·구)"""
+    """자치법규 지자체기관명 → (광역의회, 단계)   단계: '광역'(도·시 본청/교육청) / '기초'(시·군·구)
+    통합 지자체 기관명은 하위 시·군·구로 전신 의회를 되찾는다(본청·교육청만 통합 의회)"""
+    council, level = CG.org_council(org)
+    if council:
+        return council, level
     o = (org or "").strip()
-    for council, forms in [*group_regions().items(), *REGION.items()]:
+    for council, forms in REGION.items():
         for f in forms:
             if o.startswith(f):
                 rest = o[len(f):].strip()

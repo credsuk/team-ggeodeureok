@@ -22,7 +22,7 @@ text_dir = "./data/to_text2/" + target + "_광역 회의록"
 
 
 # make_model_name="qwen2.5-coder:7b" 
-make_model_name="qwen2.5-coder:14b"
+make_model_name=os.environ.get("COUNCIL_PREPROCESS_MODEL", "exaone3.5:7.8b")
 
 # model_name="hf.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M:Q4_K_M"
 # model_name="richardyoung/qwen3-4b-instruct-2507-abliterated:latest" 
