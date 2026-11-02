@@ -1,0 +1,18 @@
+import tomllib
+import unittest
+from pathlib import Path
+
+
+from src.app import APP_STYLE
+
+
+class StreamlitUiConfigTests(unittest.TestCase):
+    def test_project_hides_default_toolbar_menu(self):
+        project_root = Path(__file__).resolve().parents[2]
+        config = tomllib.loads((project_root / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
+        self.assertEqual(config["client"]["toolbarMode"], "minimal")
+        self.assertIn('[data-testid="stToolbar"] { display: none !important; }', APP_STYLE)
+
+
+if __name__ == "__main__":
+    unittest.main()
