@@ -28,7 +28,9 @@
 4. `src/.env.example`을 `src/.env`로 복사하고 필요한 설정을 조정합니다. shell 환경변수가 `.env`보다 우선합니다. 비밀값은 이 파일에 넣지 마세요.
 5. 앱 의존성을 설치합니다. 검색 질문 임베딩과 Cross-Encoder는 기본 CPU 실행으로 두어 Ollama 로컬 모델과 GPU 메모리를 나눠 쓰지 않도록 했습니다. 여유 VRAM이 충분하고 Chroma 적재가 끝난 경우에만 `EMBEDDING_DEVICE=cuda`로 바꿔 보세요. CUDA를 요청했는데 사용할 수 없으면 CPU로 몰래 바꾸지 않고 중단합니다.
 
-   `python -m pip install -r src/requirements-app.txt`
+   `python -m pip install -r requirements.txt`
+
+   이 루트 파일에는 앱·지도와 Python 전처리/인덱싱 코드가 직접 사용하는 패키지가 포함됩니다. `src/requirements-app.txt`도 같은 목록을 포함하는 호환용 설치 경로입니다.
 
    로컬 임베딩/재순위 모델 가중치는 기본적으로 자동 다운로드하지 않습니다(`ALLOW_MODEL_DOWNLOAD=0`). 필요한 모델이 Hugging Face 캐시에 없으면 먼저 모델을 준비하거나, 명시적으로 `ALLOW_MODEL_DOWNLOAD=1`을 설정하세요. Cross-Encoder는 기본 CPU 실행으로 두어 Ollama·임베딩 모델과 GPU 메모리를 과도하게 공유하지 않도록 했습니다.
 
@@ -64,7 +66,7 @@
 - Chroma 적재 중에는 앱을 실행하지 마세요. 질문 캐시가 같은 Chroma DB에 별도 컬렉션을 추가하므로, 적재 완료 뒤 앱을 켜는 것이 안전합니다.
 - 지도는 의회별 대표 좌표에 점을 찍으며 일부 좌표는 시·도 중심점 근사입니다. Streamlit의 기본 지도 배경은 외부 지도 타일을 사용하므로 완전 오프라인 환경에서는 배경 지도가 표시되지 않을 수 있습니다. 회의록 본문은 외부 LLM/API로 전송하지 않습니다.
 - 예측은 근거가 적어도 출력하되, 근거 부족 시 낮은 신뢰도로 표시합니다. 이는 통계적으로 검증된 확률이 아닙니다.
-- 배포/실행 환경에는 `src/requirements-app.txt` 의존성, Ollama 서버/모델, 준비된 Chroma 회의록 컬렉션, BM25 FTS5 인덱스가 필요합니다. Streamlit/Chroma/PyTorch/Ollama 실데이터 통합은 단위 테스트로 대체되지 않습니다.
+- 배포/실행 환경에는 프로젝트 루트의 `requirements.txt` 의존성, Ollama 서버/모델, 준비된 Chroma 회의록 컬렉션, BM25 FTS5 인덱스가 필요합니다. Streamlit/Chroma/PyTorch/Ollama 실데이터 통합은 단위 테스트로 대체되지 않습니다.
 
 ## 테스트
 

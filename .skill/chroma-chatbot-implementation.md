@@ -26,7 +26,7 @@
 1. Chroma 임베딩 작업이 완료된 상태에서 시작합니다. 앱은 Chroma 전체 색인이나 BM25 색인을 자동으로 만들지 않습니다.
 2. 프로젝트 루트에서 BM25 색인이 아직 없을 때 `python scripts/make_chroma_db/2_build_bm25_index.py`를 실행합니다.
 3. `data/source_metadata.sqlite3`가 없는 경우에만 앱이 `data/to_text`를 사용해 자동 생성합니다. 기존 DB는 필요한 테이블/열과 레코드를 검사해 재사용하며, 손상되거나 스키마가 맞지 않는 기존 파일은 자동 덮어쓰지 않고 중단합니다. CLI도 기본적으로 같은 방식으로 건너뛰며, 의도적 재생성은 `python src/source_index.py --force`로만 요청합니다.
-4. 앱 의존성과 필요한 로컬 모델 가중치를 준비하고 `python src/app.py`를 실행합니다. 이 명령은 Streamlit 1.66+의 `st.App(...).run()`으로 서버를 자동 시작합니다. 기존 `streamlit run src/app.py` 방식도 사용할 수 있습니다. 생성 중에는 채팅 입력을 잠그며, 제목 옆 작은 캐시 초기화 버튼은 답변 SQLite 캐시·정규화 질문 해시 매핑·유사 질문 Chroma 캐시만 삭제합니다. 질문별 기록은 쟁점/질문 제목의 접이식 패널로 묶고, 열었을 때 결과 안의 기존 카테고리도 각각 접고 펼칠 수 있도록 중첩 expander로 표시합니다. `torchvision` 누락 시에는 설치한 PyTorch/CUDA와 맞는 TorchVision을 설치해야 합니다.
+4. 프로젝트 루트의 `requirements.txt`가 앱과 보조 스크립트의 직접 패키지 목록입니다. 코드에서 사용하는 Streamlit, PyDeck, ChromaDB, Sentence Transformers/PyTorch/TorchVision, pandas, BeautifulSoup, OpenAI-compatible client 패키지를 포함합니다. `python -m pip install -r requirements.txt`로 설치하고 필요한 로컬 모델 가중치를 준비한 뒤 `python src/app.py`를 실행합니다. 이 명령은 Streamlit 1.66+의 `st.App(...).run()`으로 서버를 자동 시작합니다. 기존 `streamlit run src/app.py` 방식도 사용할 수 있습니다. 생성 중에는 채팅 입력을 잠그며, 제목 옆 작은 캐시 초기화 버튼은 답변 SQLite 캐시·정규화 질문 해시 매핑·유사 질문 Chroma 캐시만 삭제합니다. 질문별 기록은 쟁점/질문 제목의 접이식 패널로 묶고, 열었을 때 결과 안의 기존 카테고리도 각각 접고 펼칠 수 있도록 중첩 expander로 표시합니다. `torchvision` 누락 시에는 설치한 PyTorch/CUDA와 맞는 TorchVision을 설치해야 합니다.
 
 앱은 Chroma와 BM25의 대량 색인을 자동 생성하지 않습니다. 단, 원본 TXT 메타데이터 sidecar가 없을 때만 첫 앱 시작 시 한 번 생성합니다. `ALLOW_MODEL_DOWNLOAD=0`이 기본값이므로 허깅페이스 모델은 캐시된 가중치만 사용합니다. 질문 임베딩과 재순위 모델은 기본 CPU 실행입니다. 이유는 프로젝트의 로컬 Ollama 모델과 GPU VRAM을 경쟁하지 않게 하기 위해서입니다. `EMBEDDING_DEVICE=cuda`는 사용자가 설정한 경우에만 사용하며, CUDA가 없으면 명시적으로 실패합니다.
 

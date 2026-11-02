@@ -135,3 +135,21 @@ Verified on Windows `mini-gpu`: all 71 tests pass with `python -m unittest disco
 The app stylesheet hid all of `[data-testid="stToolbar"]`. In the installed Streamlit 1.66.1 frontend, the collapsed sidebar's `stExpandSidebarButton` is rendered inside that toolbar, so the same CSS that hid the top menu also removed the only reopen control. Removed that CSS rule while keeping `client.toolbarMode="minimal"` and `menu_items={}` to keep the top-right menu minimal/hidden without hiding the sidebar control. Updated the regression test to assert both settings and that the whole toolbar is not hidden.
 
 Verified: the new UI-config regression test failed before the CSS removal and passes afterward; the full suite passes all 71 tests, `python -m compileall -q src` passes, and Streamlit 1.66.1 AppTest loads the project stylesheet with no app exceptions. The native collapsed/expanded interaction was not visually verified in a browser.
+
+## 2026-11-02 — Root-level dependency manifest
+
+Created project-root `requirements.txt` with the direct Streamlit app dependencies. `src/requirements-app.txt` is retained as a compatibility include, so both install commands work. CUDA-specific PyTorch/TorchVision remain separate to avoid installing a wheel that does not match the local CUDA/Python setup.
+
+Verified on Windows `mini-gpu`: `python -m pip install --dry-run --no-deps -r requirements.txt` and the same dry run against `src/requirements-app.txt` both parse all four direct requirements and report them already satisfied. No packages were installed.
+
+## 2026-11-02 — Declare the direct PyDeck map dependency
+
+Code review confirmed `src/map_view.py` directly imports `pydeck` and `pydeck.types.String` to build the council map layers, while `src/app.py` passes the resulting deck to `st.pydeck_chart`. Added `pydeck>=0.8.0b4,<1` as an explicit direct dependency in the root manifest, matching Streamlit 1.66.1's declared compatible range; the local environment has PyDeck 0.9.3. The package may arrive transitively through Streamlit, but the app imports it directly, so it is declared explicitly.
+
+Verified: dry-run installs through both requirements files parse all five direct packages and report them already satisfied; the map marker rendering test passes. No packages were installed.
+
+## 2026-11-02 — Full project package audit
+
+Audited non-test Python files under `src/` and `scripts/`. The direct third-party imports include Streamlit, PyDeck, ChromaDB, Sentence Transformers/PyTorch, pandas, BeautifulSoup (`beautifulsoup4` distribution), and the OpenAI Python client used by the local Ollama-compatible preprocessing scripts. Expanded root `requirements.txt` to cover app, map, retrieval/reranking, and preprocessing-script dependencies; added explicit `torch`/`torchvision` ranges while noting that CUDA builds must match the local Python/CUDA setup. `sqlite3`, `tomllib`, `urllib`, and other standard-library modules are not pip packages.
+
+Verified: root and compatibility `src/requirements-app.txt` both pass `pip install --dry-run --no-deps`. Full dependency resolution on the root file passes and would install only `beautifulsoup4` plus its transitive `soupsieve`; no package was installed. `pip check` reports no broken requirements. All 71 unit tests and `compileall` for `src` and `scripts` pass; imports for the OpenAI client and `CrossEncoder` pass in the current CUDA-enabled environment.

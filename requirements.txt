@@ -1,0 +1,19 @@
+# Full direct Python dependencies used by the app and project scripts.
+# Install from the project root with: python -m pip install -r requirements.txt
+# PyTorch/TorchVision need a CPU/CUDA wheel matching the local Python environment.
+# Ollama itself is a separate local server/model, not a pip package.
+
+# Streamlit UI and the PyDeck council map
+streamlit>=1.66,<2
+pydeck>=0.8.0b4,<1
+
+# Vector retrieval and Cross-Encoder reranking
+chromadb>=1.0,<2
+sentence-transformers>=4.0,<6
+torch>=2.14,<3
+torchvision>=0.29,<0.30
+
+# Data/HTML processing scripts
+pandas>=2.2
+beautifulsoup4>=4.12,<5
+openai>=1.0,<4
