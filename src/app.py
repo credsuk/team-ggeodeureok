@@ -25,7 +25,6 @@ from src.source_index import ensure_source_index
 QUESTION_CACHE_COLLECTION = "analysis_question_cache"
 APP_STYLE = """<style>
 [data-testid="stAppViewContainer"] { background: #ffffff; }
-[data-testid="stToolbar"] { display: none !important; }
 h1, h2, h3 { color: #111111; font-weight: 500; }
 [data-testid="stChatMessage"] { border: 1px solid #e5e5e5; border-radius: 12px; }
 div.stButton > button, div[data-testid="stChatInput"] textarea { border-radius: 9999px; }
