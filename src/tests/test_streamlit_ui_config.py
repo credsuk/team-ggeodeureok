@@ -11,6 +11,8 @@ class StreamlitUiConfigTests(unittest.TestCase):
         project_root = Path(__file__).resolve().parents[2]
         config = tomllib.loads((project_root / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["client"]["toolbarMode"], "minimal")
+        app_source = (project_root / "src" / "app.py").read_text(encoding="utf-8")
+        self.assertIn("menu_items={}", app_source)
         self.assertNotIn('[data-testid="stToolbar"] { display: none !important; }', APP_STYLE)
 
 
