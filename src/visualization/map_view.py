@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.models import Evidence
+from src.core.models import Evidence
 
 # Representative latitude/longitude points for visualization, not geodetic analysis.
 # Several councils use approximate administrative-center coordinates rather than the exact office pin.

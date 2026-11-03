@@ -2,7 +2,7 @@
 
 ## 구성
 
-`src/app.py`가 Streamlit 채팅 화면과 지도를 제공합니다. 질문마다 아래 순서로 처리합니다.
+`src/app.py`가 Streamlit 채팅 화면과 지도를 제공합니다. 기능별 코드는 `src/core/`(설정·모델·캐시·LLM·파이프라인), `src/search/`(검색·순위 결합·재순위화), `src/analysis/`(클러스터링·의회 비교·타임라인·발췌), `src/data/`(원문 인덱스), `src/visualization/`(지도)에 나뉘어 있습니다. 기존 명령과의 호환을 위해 `src/source_index.py`는 얇은 실행 래퍼로 남겨 두었고, 실제 구현은 `src/data/source_index.py`에 있습니다. 질문마다 아래 순서로 처리합니다.
 
 1. 질문 전체를 정규화해 원문 대신 해시로 SQLite에 저장한 직접 캐시를 먼저 확인합니다. 같은 표현(공백·대소문자·문장부호 차이 포함)이면 로컬 LLM 호출 전에 결과를 재사용합니다. 자료 버전·프롬프트 버전·모델·전망 기준일이 다르면 재사용하지 않습니다.
 2. 직접 캐시가 없으면 Ollama 로컬 모델이 쟁점, 의회, 날짜 조건을 JSON으로 추출합니다. 그 후 SQLite의 정확한 분석 캐시를 확인하고, 없으면 Chroma의 별도 `analysis_question_cache` 컬렉션에서 유사 질문을 찾습니다. 유사도만으로 재사용하지 않고 자료 버전·프롬프트 버전·검색 범위·쟁점도 확인합니다.
@@ -50,11 +50,13 @@
 - `BM25_DB`: FTS5 인덱스 위치
 - `SOURCE_METADATA_DB`: TXT 행과 회의 메타데이터/바이트 오프셋 인덱스
 - `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_KEEP_ALIVE`: 로컬 Ollama 서버·모델·모델 메모리 유지 시간
-- `RERANKER_MODEL`, `RERANKER_DEVICE`: 다국어 Cross-Encoder와 실행 장치
-- `DATA_VERSION`, `PROMPT_VERSION`: 바뀌면 기존 답변 캐시가 재사용되지 않게 하는 버전값 (`PROMPT_VERSION` 기본값은 `local-rag-v8`)
+- `RERANKER_MODEL`, `RERANKER_DEVICE`: 기본 Cross-Encoder와 실행 장치
+- `RERANKER_MODELS`, `RERANKER_WEIGHTS`: 선택적 복수 재순위 모델과 같은 순서의 가중치. 기본은 단일 `RERANKER_MODEL`; 복수 모델은 점수 평균 대신 가중 RRF 사용
+- `DENSE_RRF_WEIGHT`, `BM25_RRF_WEIGHT`: Chroma 벡터 검색과 SQLite FTS5 BM25 순위의 상대 가중치. 기본값은 각각 `1.0`
+- `DATA_VERSION`, `PROMPT_VERSION`: 데이터/프롬프트 의미가 바뀔 때 올리는 캐시 버전 (`PROMPT_VERSION` 기본값은 `local-rag-v8`)
 - `CACHE_SIMILARITY`: Chroma 질문 캐시 유사도 문턱값(확률이 아님)
 
-원본 자료나 검색 인덱스를 다시 만들면 `DATA_VERSION`을 바꾸세요. 프롬프트 동작을 바꾸면 `PROMPT_VERSION`을 올리세요.
+검색/재순위 모델 ID, 해당 가중치, 검색 한도, LLM·임베딩 모델은 캐시 identity에 들어가므로 설정이 달라지면 이전 결과를 새 결과처럼 재사용하지 않습니다. 가중치를 바꾸기 전에 결과가 확인된 평가 질문 세트에서 기존값과 비교하세요. 원시 회의록이나 검색 인덱스를 다시 만들면 `DATA_VERSION`을 올리고, 프롬프트·응답 규칙을 바꾸면 `PROMPT_VERSION`을 올리세요.
 
 ## 결과 화면
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Protocol
 
-from src.map_view import canonical_assembly
-from src.models import QueryIntent
+from src.visualization.map_view import canonical_assembly
+from src.core.models import QueryIntent
 
 INTENT_SCHEMA: dict[str, Any] = {
     "type": "object",

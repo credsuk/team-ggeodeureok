@@ -6,10 +6,10 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from src.config import Settings
-from src.models import Evidence, QueryIntent
-from src.ranking import reciprocal_rank_fusion
-from src.source_index import SourceTextReader, lookup_source_metadata, sqlite_connection
+from src.core.config import Settings
+from src.core.models import Evidence, QueryIntent
+from src.search.ranking import reciprocal_rank_fusion
+from src.data.source_index import SourceTextReader, lookup_source_metadata, sqlite_connection
 
 
 def build_chroma_filter(intent: QueryIntent) -> dict[str, Any] | None:
@@ -127,7 +127,12 @@ class HybridRetriever:
         ]
         lexical = self.bm25.search(query_text, intent, self.settings.lexical_limit)
         temporal = self.bm25.search(query_text, intent, self.settings.candidate_limit * 4, chronological=True)
-        fused = reciprocal_rank_fusion(dense, lexical)
+        fused = reciprocal_rank_fusion(
+            dense,
+            lexical,
+            dense_weight=getattr(self.settings, "dense_rrf_weight", 1.0),
+            lexical_weight=getattr(self.settings, "lexical_rrf_weight", 1.0),
+        )
         fused_by_id = {item.id: item for item in fused}
         chronological_by_assembly: dict[str, dict[str, Any]] = {}
         for item in temporal:

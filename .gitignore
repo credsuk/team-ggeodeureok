@@ -8,7 +8,7 @@ chroma_db/
 __pycache__/
 *.pyc
 .env
-
+tests/
 
 # Cython debug symbols
 cython_debug/
@@ -82,6 +82,7 @@ models/huggingface/*
 outputs/*
 exports/
 
+!data/
 !data/README.md
 !models/README.md
 !results/*.json

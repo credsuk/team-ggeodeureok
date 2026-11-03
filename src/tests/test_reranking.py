@@ -1,7 +1,7 @@
 import unittest
 
-from src.models import Evidence
-from src.reranking import CrossEncoderReranker
+from src.core.models import Evidence
+from src.search.reranking import CrossEncoderReranker
 
 
 class FakeCrossEncoder:
@@ -19,6 +19,47 @@ class RerankerTests(unittest.TestCase):
         self.assertEqual([item.id for item in result], ["b"])
         self.assertEqual(model.pairs[0], ["issue query", "first source"])
         self.assertEqual(result[0].score, 0.9)
+
+    def test_multiple_rerankers_fuse_ranks_with_configured_weights(self):
+        class FakeModel:
+            def __init__(self, scores):
+                self.scores = scores
+
+            def predict(self, pairs, batch_size, show_progress_bar):
+                return self.scores
+
+        evidence = [Evidence(id="a", text="first source"), Evidence(id="b", text="second source")]
+        reranker = CrossEncoderReranker(
+            ["model-a", "model-b"], device="cpu",
+            model=[FakeModel([0.9, 0.1]), FakeModel([0.1, 0.9])],
+            model_weights=[3.0, 1.0], rrf_k=60,
+        )
+        result = reranker.rerank("issue query", evidence, limit=2)
+        self.assertEqual([item.id for item in result], ["a", "b"])
+        self.assertAlmostEqual(result[0].score, 3 / 61 + 1 / 62)
+
+    def test_zero_weight_reranker_is_not_invoked(self):
+        class InactiveModel:
+            called = False
+
+            def predict(self, pairs, batch_size, show_progress_bar):
+                self.called = True
+                raise AssertionError("0 가중치 모델은 호출되면 안 됩니다")
+
+        class ActiveModel:
+            def predict(self, pairs, batch_size, show_progress_bar):
+                return [0.2, 0.8]
+
+        inactive = InactiveModel()
+        reranker = CrossEncoderReranker(
+            ["inactive", "active"], device="cpu",
+            model=[inactive, ActiveModel()], model_weights=[0.0, 1.0],
+        )
+        result = reranker.rerank(
+            "issue query", [Evidence(id="a", text="first"), Evidence(id="b", text="second")], limit=2
+        )
+        self.assertFalse(inactive.called)
+        self.assertEqual([item.id for item in result], ["b", "a"])
 
 
 if __name__ == "__main__":

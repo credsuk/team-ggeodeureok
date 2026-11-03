@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from src.models import Evidence
+from src.core.models import Evidence
 
 
 def cluster_evidence(evidence: list[Evidence]) -> list[dict[str, object]]:

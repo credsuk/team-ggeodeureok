@@ -1,6 +1,6 @@
 import unittest
 
-from src.snippets import extract_relevant_excerpt
+from src.analysis.snippets import extract_relevant_excerpt
 
 
 class RelevantExcerptTests(unittest.TestCase):

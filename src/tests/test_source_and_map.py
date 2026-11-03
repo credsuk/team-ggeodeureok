@@ -3,10 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.map_view import build_map_points
-from src.models import Evidence
-from src.source_index import SourceTextReader, build_source_index, lookup_source_metadata
-from src.timeline import build_timeline
+from src.visualization.map_view import build_map_points
+from src.core.models import Evidence
+from src.data.source_index import SourceTextReader, build_source_index, lookup_source_metadata
+from src.analysis.timeline import build_timeline
 
 
 class SourceIndexTests(unittest.TestCase):

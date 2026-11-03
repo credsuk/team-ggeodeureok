@@ -1,15 +1,36 @@
 import contextlib
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.source_index import main, sqlite_connection
+from src.data.source_index import main, sqlite_connection
 
 
 class SourceIndexCliTests(unittest.TestCase):
+    def test_legacy_script_path_still_exposes_source_index_cli(self):
+        project_root = Path(__file__).resolve().parents[2]
+        result = subprocess.run(
+            [sys.executable, str(project_root / "src" / "source_index.py"), "--help"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--force", result.stdout)
+
+    def test_cli_default_paths_remain_project_root_anchored_after_package_move(self):
+        with patch.object(sys, "argv", ["source_index.py"]):
+            with patch("src.data.source_index.ensure_source_index", return_value=False) as ensure:
+                self.assertEqual(main(), 0)
+        project_root = Path(__file__).resolve().parents[2]
+        self.assertEqual(ensure.call_args.args[0], project_root / "data" / "to_text")
+        self.assertEqual(ensure.call_args.args[1], project_root / "data" / "source_metadata.sqlite3")
+
     def test_cli_reuses_existing_valid_index_without_rebuilding(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -24,7 +45,7 @@ class SourceIndexCliTests(unittest.TestCase):
                 conn.execute("INSERT INTO source_metadata VALUES ('minutes:1', 'minutes', 1, 0, '20240101', '서울특별시의회', '본회의', '임시회', '예산')")
 
             with patch.object(sys, "argv", ["source_index.py", "--input-dir", str(input_dir), "--db", str(db_path)]):
-                with patch("src.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
+                with patch("src.data.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
                     with contextlib.redirect_stdout(io.StringIO()) as output:
                         self.assertEqual(main(), 0)
 

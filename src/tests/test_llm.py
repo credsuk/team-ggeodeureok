@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from src.llm import OllamaClient
+from src.core.llm import OllamaClient
 
 
 class FakeResponse:

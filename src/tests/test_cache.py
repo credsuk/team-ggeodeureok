@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.cache import AnalysisCache
-from src.models import AnalysisResult, QueryIntent
+from src.core.cache import AnalysisCache
+from src.core.models import AnalysisResult, QueryIntent
 
 
 class CacheTests(unittest.TestCase):
@@ -87,7 +87,7 @@ class CacheTests(unittest.TestCase):
             )
 
     def test_semantic_cache_clear_deletes_ids_in_bounded_batches(self):
-        from src.cache import SemanticQuestionCache
+        from src.core.cache import SemanticQuestionCache
 
         class PagedCollection:
             def __init__(self):
@@ -110,7 +110,7 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(collection.batch_sizes, [2, 2, 2, 2])
 
     def test_semantic_question_cache_requires_close_distance_and_matching_scope(self):
-        from src.cache import SemanticQuestionCache
+        from src.core.cache import SemanticQuestionCache
         class FakeCollection:
             def __init__(self, distance, issue="학교 급식"):
                 self.distance = distance

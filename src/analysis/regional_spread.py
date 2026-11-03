@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from src.models import Evidence, QueryIntent
+from src.core.models import Evidence, QueryIntent
 
 
 def select_spread_evidence(

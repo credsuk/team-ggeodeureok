@@ -9,18 +9,18 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.cache import AnalysisCache, SemanticQuestionCache
-from src.config import Settings
-from src.intent import IntentExtractor
-from src.llm import OllamaClient
-from src.map_view import build_map_points, build_numbered_map_deck
-from src.models import AnalysisResult
-from src.pipeline import AnalysisPipeline, AnalysisWriter
-from src.regional_spread import build_regional_spread
-from src.reranking import CrossEncoderReranker
-from src.retrieval import load_retriever
-from src.snippets import extract_relevant_excerpt
-from src.source_index import ensure_source_index
+from src.core.cache import AnalysisCache, SemanticQuestionCache
+from src.core.config import Settings
+from src.core.intent import IntentExtractor
+from src.core.llm import OllamaClient
+from src.visualization.map_view import build_map_points, build_numbered_map_deck
+from src.core.models import AnalysisResult
+from src.core.pipeline import AnalysisPipeline, AnalysisWriter
+from src.analysis.regional_spread import build_regional_spread
+from src.search.reranking import CrossEncoderReranker
+from src.search.retrieval import load_retriever
+from src.analysis.snippets import extract_relevant_excerpt
+from src.data.source_index import ensure_source_index
 
 QUESTION_CACHE_COLLECTION = "analysis_question_cache"
 APP_STYLE = """<style>
@@ -65,9 +65,13 @@ def create_pipeline(settings: Settings) -> AnalysisPipeline:
         similarity_threshold=settings.cache_similarity,
         data_version=settings.data_version,
         prompt_version=settings.prompt_version,
-        model_id=settings.ollama_model,
+        model_id=settings.cache_identity,
     )
-    reranker = CrossEncoderReranker(settings.reranker_model, device=settings.reranker_device)
+    reranker = CrossEncoderReranker(
+        settings.reranker_models,
+        device=settings.reranker_device,
+        model_weights=settings.reranker_weights,
+    )
     writer = AnalysisWriter(llm, evidence_limit=settings.answer_evidence_limit)
     return AnalysisPipeline(
         intent_extractor=IntentExtractor(llm),
@@ -78,7 +82,7 @@ def create_pipeline(settings: Settings) -> AnalysisPipeline:
         writer=writer,
         data_version=settings.data_version,
         prompt_version=settings.prompt_version,
-        model_id=settings.ollama_model,
+        model_id=settings.cache_identity,
         rerank_limit=settings.rerank_limit,
     )
 
@@ -331,7 +335,12 @@ def main() -> None:
         st.subheader("현재 설정")
         st.write(f"로컬 LLM: `{settings.ollama_model}`")
         st.write(f"임베딩: `{settings.embedding_model}` ({settings.embedding_device})")
-        st.write(f"재순위 모델: `{settings.reranker_model}` ({settings.reranker_device})")
+        reranker_display = ", ".join(
+            f"{name} (가중치 {weight:g})"
+            for name, weight in zip(settings.reranker_models, settings.reranker_weights)
+        )
+        st.write(f"재순위 앙상블: `{reranker_display}` ({settings.reranker_device})")
+        st.write(f"검색 결합 가중치: 벡터 {settings.dense_rrf_weight:g} · BM25 {settings.lexical_rrf_weight:g}")
         st.write(f"자료 버전: `{settings.data_version}`")
         st.caption("모델 다운로드는 기본 차단됩니다. 이미 내려받은 가중치만 사용합니다.")
 

@@ -1,7 +1,7 @@
 import unittest
 
-from src.models import Evidence, QueryIntent
-from src.regional_spread import build_regional_spread, select_spread_evidence
+from src.core.models import Evidence, QueryIntent
+from src.analysis.regional_spread import build_regional_spread, select_spread_evidence
 
 
 class RegionalSpreadTests(unittest.TestCase):

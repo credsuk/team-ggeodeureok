@@ -1,7 +1,7 @@
 import unittest
 
-from src.intent import IntentExtractor
-from src.models import QueryIntent
+from src.core.intent import IntentExtractor
+from src.core.models import QueryIntent
 
 
 class FakeLLM:

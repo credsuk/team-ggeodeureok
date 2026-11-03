@@ -1,6 +1,6 @@
 import unittest
 
-from src.models import AnalysisResult, Evidence, QueryIntent
+from src.core.models import AnalysisResult, Evidence, QueryIntent
 
 
 class AnalysisResultCoreFactsTests(unittest.TestCase):

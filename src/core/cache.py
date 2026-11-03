@@ -11,7 +11,7 @@ import sqlite3
 import unicodedata
 from typing import Any
 
-from src.models import AnalysisResult, QueryIntent
+from src.core.models import AnalysisResult, QueryIntent
 
 
 def _question_hash(question: str) -> str:

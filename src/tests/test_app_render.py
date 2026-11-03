@@ -4,7 +4,7 @@ import unittest
 
 from src import app
 from src.app import render_result
-from src.models import AnalysisResult, Evidence, QueryIntent
+from src.core.models import AnalysisResult, Evidence, QueryIntent
 
 
 class FakeStreamlit:

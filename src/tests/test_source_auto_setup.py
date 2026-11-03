@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.source_index import ensure_source_index, lookup_source_metadata, sqlite_connection
+from src.data.source_index import ensure_source_index, lookup_source_metadata, sqlite_connection
 
 
 class SourceIndexAutoSetupTests(unittest.TestCase):
@@ -47,7 +47,7 @@ class SourceIndexAutoSetupTests(unittest.TestCase):
                 )""")
                 conn.execute("INSERT INTO source_metadata VALUES ('minutes:1', 'minutes', 1, 0, '20240101', '서울특별시의회', '본회의', '임시회', '예산')")
 
-            with patch("src.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
+            with patch("src.data.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
                 created = ensure_source_index(source_dir, db_path)
 
             self.assertFalse(created)
@@ -62,7 +62,7 @@ class SourceIndexAutoSetupTests(unittest.TestCase):
             db_path = root / "source.sqlite3"
             db_path.write_bytes(b"not sqlite")
 
-            with patch("src.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
+            with patch("src.data.source_index.build_source_index", side_effect=AssertionError("must not rebuild")):
                 with self.assertRaisesRegex(RuntimeError, "자동 재생성은 하지 않았습니다"):
                     ensure_source_index(source_dir, db_path)
 

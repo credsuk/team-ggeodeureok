@@ -1,8 +1,8 @@
 import json
 import unittest
 
-from src.models import Evidence, QueryIntent
-from src.pipeline import AnalysisWriter, FORECAST_SCHEMA, SUMMARY_SCHEMA
+from src.core.models import Evidence, QueryIntent
+from src.core.pipeline import AnalysisWriter, FORECAST_SCHEMA, SUMMARY_SCHEMA
 
 
 class FakeLLM:

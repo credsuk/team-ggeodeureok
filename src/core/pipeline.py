@@ -5,11 +5,11 @@ import json
 from collections import Counter
 from typing import Any, Callable, Protocol
 
-from src.clustering import cluster_evidence
-from src.models import AnalysisResult, Evidence, QueryIntent
-from src.ranking import validate_citations
-from src.regional_spread import build_regional_spread, select_spread_evidence
-from src.timeline import build_timeline
+from src.analysis.clustering import cluster_evidence
+from src.core.models import AnalysisResult, Evidence, QueryIntent
+from src.search.ranking import validate_citations
+from src.analysis.regional_spread import build_regional_spread, select_spread_evidence
+from src.analysis.timeline import build_timeline
 
 
 SUMMARY_SCHEMA: dict[str, Any] = {

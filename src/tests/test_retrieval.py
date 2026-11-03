@@ -2,10 +2,10 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from src.models import Evidence, QueryIntent
-from src.retrieval import BM25Repository, HybridRetriever, build_chroma_filter, make_fts_query, metadata_matches_scope
-from src.source_index import SourceTextReader, build_source_index, sqlite_connection
-from src.clustering import cluster_evidence
+from src.core.models import Evidence, QueryIntent
+from src.search.retrieval import BM25Repository, HybridRetriever, build_chroma_filter, make_fts_query, metadata_matches_scope
+from src.data.source_index import SourceTextReader, build_source_index, sqlite_connection
+from src.analysis.clustering import cluster_evidence
 
 
 class RetrievalTests(unittest.TestCase):
@@ -77,9 +77,12 @@ class HybridRetrieverTests(unittest.TestCase):
                 conn.execute("INSERT INTO bm25_docs VALUES (?, ?, ?, ?)", ("cleaned_2024_서울특별시의회:1", source_file.name, "1", "급식 예산 indexed copy"))
             class FakeCollection:
                 def count(self): return 1
-                def query(self, **kwargs): return {"ids": [["cleaned_2024_서울특별시의회:1"]], "distances": [[0.1]]}
+                def query(self, **kwargs): return {"ids": [["cleaned_2024_서울특별시의회:1"]], "distances": [[0.1]], "metadatas": [[{"date": "20240201", "assembly": "서울특별시의회"}]]}
                 def get(self, **kwargs): return {"ids": ["cleaned_2024_서울특별시의회:1"], "metadatas": [{"date": "20240201", "assembly": "서울특별시의회", "core_issue": "학교 급식"}]}
-            settings = SimpleNamespace(dense_limit=5, lexical_limit=5, candidate_limit=5, source_metadata_db=metadata_db)
+            settings = SimpleNamespace(
+                dense_limit=5, lexical_limit=5, candidate_limit=5, source_metadata_db=metadata_db,
+                dense_rrf_weight=3.0, lexical_rrf_weight=0.25,
+            )
             retriever = HybridRetriever(
                 FakeCollection(), object(), BM25Repository(bm25_db, metadata_db),
                 SourceTextReader(metadata_db, source_dir), settings,
@@ -88,6 +91,7 @@ class HybridRetrieverTests(unittest.TestCase):
             self.assertEqual(len(found), 1)
             self.assertEqual(found[0].text, "급식 예산 원본 TXT 발언")
             self.assertNotIn("indexed copy", found[0].text)
+            self.assertAlmostEqual(found[0].score, (3.0 + 0.25) / 61)
 
 
 if __name__ == "__main__":

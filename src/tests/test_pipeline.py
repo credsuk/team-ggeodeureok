@@ -3,10 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.cache import AnalysisCache
-from src.models import AnalysisResult, Evidence, QueryIntent
-from src.pipeline import AnalysisPipeline
-from src.regional_spread import build_regional_spread
+from src.core.cache import AnalysisCache
+from src.core.models import AnalysisResult, Evidence, QueryIntent
+from src.core.pipeline import AnalysisPipeline
+from src.analysis.regional_spread import build_regional_spread
 
 
 class FakeIntentExtractor:

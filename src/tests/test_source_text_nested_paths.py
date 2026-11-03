@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.source_index import SourceTextReader, build_source_index
+from src.data.source_index import SourceTextReader, build_source_index
 
 
 class NestedSourceTextPathTests(unittest.TestCase):

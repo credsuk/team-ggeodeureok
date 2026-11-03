@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.source_index import build_source_index
-import src.source_index as source_index
+from src.data.source_index import build_source_index
+import src.data.source_index as source_index
 
 
 class SourceIndexLockDiagnosticTests(unittest.TestCase):

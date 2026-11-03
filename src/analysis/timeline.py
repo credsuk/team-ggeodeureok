@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.models import Evidence
+from src.core.models import Evidence
 
 
 def build_timeline(evidence: list[Evidence]) -> tuple[Evidence | None, list[Evidence]]:
