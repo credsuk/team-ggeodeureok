@@ -127,7 +127,10 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        load_env_file(ROOT / "src" / ".env")
+        env_file = ROOT / "src" / ".env"
+        if not env_file.is_file():
+            env_file = ROOT / "src" / ".env.example"
+        load_env_file(env_file)
         root = ROOT
         data_dir = _path_env("DATA_DIR", root / "data")
         reranker_model = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")

@@ -48,6 +48,39 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Settings.from_env()
 
+    def test_settings_uses_example_when_env_file_is_missing(self):
+        from src.core import config
+        from src.core.config import Settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            src_dir = project_root / "src"
+            src_dir.mkdir()
+            (src_dir / ".env.example").write_text(
+                "OLLAMA_MODEL=example-model\nDATA_VERSION=example-data\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {}, clear=True), patch.object(config, "ROOT", project_root):
+                settings = Settings.from_env()
+
+        self.assertEqual(settings.ollama_model, "example-model")
+        self.assertEqual(settings.data_version, "example-data")
+
+    def test_settings_prefers_env_file_when_both_env_files_exist(self):
+        from src.core import config
+        from src.core.config import Settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            src_dir = project_root / "src"
+            src_dir.mkdir()
+            (src_dir / ".env").write_text("OLLAMA_MODEL=local-model\n", encoding="utf-8")
+            (src_dir / ".env.example").write_text("OLLAMA_MODEL=example-model\n", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=True), patch.object(config, "ROOT", project_root):
+                settings = Settings.from_env()
+
+        self.assertEqual(settings.ollama_model, "local-model")
+
     def test_env_file_fills_missing_values_without_overriding_shell(self):
         with tempfile.TemporaryDirectory() as tmp:
             env_file = Path(tmp) / ".env"

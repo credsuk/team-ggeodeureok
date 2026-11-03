@@ -25,7 +25,7 @@
 
    BM25 검색에는 검색용 텍스트 인덱스가 필요합니다. 답변에 보여주는 원문 인용은 BM25 복사본이 아니라 원본 TXT에서 다시 읽습니다.
 
-4. `src/.env.example`을 `src/.env`로 복사하고 필요한 설정을 조정합니다. shell 환경변수가 `.env`보다 우선합니다. 비밀값은 이 파일에 넣지 마세요.
+4. 실행 시 `src/.env`가 있으면 이를 읽고, 없으면 `src/.env.example`을 대신 읽습니다. 개인 설정을 바꾸려면 예시 파일을 `src/.env`로 복사해 수정하세요. 이미 셸에 설정한 환경변수는 파일 값보다 우선합니다. 비밀값은 `.env.example`에 넣지 마세요.
 5. 앱 의존성을 설치합니다. 검색 질문 임베딩과 Cross-Encoder는 기본 CPU 실행으로 두어 Ollama 로컬 모델과 GPU 메모리를 나눠 쓰지 않도록 했습니다. 여유 VRAM이 충분하고 Chroma 적재가 끝난 경우에만 `EMBEDDING_DEVICE=cuda`로 바꿔 보세요. CUDA를 요청했는데 사용할 수 없으면 CPU로 몰래 바꾸지 않고 중단합니다.
 
    `python -m pip install -r requirements.txt`
@@ -34,7 +34,7 @@
 
    로컬 임베딩/재순위 모델 가중치는 기본적으로 자동 다운로드하지 않습니다(`ALLOW_MODEL_DOWNLOAD=0`). 필요한 모델이 Hugging Face 캐시에 없으면 먼저 모델을 준비하거나, 명시적으로 `ALLOW_MODEL_DOWNLOAD=1`을 설정하세요. Cross-Encoder는 기본 CPU 실행으로 두어 Ollama·임베딩 모델과 GPU 메모리를 과도하게 공유하지 않도록 했습니다.
 
-   `CrossEncoder` 첫 검색에서 `ModuleNotFoundError: No module named 'torchvision'`가 나오면 설치된 PyTorch와 같은 릴리스 계열의 TorchVision을 설치해야 합니다. 현재 확인된 `mini-gpu` 환경(`torch 2.14.1+cu130`, Python 3.11.16)의 대응 버전은 `torchvision 0.29.1`입니다. PyTorch 공식 버전 표의 CUDA 13.0 조합과 동일합니다 (https://pytorch.org/get-started/previous-versions/). PowerShell에서 아래 명령을 사용하세요.
+   `CrossEncoder` 첫 검색에서 `ModuleNotFoundError: No module named 'torchvision'`가 나오면 설치된 PyTorch와 같은 릴리스 계열의 TorchVision을 설치해야 합니다. PyTorch 공식 버전 표의 CUDA 13.0 예시는 `torch==2.14.1`, `torchvision==0.29.1` 조합입니다. 현재 확인한 Windows 환경의 설치 버전은 `torchvision 0.29.2`이며, 이는 루트 README의 설치 버전 스냅샷에 기록했습니다. 아래 명령은 공식 호환 조합으로 새 설치할 때의 예시이지, 현재 설치 상태를 나타내지 않습니다. (https://pytorch.org/get-started/previous-versions/). PowerShell에서 아래 명령을 사용하세요.
 
    `& C:\Users\Admin\miniconda3\envs\mini-gpu\python.exe -m pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`
 
