@@ -8,6 +8,7 @@ chroma_db/
 *.tar.gz
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
 .env
 /change_text/**
 /change_text(old)
