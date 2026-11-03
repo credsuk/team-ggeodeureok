@@ -1,0 +1,10 @@
+psycopg[binary]
+pgvector
+sentence-transformers
+torch
+fastapi
+uvicorn
+jupyter
+scikit-learn
+numpy
+joblib

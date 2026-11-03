@@ -97,3 +97,5 @@ exports/
 *.dump.sha256
 *.dump.info.txt
 *.dump.part-*
+notebook_minimal/data/
+notebook_minimal/logs/
