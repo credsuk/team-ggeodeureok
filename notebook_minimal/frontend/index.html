@@ -430,7 +430,7 @@
           <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">관측된 의회</div><div id="kpiCouncilCount" class="text-2xl font-black text-sky-800">—</div></div>
           <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">월별 매칭 문서 합계</div><div id="kpiEvidenceCount" class="text-2xl font-black text-emerald-800">—</div></div>
           <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">가장 이른 관측일</div><div id="kpiFirstObservation" class="text-xl font-black text-slate-900">—</div></div>
-          <div class="glass-card rounded-xl p-4"><div class="text-xs text-slate-600 font-bold">다음 달 기준선</div><div id="kpiForecastValue" class="text-2xl font-black text-rose-700">—</div></div>
+          <div class="glass-card rounded-xl p-4"><div id="kpiForecastLabel" class="text-xs text-slate-600 font-bold">다음 달 전망</div><div id="kpiForecastValue" class="text-2xl font-black text-rose-700">—</div></div>
         </div>
       </div>
 
@@ -457,8 +457,8 @@
         <div id="monthlyChartBars" class="monthly-chart-wrap"><span class="text-sm text-slate-500">검색 결과가 여기에 표시됩니다.</span></div>
       </section>
       <section id="forecastPanel" class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
-        <h3 class="font-black text-slate-950"><i class="fa-solid fa-chart-line text-rose-600 mr-1"></i>다음 달 기준선</h3>
-        <div id="topForecastBriefCard" class="mt-3 text-sm text-slate-700">최근 3개월 매칭 문서 수 평균을 표시합니다. 외부 조례·통계 예측은 이 API가 제공하지 않습니다.</div>
+        <h3 id="forecastHeadline" class="font-black text-slate-950">다음 달 논의 전망</h3>
+        <div id="topForecastBriefCard" class="mt-3 text-sm text-slate-700">대표 이슈는 포아송 언급량 예측과 논의 지속 추정 확률을, 자유검색은 문서 수 평균 기준선을 표시합니다.</div>
         <div id="forecastMethod" class="mt-2 text-xs text-slate-500"></div>
       </section>
       <section id="followupReportPanel" class="glass-panel rounded-2xl p-5 shadow-sm bg-white">
@@ -510,3 +510,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+

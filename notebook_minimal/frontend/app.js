@@ -248,7 +248,6 @@
     const issue = data?.issue || {};
     const query = data?.query || definition?.query || "";
     const summary = data?.summary || {};
-    const forecast = data?.forecast || {};
     const monthly = data?.monthly_counts || [];
     state.observations = normalizeObservations(data?.propagation || []);
     state.timelineIndex = Math.max(0, state.observations.length - 1);
@@ -261,16 +260,7 @@
     const docTotal = summary.evidence_unit_count;
     text("kpiEvidenceCount", docTotal == null ? "—" : `${Number(docTotal).toLocaleString()}건`);
     text("kpiFirstObservation", summary.first_observation_date || "기록 없음");
-    const predicted = forecast.predicted_document_count;
-    text("kpiForecastValue", predicted == null ? "기록 없음" : `${Number(predicted).toLocaleString()}건`);
-    text("forecastHeadline", forecast.target_month ? `${forecast.target_month} 매칭 문서 기준선` : "기준선 계산 불가");
-    text("forecastDescription", forecast.recent_3_month_mean == null
-      ? "최근 3개월 집계가 부족해 기준선을 계산할 수 없습니다."
-      : `최근 3개월 매칭 문서 수 평균은 ${forecast.recent_3_month_mean}건입니다. 다음 달의 단순 기준선이며 확률 예측은 아닙니다.`);
-    text("topForecastBriefCard", forecast.recent_3_month_mean == null
-      ? "최근 3개월 집계가 부족해 기준선을 계산할 수 없습니다."
-      : `다음 달 기준선: ${predicted ?? "—"}건 · 최근 3개월 평균: ${forecast.recent_3_month_mean}건`);
-    text("forecastMethod", `방법: ${forecast.method || "—"} · 단위: ${forecast.count_unit || "—"} · 자료: ${forecast.basis || "—"}`);
+    renderForecast(data);
     text("radarEvidenceCount", `${(data?.evidence || []).length}건`);
     text("monthlyCountCaption", `${monthly.length}개월 · 월별 distinct 문서 수`);
 
@@ -279,6 +269,34 @@
     renderEvidence(data?.evidence || []);
     renderTimelineStep(state.timelineIndex);
     renderFollowupReport(data?.followup_report);
+  }
+
+  function renderForecast(data) {
+    const baseline = data?.forecast || {};
+    const model = data?.multi_issue_forecast;
+    const finite = (value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
+    const hasModel = model && finite(model.predicted_mention_count) && Number(model.predicted_mention_count) >= 0;
+    const forecast = hasModel ? model : baseline;
+    const value = hasModel ? model.predicted_mention_count : baseline.predicted_document_count;
+    const available = finite(value) && Number(value) >= 0;
+    const unit = hasModel ? "청크" : "문서";
+    const predicted = available ? Number(value).toLocaleString() : "—";
+    const direction = { growth: "증가", persistence: "유지", attenuation: "감소" }[model?.direction] || "판단 보류";
+    const probability = hasModel && finite(model.discussion_active_probability)
+      && Number(model.discussion_active_probability) >= 0 && Number(model.discussion_active_probability) <= 1
+      ? `${(Number(model.discussion_active_probability) * 100).toFixed(1)}%` : "계산 불가";
+    text("kpiForecastLabel", hasModel ? "다음 달 예상 언급량" : "다음 달 문서 기준선");
+    text("kpiForecastValue", available ? `${predicted}건 (${unit})` : "계산 불가");
+    text("forecastHeadline", forecast.target_month
+      ? `${forecast.target_month} ${hasModel ? "논의 전망 · 포아송 예측" : "매칭 문서 기준선"}` : "다음 달 전망 · 자료 부족");
+    const description = hasModel
+      ? `논의 지속 추정 확률 ${probability} · 예상 언급량 ${predicted}건 (이슈 군집 청크) · 전월 대비 ${direction}. 확률 보정 전 실험 모델입니다.`
+      : (available ? `최근 3개월 평균 기준선 ${predicted}건 (중복 제거 문서). 포아송 모델 예측과 집계 단위가 다르며 지속 확률은 제공하지 않습니다.`
+        : "최근 집계가 부족해 전망을 계산할 수 없습니다.");
+    text("topForecastBriefCard", description);
+    text("forecastMethod", hasModel
+      ? `지속 여부: ${model.selected_classifier || model.selection?.classifier || "active_ratio_baseline"} · 언급량: ${model.selected_count_model || model.selection?.count_model || "poisson_regression"} · 단위: 이슈 군집 청크 수`
+      : `방법: ${baseline.method || "—"} · 단위: 중복 제거 문서 수 · 자료: ${baseline.basis || "—"}`);
   }
 
   function renderFollowupReport(report) {
@@ -835,3 +853,4 @@
 
   window.addEventListener("DOMContentLoaded", initialize, { once: true });
 })();
+
