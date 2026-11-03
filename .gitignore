@@ -97,3 +97,4 @@ exports/
 *.dump.sha256
 *.dump.info.txt
 *.dump.part-*
+/2026-data-ai-analysis-competition 문제 정리
