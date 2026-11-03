@@ -10,8 +10,9 @@ mini_solo/
 ├── requirements.txt          # 앱 및 데이터 처리 스크립트의 Python 의존성
 ├── data/                     # 회의록 데이터·인덱스 (README만 Git 포함, 데이터 파일은 제외)
 │   └── README.md             # 데이터 범위·제출 시 확인할 점
-├── model/                    # 학습된 모델 파일 (현재 없음)
-│   └── README.md             # 모델 현황·추가 준비 안내
+├── model/                    # 검색 앙상블·재순위화 구현과 모델 안내
+│   ├── ensemble/             # Dense/BM25 및 Cross-Encoder 순위 결합 코드
+│   └── README.md             # 코드·외부 가중치·학습 여부 안내
 ├── src/                      # Streamlit 앱, 검색·분석 모듈, 단위 테스트
 ├── scripts/                  # 전처리 및 검색 인덱스 스크립트
 │   └── README.md             # 스크립트 역할·실행 전 확인
@@ -53,7 +54,7 @@ mini_solo/
 | `dragonkue/bge-reranker-v2-m3-ko` | 한국어 후보의 순위 평가에 추가 사용. 현재 로컬 설정은 BAAI 모델과 1:1 순위 RRF 앙상블 |
 | `huihui_ai/exaone3.5-abliterated` | Ollama에서 로컬 실행. 질문 조건 구조화, 근거 요약, 핵심 사실·전망 생성 |
 
-임베딩 모델은 의미상 비슷한 검색 후보를 찾고, 재순위화 모델은 그 후보의 순서를 다시 평가합니다. 현재 로컬 `src/.env`는 두 Cross-Encoder 순위를 1:1 RRF로 합치도록 설정되어 있지만, 회의록 품질이 더 좋아졌는지는 아직 사람 검토 평가 전이라 확인되지 않았습니다. 두 재순위 모델 가중치는 저장소가 아닌 로컬 Hugging Face 캐시에 있어 실행 환경에 미리 준비되어야 하며, 기본 설정은 모델 자동 다운로드를 허용하지 않습니다. LLM은 별도로 학습된 프로젝트 전용 모델이 아니라 설정된 사전학습 모델의 추론입니다. `model/`에는 현재 학습된 가중치 파일이 없습니다.
+임베딩 모델은 의미상 비슷한 검색 후보를 찾고, 재순위화 모델은 그 후보의 순서를 다시 평가합니다. 현재 로컬 `src/.env`는 두 Cross-Encoder 순위를 1:1 RRF로 합치도록 설정되어 있지만, 회의록 품질이 더 좋아졌는지는 아직 사람 검토 평가 전이라 확인되지 않았습니다. 두 재순위 모델 가중치는 저장소가 아닌 로컬 Hugging Face 캐시에 있어 실행 환경에 미리 준비되어야 하며, 기본 설정은 모델 자동 다운로드를 허용하지 않습니다. LLM은 별도로 학습된 프로젝트 전용 모델이 아니라 설정된 사전학습 모델의 추론입니다. `model/ensemble/`에는 검색·재순위 앙상블 구현이 있고, 프로젝트가 직접 학습한 가중치 파일은 없습니다.
 
 ## 데이터 처리·검색·추론 흐름
 
@@ -62,7 +63,7 @@ mini_solo/
 3. `scripts/make_chroma_db/1_metadata_to_chroma.py`가 메타데이터 JSONL의 `summary`를 임베딩해 ChromaDB에 적재합니다. 이 스크립트의 적재 경로는 CUDA GPU를 요구하며, CPU로 자동 전환하지 않습니다.
 4. `scripts/make_chroma_db/2_build_bm25_index.py`가 결합 JSONL의 발언 텍스트로 SQLite FTS5 BM25 인덱스를 만듭니다.
 5. 사용자의 질문에서 LLM이 쟁점·의회·날짜 조건을 추출합니다. 동일 문구 결과가 있는지 SQLite 캐시를 먼저 확인하고, 캐시 미스면 Chroma 유사 질문 캐시도 검토합니다.
-6. Chroma 벡터 검색과 FTS5 BM25 검색을 수행하고, 순위 기반 RRF로 결과를 합칩니다. 기본은 양쪽 가중치 1.0이며 `DENSE_RRF_WEIGHT`와 `BM25_RRF_WEIGHT`로 상대 비중을 조정할 수 있습니다. Cross-Encoder가 후보를 재평가하고, 선택된 근거의 원문 발언은 TXT에서 읽습니다. `RERANKER_MODELS`에 여러 재순위 모델을 설정하면 점수가 아니라 각 모델의 순위를 다시 가중 결합합니다.
+6. Chroma 벡터 검색과 FTS5 BM25 검색을 수행하고, `model/ensemble/rank_fusion.py`의 순위 기반 RRF로 결과를 합칩니다. 기본은 양쪽 가중치 1.0이며 `DENSE_RRF_WEIGHT`와 `BM25_RRF_WEIGHT`로 상대 비중을 조정할 수 있습니다. `model/ensemble/cross_encoder.py`가 후보를 재평가하고, 선택된 근거의 원문 발언은 TXT에서 읽습니다. `RERANKER_MODELS`에 여러 재순위 모델을 설정하면 점수가 아니라 각 모델의 순위를 다시 가중 결합합니다. `src/search/`는 이 기능을 호출하는 검색 흐름과 기존 import 호환 경로를 담당합니다.
 7. LLM이 요약·핵심 사실 및 근거에 연결된 조건부 전망을 생성합니다. 결과에는 출처 ID와 회의 메타데이터가 포함되며, 질문에 특정 의회가 있으면 타 의회 후보도 제한적으로 비교할 수 있습니다.
 8. Streamlit 화면에서 근거, 쟁점 묶음, 날짜순 논의 흐름, 의회별 대표 위치·순서를 지도와 표로 표시합니다.
 
@@ -74,7 +75,7 @@ SQLite 캐시는 정확한 동일 질문 결과의 기준 저장소입니다. Ch
 - `scripts/json_to_text/2_rules_make.py`는 샘플 HTML 구조를 바탕으로 전처리용 선택 규칙을 생성하는 보조 절차입니다. 설정상 로컬 Ollama API를 호출하는 방식이며, 모델 가중치를 학습하는 과정은 아닙니다.
 - `src/tests/`에는 설정, 질문 구조화, 검색 결과 결합, 캐시, 원문 조회, 재순위화, 분석 파이프라인, 지도·UI 동작을 검사하는 단위 테스트가 있습니다.
 - 단위 테스트는 고정된 입력·대체 객체·임시 파일을 이용한 코드 동작 확인입니다. 실제 전체 데이터에서의 검색 정확도, 예측 정확도, 지연시간 또는 모델 성능을 입증하지 않습니다.
-- 2026-11-03 기준 WSL Python에는 PyDeck 등 앱 의존성이 부족해 지도 렌더링 테스트가 실패하지만, 프로젝트의 Windows `mini-gpu` Python 환경에서는 전체 단위 테스트 89개가 통과했고 `python -m compileall -q src scripts`도 통과했습니다. 앞선 실제 Chroma·BM25·임베딩·단일 Cross-Encoder smoke는 5개 후보의 결과를 확인하는 데 모델 로딩 포함 약 213초가 걸렸고, 후보 300개 전체 재순위 시도는 420초 안에 끝나지 않아 중단했습니다. 별도로 사람 검토 팩 준비를 위해 9개 질문에서 실제 하이브리드 검색 후보를 생성했지만, 이 단계는 재순위 모델의 품질을 비교하지 않았습니다. 이는 전체 앱, 답변 품질 또는 실사용 지연시간의 검증이 아닙니다.
+- 2026-11-03 기준 WSL Python에는 PyDeck 등 앱 의존성이 부족해 지도 렌더링 테스트가 실패하지만, 프로젝트의 Windows `mini-gpu` Python 환경에서는 전체 단위 테스트 90개가 통과했고 `python -m compileall -q src model scripts`도 통과했습니다. 앞선 실제 Chroma·BM25·임베딩·단일 Cross-Encoder smoke는 5개 후보의 결과를 확인하는 데 모델 로딩 포함 약 213초가 걸렸고, 후보 300개 전체 재순위 시도는 420초 안에 끝나지 않아 중단했습니다. 별도로 사람 검토 팩 준비를 위해 9개 질문에서 실제 하이브리드 검색 후보를 생성했지만, 이 단계는 재순위 모델의 품질을 비교하지 않았습니다. 이는 전체 앱, 답변 품질 또는 실사용 지연시간의 검증이 아닙니다.
 - 사람 검토 평가를 위해 `C:/hermes/mini_solo_reranker_eval/`에 9개 초안 질문과 실제 검색 후보 270건(질문당 상위 30개)을 준비했습니다. 사람이 0/1/2 관련도 라벨을 채우면 BAAI 단독, 한국어 reranker 단독, 1:1 순위 앙상블의 NDCG@10·MRR@10을 같은 후보에서 비교합니다. 아직 라벨과 실제 품질 결과는 없으며, 현재 파일럿은 재순위 단계만 측정하고 전체 검색 재현율이나 답변 품질은 측정하지 않습니다. 절차는 `.skill/evaluation-process.md`와 평가 폴더의 README에 기록했습니다.
 
 분석 결과의 정확성 한계:
@@ -122,7 +123,7 @@ TXT 메타데이터 SQLite가 없으면 앱이 생성할 수 있습니다. 기�
 
 ```bash
 python -m unittest discover -s src/tests -v
-python -m compileall -q src
+python -m compileall -q src model scripts
 ```
 
 이 명령들은 코드 및 테스트 픽스처를 검사하며, 실제 Ollama·Chroma·대규모 모델 가중치·전체 데이터 통합 실행과는 구분됩니다.
@@ -131,7 +132,9 @@ python -m compileall -q src
 
 - Streamlit 진입점: `src/app.py`
 - 핵심 설정·모델·캐시·LLM·파이프라인: `src/core/`
-- 하이브리드 검색·순위 융합·재순위화: `src/search/`
+- 검색 실행 흐름·후보 수집: `src/search/retrieval.py`
+- Dense/BM25 및 Cross-Encoder 앙상블 구현: `model/ensemble/`
+- 기존 import 호환 및 인용 검증: `src/search/ranking.py`, `src/search/reranking.py`
 - 클러스터링·의회 간 비교·타임라인·발췌: `src/analysis/`
 - 원문 인덱스 구현: `src/data/source_index.py` (기존 실행 명령 호환용 `src/source_index.py`도 유지)
 - 지도·시각화: `src/visualization/`

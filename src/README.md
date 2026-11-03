@@ -2,7 +2,7 @@
 
 ## 구성
 
-`src/app.py`가 Streamlit 채팅 화면과 지도를 제공합니다. 기능별 코드는 `src/core/`(설정·모델·캐시·LLM·파이프라인), `src/search/`(검색·순위 결합·재순위화), `src/analysis/`(클러스터링·의회 비교·타임라인·발췌), `src/data/`(원문 인덱스), `src/visualization/`(지도)에 나뉘어 있습니다. 기존 명령과의 호환을 위해 `src/source_index.py`는 얇은 실행 래퍼로 남겨 두었고, 실제 구현은 `src/data/source_index.py`에 있습니다. 질문마다 아래 순서로 처리합니다.
+`src/app.py`가 Streamlit 채팅 화면과 지도를 제공합니다. 기능별 코드는 `src/core/`(설정·모델·캐시·LLM·파이프라인), `src/search/`(검색 실행 흐름·인용 검증·기존 import 호환), `model/ensemble/`(Dense/BM25 RRF와 Cross-Encoder 앙상블 구현), `src/analysis/`(클러스터링·의회 비교·타임라인·발췌), `src/data/`(원문 인덱스), `src/visualization/`(지도)에 나뉘어 있습니다. 기존 명령과의 호환을 위해 `src/source_index.py`는 얇은 실행 래퍼로 남겨 두었고, 실제 구현은 `src/data/source_index.py`에 있습니다. 질문마다 아래 순서로 처리합니다.
 
 1. 질문 전체를 정규화해 원문 대신 해시로 SQLite에 저장한 직접 캐시를 먼저 확인합니다. 같은 표현(공백·대소문자·문장부호 차이 포함)이면 로컬 LLM 호출 전에 결과를 재사용합니다. 자료 버전·프롬프트 버전·모델·전망 기준일이 다르면 재사용하지 않습니다.
 2. 직접 캐시가 없으면 Ollama 로컬 모델이 쟁점, 의회, 날짜 조건을 JSON으로 추출합니다. 그 후 SQLite의 정확한 분석 캐시를 확인하고, 없으면 Chroma의 별도 `analysis_question_cache` 컬렉션에서 유사 질문을 찾습니다. 유사도만으로 재사용하지 않고 자료 버전·프롬프트 버전·검색 범위·쟁점도 확인합니다.

@@ -61,6 +61,21 @@ class RerankerTests(unittest.TestCase):
         self.assertFalse(inactive.called)
         self.assertEqual([item.id for item in result], ["b", "a"])
 
+    def test_model_ensemble_implementation_lives_in_model_with_legacy_imports(self):
+        import inspect
+        from pathlib import Path
+        from model.ensemble.cross_encoder import CrossEncoderReranker as ModelCrossEncoderReranker
+        from model.ensemble.rank_fusion import reciprocal_rank_fusion as model_reciprocal_rank_fusion
+        from src.search.ranking import reciprocal_rank_fusion as legacy_reciprocal_rank_fusion
+        from src.search.reranking import CrossEncoderReranker as legacy_CrossEncoderReranker
+
+        project_root = Path(__file__).resolve().parents[2]
+        for implementation in (ModelCrossEncoderReranker, model_reciprocal_rank_fusion):
+            source_path = Path(inspect.getsourcefile(implementation) or inspect.getfile(implementation)).resolve()
+            self.assertTrue(source_path.is_relative_to(project_root / "model" / "ensemble"))
+        self.assertIs(legacy_CrossEncoderReranker, ModelCrossEncoderReranker)
+        self.assertIs(legacy_reciprocal_rank_fusion, model_reciprocal_rank_fusion)
+
 
 if __name__ == "__main__":
     unittest.main()
