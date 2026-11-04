@@ -8,6 +8,8 @@
            → 논의 지속·언급량 예측 → 근거 기반 설명 Agent(로컬 LLM) · 대시보드
 ```
 
+![전체 아키텍처](figure/01_전체_아키텍처.png)
+
 - 회의록 원문은 **외부 AI API로 전송하지 않습니다.** 모든 모델은 로컬(GPU, Ollama)에서 실행합니다.
 - 날짜·순서·예측 수치는 데이터와 통계 모델이 계산하고, LLM은 검색된 근거를 문장으로 설명하는 역할만 맡습니다.
 
@@ -26,7 +28,13 @@
 │   ├── raw/                     대회 제공 원본 회의록 JSON 위치 (미포함)
 │   ├── forecast/                대표 이슈 군집·예측 결과
 │   └── llm_compare/             로컬 LLM 비교 실험 결과
+├── figure/                    아키텍처 및 파이프라인 시각화 자료 (figure/README.md)
+│   ├── 01_전체_아키텍처.png
+│   ├── 02_부모_자식_청킹.png
+│   ├── 03_검색_군집화.png
+│   └── 04_예측_평가.png
 ├── model/                     모델 (model/README.md)
+│   ├── MODEL_MANIFEST.json      모델 메타데이터 명세서
 │   ├── forecast/                학습된 언급량 예측 모델(.joblib) · 평가 지표
 │   └── huggingface/             사전학습 모델 캐시 (scripts/download_models.py로 내려받음)
 ├── notebooks/                 Jupyter Notebook (01~03 전처리·DB 구축, 04~06 평가, 07 서비스 실행)
@@ -89,7 +97,7 @@
 | `qwen2.5-coder:14b` | 의회별 HTML 파싱 규칙 생성 | 로컬 Ollama |
 | Poisson Regression (scikit-learn) | 다음 달 언급량 예측 | 학습 결과 `model/forecast/` |
 
-세부 목록과 비교 실험용 모델은 `model/README.md`를 참고하세요.
+세부 목록과 비교 실험용 모델은 `model/README.md` 및 `model/MODEL_MANIFEST.json`을 참고하세요.
 
 ---
 
@@ -241,6 +249,16 @@ bash scripts/run_forecast_evaluation.sh       # 예측 학습·평가
 | 설명 Agent LLM | A.X-4.0-Light — 평균 7.7초, 8/8 문항 인용, 미끼 질문에 '근거 부족' 응답 |
 
 평가 상세: `notebooks/04`, `notebooks/05`, `notebooks/06`, `model/forecast/forecast_metrics.json`, `data/llm_compare/report.md`
+
+### 4.1 핵심 시각화 자료 (figure/)
+
+| 구분 | 자료 | 주요 시사점 |
+|---|---|---|
+| 전체 구조 | [`figure/01_전체_아키텍처.png`](figure/01_전체_아키텍처.png) | 회의록 정제부터 RRF 하이브리드 검색, 이슈 타임라인, 로컬 LLM Agent까지의 완결된 파이프라인 |
+| 청킹 전략 | [`figure/02_부모_자식_청킹.png`](figure/02_부모_자식_청킹.png) | 발언 문맥 보존을 위한 계층적 부모-자식 청킹으로 검색 정밀도 극대화 |
+| 검색·군집 | [`figure/03_검색_군집화.png`](figure/03_검색_군집화.png) | Dense+BM25 결합 및 BGE Cross-Encoder 재순위화를 통한 고품질 이슈 클러스터링 |
+| 예측 평가 | [`figure/04_예측_평가.png`](figure/04_예측_평가.png) | 10-Fold Rolling Backtest 검증으로 데이터 누수 없이 기준선 대비 큰 폭의 예측 성능 향상 입증 |
+
 
 ---
 

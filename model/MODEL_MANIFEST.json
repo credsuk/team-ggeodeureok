@@ -1,0 +1,46 @@
+{
+  "embedding_model": {
+    "name": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+    "revision": "55ec6e9358a56d56af759bc8372e970caf8c305f",
+    "dimension": 1024,
+    "max_seq_length": 2048,
+    "normalized": true,
+    "document_storage_dtype": "float16",
+    "query_runtime_dtype": "float32",
+    "purpose": "chunk and query embedding"
+  },
+  "reranker": {
+    "name": "BAAI/bge-reranker-v2-m3",
+    "revision": "main",
+    "architecture": "XLMRobertaForSequenceClassification",
+    "purpose": "candidate reranking (cross-encoder)"
+  },
+  "local_llm": {
+    "name": "A.X-4.0-Light 7B",
+    "provider": "SK Telecom",
+    "runtime": "Ollama",
+    "ollama_tag": "hf.co/mykor/A.X-4.0-Light-gguf:Q4_K_M",
+    "alternative_tag": "exaone3.5:7.8b",
+    "purpose": "evidence-grounded Korean answer generation",
+    "external_transmission_of_minutes": false
+  },
+  "forecast": {
+    "classification_model": "active_ratio_baseline",
+    "classification_description": "rule baseline based on recent 3-month activity ratio",
+    "count_model": "poisson_regression",
+    "count_model_path": "model/forecast/poisson_regression.joblib",
+    "validation": "10-fold chronological rolling backtest",
+    "metrics_file": "model/forecast/forecast_metrics.json"
+  },
+  "vector_database": {
+    "database": "PostgreSQL",
+    "database_version": "17",
+    "extension": "pgvector",
+    "extension_version": "0.8.7",
+    "table": "council_arctic_raw_v1",
+    "index": "HNSW",
+    "distance": "cosine",
+    "m": 16,
+    "ef_construction": 64
+  }
+}
