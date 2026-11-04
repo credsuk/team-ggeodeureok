@@ -1,0 +1,32 @@
+schema_version: "team-cleaned-tsv-v1"
+encoding: "utf-8-sig"
+delimiter: "\t"
+has_header: true
+
+expected_header:
+  - date
+  - assembly
+  - agenda_title
+  - speaker_role
+  - speaker_name
+  - speaker_type
+  - utterance
+
+canonical_mapping:
+  meeting_date: date
+  council: assembly
+  agenda_title: agenda_title
+  speaker_role: speaker_role
+  speaker: speaker_name
+  speaker_type: speaker_type
+  text: utterance
+
+embedding_text:
+  template: "[안건] {agenda_title}\n[발언] {text}"
+  include_speaker_metadata: false
+
+id_policy:
+  document_id: "council + meeting_date + agenda_title"
+  chunk_id: "source_key + source_line_no + all seven normalized source fields"
+  exact_duplicate_policy: "원문 발언 순서 보존을 위해 동일 문장도 모두 유지"
+

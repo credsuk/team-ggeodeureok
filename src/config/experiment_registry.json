@@ -1,0 +1,130 @@
+{
+  "project": "council-minutes-policy-intelligence",
+  "registry_version": "1.0",
+  "last_updated_kst": "2026-10-22",
+  "source_of_truth": "docs/EXPERIMENT_LOG.md",
+  "dataset": {
+    "source_key_count": 34,
+    "canonical_rows": 2057214,
+    "chunk_rows": 901358,
+    "canonical_empty_utterances": 0,
+    "canonical_replacement_characters": 0
+  },
+  "evaluation_sample": {
+    "rows": 60000,
+    "year_counts": {
+      "2024": 30001,
+      "2025": 29999
+    },
+    "priority_counts": {
+      "high": 42012,
+      "medium": 12002,
+      "low": 5986
+    }
+  },
+  "text_view_experiment": {
+    "model": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+    "revision": "55ec6e9358a56d56af759bc8372e970caf8c305f",
+    "raw": {
+      "status": "complete",
+      "rows": 60000,
+      "elapsed_seconds": 1017.8,
+      "rows_per_second": 58.95,
+      "dimension": 1024,
+      "norm_mean": 1.000935,
+      "norm_min": 0.998047,
+      "norm_max": 1.003791
+    },
+    "enriched": {
+      "status": "metrics_pending"
+    },
+    "judge": {
+      "model": "qwen3:8b",
+      "thinking": false,
+      "double_judge": true,
+      "automatic_adjudication": true,
+      "status": "running_or_pending_result"
+    },
+    "comparison": {
+      "status": "complete",
+      "primary_metric": "ndcg_at_10",
+      "query_count": 48,
+      "raw": {
+        "ndcg_at_10": 0.8928,
+        "precision_at_10": 0.975,
+        "pooled_recall_at_20": 0.5826,
+        "mrr": 1.0
+      },
+      "enriched": {
+        "ndcg_at_10": 0.8871,
+        "precision_at_10": 0.9667,
+        "pooled_recall_at_20": 0.5744,
+        "mrr": 0.9896
+      },
+      "ndcg_enriched_minus_raw": -0.0057,
+      "ndcg_difference_ci_95": [-0.0224, 0.011],
+      "per_query_wins": {"raw": 18, "enriched": 21, "tie": 9},
+      "statistical_result": "tie",
+      "selected_text_view": "raw",
+      "selection_reason": "통계적 동률에서 raw가 모든 집계 지표 우세, 구조 단순성·재현성·LLM 메타데이터 노이즈 방지"
+    }
+  },
+  "embedding_model_experiment": {
+    "status": "planned",
+    "protocol": "quick_screening_v1",
+    "sample_rows": 60000,
+    "query_count": 24,
+    "top_k_per_model": 10,
+    "judge_mode": "qwen3_8b_single_pass",
+    "retrieval_backend": "exact_cosine_or_faiss_flat_ip",
+    "models": [
+      "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+      "nlpai-lab/KURE-v1"
+    ],
+    "deferred_model": {
+      "model": "BAAI/bge-m3",
+      "reason": "dense+sparse+ColBERT 하이브리드 검색 심화 단계로 연기"
+    },
+    "metrics": [
+      "ndcg_at_10",
+      "precision_at_10",
+      "direct_precision_at_10",
+      "mrr",
+      "throughput_rows_per_second",
+      "query_latency_p50_ms",
+      "query_latency_p95_ms",
+      "peak_vram_mb",
+      "model_size_bytes"
+    ],
+    "tie_threshold_ndcg_at_10": 0.02,
+    "winner": null
+  },
+  "post_embedding_pipeline": {
+    "status": "code_ready_pending_final_embedding",
+    "artifact_contract": [
+      "embeddings.f16.npy",
+      "chunk_metadata.parquet",
+      "embedding_summary.json"
+    ],
+    "implemented": [
+      "artifact_validation",
+      "chroma_load_resume",
+      "pgvector_load_resume",
+      "filtered_search",
+      "parent_context",
+      "evidence_json",
+      "database_benchmark",
+      "fastapi",
+      "streamlit",
+      "agent_search_tool"
+    ],
+    "pending": [
+      "final_embedding_artifact",
+      "database_benchmark_results",
+      "issue_linking",
+      "timeline",
+      "forecast",
+      "local_llm_agent_orchestration"
+    ]
+  }
+}

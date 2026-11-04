@@ -1,0 +1,26 @@
+# conda env create -f environment.yml  →  conda activate council-radar
+# conda 패키지는 'py311' 환경의 conda env export 결과이며, pip 패키지는 requirements.txt의 고정 버전을 설치합니다.
+name: council-radar
+channels:
+  - defaults
+dependencies:
+  - bzip2=1.0.8
+  - ca-certificates=2026.8.13
+  - libexpat=2.8.2
+  - libffi=3.4.8
+  - libzlib=1.3.2
+  - openssl=3.5.7
+  - packaging=26.3
+  - pip=26.2.1
+  - python=3.11.16
+  - sqlite=3.53.2
+  - tk=8.6.15
+  - ucrt=10.0.22621.0
+  - vc=14.3
+  - vc14_runtime=14.44.35208
+  - vs2015_runtime=14.44.35208
+  - wheel=0.47.0
+  - xz=5.8.2
+  - zlib=1.3.2
+  - pip:
+    - -r requirements.txt

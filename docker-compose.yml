@@ -1,0 +1,32 @@
+services:
+  pgvector:
+    image: pgvector/pgvector:0.8.7-pg17
+    container_name: council-radar-pgvector   # 다른 프로젝트의 council-pgvector 컨테이너와 이름 충돌 방지
+    restart: unless-stopped
+    shm_size: 1gb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-council}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-council-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-council_vectors}
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"   # 호스트 15432 → 컨테이너 5432 (로컬 PostgreSQL과 충돌 방지)
+    command:
+      - postgres
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - shared_buffers=512MB
+    volumes:
+      # Windows 폴더 바인드 대신 Docker 볼륨에 저장 (권한·속도 문제 방지). 약 12GB 사용
+      - council_pgdata:/var/lib/postgresql/data
+      # 제출 DB 덤프를 컨테이너 안에서 읽기 전용으로 사용 (scripts/restore_db.*)
+      - ./data/db:/dump:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-council} -d ${POSTGRES_DB:-council_vectors}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  council_pgdata:
+

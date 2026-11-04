@@ -1,0 +1,374 @@
+{
+ "_설명": "지역(17개 시도)별로 비교할 수 있는 공공 통계 지표 목록. keywords 에 질문·이슈어가 걸리면 그 지표를 예측에 씀. need='high' 는 값이 클수록 그 정책 수요가 크다는 뜻, 'low' 는 작을수록. kosis.search 로 KOSIS 통계표를 찾고, 사람이 확인한 표는 kosis.org_id/tbl_id/itm_hint 에 고정(pinned)한다. 고정 전에는 자동 선택(regional_stats.py --discover 로 확인 권장). verified=true 는 실제 KOSIS 응답으로 17개 시도 값을 확인한 표(확인일 verified_at), false 는 검색으로 찾은 후보(확인 필요). publication_lag_months 는 수록 시점(연간 통계는 그해 말) 뒤 공표까지 걸리는 개월 수로, 백테스트 모드에서 기준일 시점에 아직 공표되지 않은 값을 제외할 때만 쓴다(없으면 기본 9개월). 실전 모드는 조회일까지 공표된 값을 모두 쓴다. description 은 이슈와 지표를 의미 유사도로 연결할 때 쓴다(없으면 name·keywords).",
+ "indicators": [
+  {
+   "id": "population",
+   "name": "주민등록인구",
+   "category": "인구",
+   "unit_hint": "명",
+   "need": "high",
+   "keywords": [
+    "인구",
+    "주민",
+    "도시",
+    "교통",
+    "주택",
+    "생활SOC"
+   ],
+   "kosis": {
+    "search": "주민등록인구 시도",
+    "item_hint": "주민등록인구",
+    "org_id": "101",
+    "tbl_id": "DT_1YL20651E",
+    "tbl_nm": "주민등록인구(시도/시/군/구)",
+    "verified": false
+   }
+  },
+  {
+   "id": "pop_change",
+   "name": "인구 증감률",
+   "category": "인구",
+   "unit_hint": "%",
+   "need": "low",
+   "keywords": [
+    "지방소멸",
+    "지역소멸",
+    "인구감소",
+    "인구 유출",
+    "청년 유출",
+    "귀농",
+    "귀촌",
+    "정주"
+   ],
+   "kosis": {
+    "search": "인구성장률 시도",
+    "item_hint": "인구증가율",
+    "org_id": "101",
+    "tbl_id": "DT_1YL20621",
+    "tbl_nm": "인구증가율(시도/시/군/구)",
+    "verified": false
+   }
+  },
+  {
+   "id": "aged_ratio",
+   "name": "고령인구 비율(65세 이상)",
+   "category": "인구",
+   "unit_hint": "%",
+   "need": "high",
+   "keywords": [
+    "고령",
+    "노인",
+    "치매",
+    "돌봄",
+    "경로당",
+    "요양",
+    "지방소멸",
+    "초고령"
+   ],
+   "kosis": {
+    "search": "고령인구비율 시도",
+    "item_hint": "고령인구비율",
+    "org_id": "101",
+    "tbl_id": "DT_1YL20631",
+    "tbl_nm": "고령인구비율(시도/시/군/구)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "tfr",
+   "name": "합계출산율",
+   "category": "출산·육아",
+   "unit_hint": "명",
+   "need": "low",
+   "keywords": [
+    "저출생",
+    "저출산",
+    "출산",
+    "출생",
+    "육아",
+    "보육",
+    "난임",
+    "임신",
+    "아동수당",
+    "늘봄"
+   ],
+   "kosis": {
+    "search": "합계출산율 시도",
+    "item_hint": "합계출산율",
+    "org_id": "101",
+    "tbl_id": "DT_1B81A21",
+    "tbl_nm": "시도/합계출산율, 모의 연령별 출산율",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "births",
+   "name": "출생아 수",
+   "category": "출산·육아",
+   "unit_hint": "명",
+   "need": "low",
+   "keywords": [
+    "저출생",
+    "저출산",
+    "출생",
+    "산후조리",
+    "분만"
+   ],
+   "kosis": {
+    "search": "출생아수 시도",
+    "item_hint": "출생아수",
+    "org_id": "101",
+    "tbl_id": "INH_1B81A01",
+    "tbl_nm": "출생아수(시도/시/군/구)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "fiscal_indep",
+   "name": "재정자립도",
+   "category": "예산·재정",
+   "unit_hint": "%",
+   "need": "low",
+   "keywords": [
+    "예산",
+    "재정",
+    "교부세",
+    "지방세",
+    "재정자립",
+    "국비",
+    "세수",
+    "지방재정"
+   ],
+   "kosis": {
+    "search": "재정자립도 시도",
+    "item_hint": "개편후",
+    "org_id": "101",
+    "tbl_id": "DT_1YL20921",
+    "tbl_nm": "재정자립도(시도/시/군/구)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "fiscal_auto",
+   "name": "재정자주도",
+   "category": "예산·재정",
+   "unit_hint": "%",
+   "need": "low",
+   "keywords": [
+    "예산",
+    "추경",
+    "추가경정",
+    "세출",
+    "본예산"
+   ],
+   "kosis": {
+    "search": "지방자치단체 세출예산 시도",
+    "item_hint": "재정자주도",
+    "org_id": "101",
+    "tbl_id": "DT_1YL20891",
+    "tbl_nm": "재정자주도(시도/시/군/구)",
+    "verified": false
+   }
+  },
+  {
+   "id": "traffic_acc",
+   "name": "교통사고 발생건수",
+   "category": "교통·안전",
+   "unit_hint": "건",
+   "need": "high",
+   "keywords": [
+    "교통사고",
+    "교통안전",
+    "어린이보호구역",
+    "스쿨존",
+    "음주운전",
+    "고령운전",
+    "보행자",
+    "도로안전"
+   ],
+   "kosis": {
+    "search": "교통사고 발생건수 시도",
+    "item_hint": "교통사고발생건수",
+    "org_id": "101",
+    "tbl_id": "DT_1YL21051",
+    "tbl_nm": "자동차 천대당 교통사고발생건수(시도/시/군/구)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "traffic_death",
+   "name": "교통사고 사망자 수",
+   "category": "교통·안전",
+   "unit_hint": "명",
+   "need": "high",
+   "keywords": [
+    "교통사고",
+    "교통안전",
+    "사망사고",
+    "보행자",
+    "고령운전"
+   ],
+   "kosis": {
+    "search": "교통사고 사망자수 시도",
+    "item_hint": "사망",
+    "org_id": "132",
+    "tbl_id": "DT_V_MOTA_016",
+    "tbl_nm": "시도별 교통사고",
+    "verified": false
+   }
+  },
+  {
+   "id": "fire",
+   "name": "화재 발생건수",
+   "category": "교통·안전",
+   "unit_hint": "건",
+   "need": "high",
+   "keywords": [
+    "화재",
+    "소방",
+    "재난",
+    "안전",
+    "전기차 화재"
+   ],
+   "kosis": {
+    "search": "화재발생 시도별",
+    "item_hint": "건수",
+    "org_id": "156",
+    "tbl_id": "TX_15601_A004",
+    "tbl_nm": "시도별 화재발생 현황(총괄)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "teachers_ratio",
+   "name": "교원 1인당 학생수",
+   "category": "교육",
+   "unit_hint": "명",
+   "need": "high",
+   "keywords": [
+    "학교",
+    "학생",
+    "고교학점제",
+    "교육",
+    "학급",
+    "교원",
+    "디지털교과서",
+    "늘봄학교",
+    "돌봄교실"
+   ],
+   "kosis": {
+    "search": "학생수 시도 교육기본통계",
+    "item_hint": "교원",
+    "org_id": "101",
+    "tbl_id": "DT_1YL21171",
+    "tbl_nm": "교원 1인당 학생수(시도/시/군/구)",
+    "verified": false
+   }
+  },
+  {
+   "id": "unemployment",
+   "name": "실업률",
+   "category": "고용·경제",
+   "unit_hint": "%",
+   "need": "high",
+   "keywords": [
+    "일자리",
+    "고용",
+    "실업",
+    "청년 일자리",
+    "취업",
+    "소상공인",
+    "경제"
+   ],
+   "kosis": {
+    "search": "시도별 실업률 경제활동인구",
+    "item_hint": "실업률",
+    "org_id": "101",
+    "tbl_id": "DT_1DA7014S",
+    "tbl_nm": "행정구역(시도)/성별 경제활동인구",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "basic_living",
+   "name": "기초생활보장 수급자 수",
+   "category": "복지",
+   "unit_hint": "명",
+   "need": "high",
+   "keywords": [
+    "복지",
+    "기초생활",
+    "취약계층",
+    "빈곤",
+    "고독사",
+    "긴급복지"
+   ],
+   "kosis": {
+    "search": "국민기초생활보장 수급자 시도",
+    "item_hint": "가구수",
+    "org_id": "117",
+    "tbl_id": "DT_11714_N004",
+    "tbl_nm": "국민기초생활보장수급자가구-시도별,특성별",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "jeonse_index",
+   "name": "주택 전세가격지수",
+   "category": "주거",
+   "unit_hint": "지수",
+   "need": "high",
+   "keywords": [
+    "전세사기",
+    "전세",
+    "임대차",
+    "주거",
+    "주택",
+    "청년 주거",
+    "깡통전세",
+    "보증금"
+   ],
+   "kosis": {
+    "search": "전세가격지수 시도",
+    "item_hint": "전세",
+    "org_id": "101",
+    "tbl_id": "DT_1YL13602E",
+    "tbl_nm": "주택전세가격지수(시도/시/군/구)",
+    "verified": true,
+    "verified_at": "2026-10-23"
+   }
+  },
+  {
+   "id": "ghg",
+   "name": "온실가스 배출량",
+   "category": "환경",
+   "unit_hint": "톤CO2eq",
+   "need": "high",
+   "keywords": [
+    "탄소중립",
+    "온실가스",
+    "기후위기",
+    "기후변화",
+    "넷제로",
+    "RE100",
+    "에너지 전환"
+   ],
+   "kosis": {
+    "search": "온실가스 배출량 시도",
+    "item_hint": "배출",
+    "org_id": "106",
+    "tbl_id": "DT_106N_99_2800026",
+    "tbl_nm": "국가 온실가스 지역별 배출량(직접)",
+    "verified": false
+   }
+  }
+ ]
+}

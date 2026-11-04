@@ -1,0 +1,13 @@
+database=council_vectors
+table=council_arctic_raw_v1
+row_count=901358
+vector_dimensions=1024
+source_database_size=12 GB (HNSW 인덱스 포함, 덤프에는 인덱스 정의만 포함되어 복원 시 재생성)
+pgvector_version=0.8.7
+postgresql_version=17.11
+docker_image=pgvector/pgvector:0.8.7-pg17
+dump_format=PostgreSQL custom archive (pg_dump --format=custom --compress=6 --no-owner --no-privileges)
+dump_size_bytes=3264332018
+created_at=2026-11-04T10:33:46+09:00
+contains_contest_derived_text=true
+sharing_scope=심사용 제출 전용 (공개 배포 금지)

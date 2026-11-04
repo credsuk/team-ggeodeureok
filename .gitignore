@@ -1,0 +1,32 @@
+# 인증정보
+.env
+
+# 실행 중 생성되는 대용량·파생 산출물
+data/raw/**/*.json
+data/to_text/
+data/split/
+data/sample/
+data/llm_rules_outputs/
+data/metadata_jsonl/
+data/canonical/
+data/canonical_v3/
+data/embeddings/
+data/bm25/
+data/reports/
+data/external/
+# DB 덤프는 심사 제출용으로만 포함 (대회 데이터 파생, 대용량)
+data/db/*.dump
+model/huggingface/*
+!model/huggingface/.gitkeep
+outputs/
+logs/
+exports/
+*.dump
+
+__pycache__/
+.ipynb_checkpoints/
+
+# 공개 저장소에는 회의록 원문 발췌가 든 파일을 올리지 않음 (심사 제출본에만 포함)
+data/llm_compare/evidence_top6.json
+data/llm_compare/answers.md
+data/llm_compare/results.jsonl
