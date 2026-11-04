@@ -107,7 +107,7 @@ c.metric("수정 필요", int(status_counts.get("revise", 0)))
 d.metric("반려", int(status_counts.get("reject", 0)))
 
 with st.sidebar:
-    st.markdown("### TEAM 꺼드럭's")
+    st.markdown("### TEAM 그 정책, 국민도 알고싶다.")
     st.caption("의정이슈레이더 · Human-in-the-loop")
     only_pending = st.checkbox("미검수만 보기", value=False)
     st.markdown("**승인 기준**")

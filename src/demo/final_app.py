@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""꺼드럭's 의정이슈레이더 대표 정책 이슈 TOP 10·검색·Agent 통합 화면."""
+"""그 정책, 국민도 알고싶다. 의정이슈레이더 대표 정책 이슈 TOP 10·검색·Agent 통합 화면."""
 
 from __future__ import annotations
 
@@ -643,7 +643,7 @@ def run_dynamic_analysis(query: str) -> tuple[dict[str, Any], str]:
 
 
 st.set_page_config(
-    page_title="의정이슈레이더 | 꺼드럭's", page_icon="📡", layout="wide",
+    page_title="의정이슈레이더 | 그 정책, 국민도 알고싶다.", page_icon="📡", layout="wide",
     initial_sidebar_state="expanded",
 )
 if "font_size_mode" not in st.session_state:
@@ -897,7 +897,7 @@ def render_agent_chat(
                 render_evidence(response["citations"], expanded=1)
 
 with st.sidebar:
-    st.markdown("<div class='brand-team'>TEAM 꺼드럭's</div><div class='brand-title'>의정이슈레이더</div>", unsafe_allow_html=True)
+    st.markdown("<div class='brand-team'>TEAM 그 정책, 국민도 알고싶다.</div><div class='brand-title'>의정이슈레이더</div>", unsafe_allow_html=True)
     st.caption("화면 글자 크기")
     font_columns = st.columns(3)
     for font_index, font_mode in enumerate(("작게", "기본", "크게")):
@@ -955,7 +955,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class='hero'><span class='badge'>2024–2025 DATA-DRIVEN TOP 10</span>
 <div class='hero-content'><h1>대표 정책 이슈 TOP 10</h1>
-<p><b>꺼드럭's 의정이슈레이더</b> · {escape(str(issue['issue_name']))}의 최초 관측, 지역 흐름, 원문 근거와 향후 전망</p></div>
+<p><b>그 정책, 국민도 알고싶다. 의정이슈레이더</b> · {escape(str(issue['issue_name']))}의 최초 관측, 지역 흐름, 원문 근거와 향후 전망</p></div>
 <div class='radar-art' aria-hidden='true'><span class='radar-dot'></span></div></div>
 """, unsafe_allow_html=True)
 
