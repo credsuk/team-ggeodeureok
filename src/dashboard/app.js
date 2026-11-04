@@ -251,7 +251,7 @@
     const forecast = data?.forecast || {};
     const monthly = data?.monthly_counts || [];
     state.observations = normalizeObservations(data?.propagation || []);
-    state.timelineIndex = Math.max(0, state.observations.length - 1);
+    state.timelineIndex = 0;   // 처음에는 첫 관측 의회부터 보여 주고, 재생 버튼으로 순서대로 진행
     state.selectedObservationIndex = null;
 
     text("radarState", data?.match_type === "dynamic" ? "자유 검색 · 검토 전 임시 분석" : (issue.status === "fixed" ? "고정 이슈 · PostgreSQL 분석" : "PostgreSQL 분석"));
