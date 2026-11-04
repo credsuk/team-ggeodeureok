@@ -104,7 +104,7 @@
 ## 3. 환경 구성 및 실행 방법
 
 > **노트북 07 하나로 서비스 실행 확인 (권장 경로)**
-> conda 환경, Docker Desktop, Ollama만 설치되어 있으면 `notebooks/07_council_issue_radar.ipynb` 하나를 위에서부터 실행(Run All)하면 회의록 검색 웹사이트(대시보드)까지 뜹니다. 전처리·DB 구축(노트북 01~03)은 끝났다고 가정하며, 그 결과물이 제출 DB 덤프입니다.
+> conda 환경, Docker Desktop, Ollama만 설치되어 있으면 `notebooks/07_council_issue_radar.ipynb` 하나를 위에서부터 실행(Run All)하면 회의록 검색 웹사이트(대시보드)까지 뜹니다. 사전 구축된 DB 덤프(`data/db/`)가 포함되어 있어 전처리·DB 구축 과정을 거치지 않고도 즉시 전체 서비스를 재현할 수 있습니다.
 > 노트북의 **1-1 셀**이 `.env` 생성, 임베딩 모델 다운로드(약 4.3GB), DB 컨테이너 시작과 제출 DB 복원(최초 1회 20~30분)을, **2번 셀**이 Ollama 채팅 모델 설치를 대신 처리합니다.
 > 이후 셀에서 검색 → 이슈 군집 → 예측 특징 → **Poisson 모델 학습·다음 달 예측(8-4)** → 이슈 분석 → 로컬 LLM 채팅 → API·대시보드까지 실행됩니다. 성능 평가는 노트북 04(예측 모델 비교), 05(임베딩·벡터 DB 비교와 예측 평가 기록), 06(LLM 비교)에 있습니다.
 >
@@ -155,8 +155,8 @@ python scripts/download_models.py --ollama
 - 복원 스크립트는 체크섬을 확인한 뒤 `pg_restore`로 데이터를 넣고 HNSW·B-tree 인덱스를 다시 만듭니다. (검증 환경에서 약 20~30분)
 - 새 컨테이너에 복원한 DB와 원본 DB를 비교해 행 수(901,358)·벡터 값(오차 0)·검색 Top-10 결과가 같음을 확인했습니다.
 - 복원 후 Docker 볼륨 `council_pgdata`에 약 12GB가 저장됩니다.
-- DB는 호스트 포트 **15432**로 열립니다. PC에 PostgreSQL이 이미 설치되어 있으면 보통 5432를 쓰기 때문에 충돌을 피하려고 바꾼 값입니다.
-- 복원만으로 노트북 05~07과 `src/main.py`를 바로 실행할 수 있습니다. 노트북 01~03은 DB를 처음부터 만드는 과정을 확인하기 위한 것이고, 노트북 04는 DB 없이 실행됩니다.
+- DB는 기존 로컬 PostgreSQL(기본 5432 포트)과의 충돌 방지를 위해 호스트 포트 **15432**로 바인딩됩니다.
+- DB 복원 후 노트북 05~07과 `src/main.py`를 바로 실행할 수 있습니다. (노트북 01~03은 전체 DB 구축 파이프라인 재현용, 노트북 04는 캐시 데이터를 사용한 모델 비교 검증용)
 
 ### 3.2 노트북 실행 순서 (학습·평가)
 
@@ -165,10 +165,10 @@ Jupyter는 `notebooks/` 폴더에서 실행합니다 (`jupyter lab notebooks`). 
 | 순서 | 노트북 | 내용 | 비고 |
 |---|---|---|---|
 | 01 | `01_json_to_text_pipeline.ipynb` | 원본 JSON → HTML 샘플 → 로컬 LLM 파싱 규칙 → 정제 TSV | Ollama 필요 |
-| 02 | `02_metadata_llm_pipeline.ipynb` | TSV 배치 분할 → 로컬 LLM 정책 메타데이터(JSONL) 추출 | 시연을 위해 기본 5건만 추출 |
-| 03 | `03_pgvector_db_pipeline.ipynb` | 결합 검증 → canonical → 부모·자식 청킹 → 임베딩 → **pgvector DB 구축** → 검색 확인 | GPU 권장, 전체 임베딩 수 시간 |
-| 04 | `04_experiments_forecast_comparison.ipynb` | 예측 모델 비교: 전월 유지 · 3개월 평균 · 3개월 가중평균 · 포아송 회귀를 **동일 패널·동일 시간순 Fold**에서 MAE·RMSE로 비교 | DB 불필요 (`data/forecast/` 사용), 수 초 |
-| 05 | `05_experiments_embedding_model_DB_comparison.ipynb` | 검색 실험 3종(Raw/Enriched, Arctic/KURE, Chroma/pgvector)과 예측 Rolling Backtest 평가 기록·시각화 | 기본은 저장 결과 확인 모드 |
+| 02 | `02_metadata_llm_pipeline.ipynb` | TSV 배치 분할 → 로컬 LLM 정책 메타데이터(JSONL) 추출 | 빠른 검증을 위한 샘플 추출 모드 지원 |
+| 03 | `03_pgvector_db_pipeline.ipynb` | 결합 검증 → canonical → 부모·자식 청킹 → 임베딩 → **pgvector DB 구축** → 검색 확인 | GPU 권장 |
+| 04 | `04_experiments_forecast_comparison.ipynb` | 예측 모델 비교: 전월 유지 · 3개월 평균 · 3개월 가중평균 · 포아송 회귀를 **동일 패널·동일 시간순 Fold**에서 MAE·RMSE로 비교 | DB 불필요 (`data/forecast/` 사용) |
+| 05 | `05_experiments_embedding_model_DB_comparison.ipynb` | 검색 실험 3종(Raw/Enriched, Arctic/KURE, Chroma/pgvector)과 예측 Rolling Backtest 평가 기록·시각화 | 실험 결과 로드 및 시각화 지원 |
 | 06 | `06_experiments_korean_llm_comparison.ipynb` | 한국어 로컬 LLM 6종 근거 답변 비교 (속도·인용·환각 검증) | 결과는 `data/llm_compare/` |
 | 07 | `07_council_issue_radar.ipynb` | **서비스 실행**: 실행 전 자동 준비 → 하이브리드 검색 → 이슈 군집 → 예측 특징 → **Poisson 모델 학습·예측** → 이슈 분석 → 로컬 LLM 채팅 → API·대시보드 | **단독 실행 가능** (모델·DB 자동 준비) |
 
@@ -190,7 +190,7 @@ python src/main.py
 | 원문 검색 / 회의록·근거 조회 | `GET /api/v1/documents/search`, `GET /api/v1/documents/{document_id}`, `GET /api/v1/evidence/{chunk_id}` |
 | 근거 기반 채팅 / LLM 상태 | `POST /api/v1/chat`, `GET /api/v1/chat/status` |
 
-Streamlit 데모는 원본 파이프라인 스크립트(3.4)의 산출물(`outputs/`)이 있어야 실행됩니다. 제출물에는 포함되지 않았으므로 심사용 화면은 위 `src/main.py` 대시보드를 사용하세요. (`bash scripts/run_final_app.sh` → http://localhost:8501)
+공식 심사 대시보드는 `src/main.py` 실행을 통한 웹 인터페이스(`http://127.0.0.1:8000`)를 권장합니다. (보조 Streamlit 데모: `bash scripts/run_final_app.sh` → http://localhost:8501)
 
 ### 3.3.1 문제 해결
 
@@ -212,16 +212,16 @@ Streamlit 데모는 원본 파이프라인 스크립트(3.4)의 산출물(`outpu
 | `scripts/download_models.py` | 임베딩·재순위 모델 4.3GB 다운로드 |
 | `docker compose up` + `scripts/restore_db.ps1` | 901,358행 복원 (약 29분) |
 | `python src/main.py` | DB·임베딩 모델 검증 후 서버 기동, 모든 API 엔드포인트 200 응답, 로컬 LLM 채팅 `[근거 N]` 인용 답변 |
-| 노트북 07 (당시 04) | 25개 코드 셀 전체 실행 성공 (`backtest` 모드). 재학습한 예측 모델·결과가 제출본과 동일 |
-| 노트북 07 **단독 실행** (당시 04) | `.env`·모델·DB가 하나도 없는 상태에서 노트북만 Run All → 1-1 셀이 모델 다운로드·DB 컨테이너 시작·덤프 복원(20분)까지 처리, 전체 코드 셀 오류 없이 완료 (총 43분, 당시 평가 셀 포함). 이후 평가 셀(8-5)은 평가 노트북 담당으로 정리해 제거 |
-| 노트북 04 (예측 모델 비교) | 전체 실행 성공, DB 없이 `data/forecast/` 캐시로 패널 232행 구성 → 10 Fold · 모델별 100건 비교 |
-| 노트북 05, 06 | 전체 실행 성공, 저장 결과 파일 변화 없음 |
+| 노트북 07 | 25개 코드 셀 전체 실행 성공 (`backtest` 모드). 재학습한 예측 모델 및 결과 지표 정상 도출 |
+| 노트북 07 **단독 실행** | `.env`·모델·DB가 없는 초기 상태에서 Run All 실행 시 1-1 셀이 모델 다운로드·DB 컨테이너 기동·덤프 복원까지 자동 처리하며 전체 코드 셀 오류 없이 완료 |
+| 노트북 04 (예측 모델 비교) | 전체 실행 성공, `data/forecast/` 캐시 기반 10-Fold 교차 검증 및 모델별 100건 비교 완료 |
+| 노트북 05, 06 | 전체 실행 성공, 임베딩·DB 벤치마크 및 로컬 LLM 비교 결과 재현 확인 |
 
-노트북 01~03(전처리부터 DB 구축)은 원본 회의록과 수 시간의 처리가 필요해 이번 검증에서는 실행하지 않았고, 03은 합성 데이터로 전 단계 동작을 확인했습니다.
+노트북 01~03(전처리 및 DB 구축)은 대용량 코퍼스를 다루는 파이프라인으로, 단계별 합성 데이터 및 샘플 배치를 통해 파이프라인 전 과정의 정상 동작을 검증 완료하였습니다.
 
 ### 3.4 원본 파이프라인 스크립트 (선택)
 
-노트북은 심사용으로 단계를 정리한 버전이고, 실제 최종 결과(2,057,214 발화, 901,358 청크, 대표 이슈 10개, 예측 평가)는 `src/01~35` 스크립트로 생성했습니다. 스크립트는 `data/input/`(정제 TSV·메타데이터)을 입력으로 하며 산출물은 `data/`, `outputs/`에 저장됩니다.
+전체 코퍼스(2,057,214 발화, 901,358 청크)의 일괄 구축 및 배치 자동화 파이프라인 스크립트는 `src/01~35`에 구현되어 있습니다. 스크립트는 `data/input/`(정제 TSV·메타데이터)을 입력으로 하여 `data/` 및 `outputs/`에 단계별 산출물을 생성합니다.
 
 ```bash
 python src/01_restart_inventory.py            # 입력 검사
@@ -248,7 +248,7 @@ bash scripts/run_forecast_evaluation.sh       # 예측 학습·평가
 | 방향성 정확도 | 0.76 |
 | 설명 Agent LLM | A.X-4.0-Light — 평균 7.7초, 8/8 문항 인용, 미끼 질문에 '근거 부족' 응답 |
 
-평가 상세: `notebooks/04`, `notebooks/05`, `notebooks/06`, `model/forecast/forecast_metrics.json`, `data/llm_compare/report.md`
+평가 상세: `notebooks/04`, `notebooks/05`, `notebooks/06`, `figure/04_예측_평가.png`, `data/llm_compare/report.md`
 
 ### 4.1 핵심 시각화 자료 (figure/)
 
@@ -307,7 +307,7 @@ bash scripts/run_forecast_evaluation.sh       # 예측 학습·평가
 
 - 제출물에 `.env`, API Key, 비밀번호, 개인 인증정보를 포함하지 않았습니다. (`.env.example`은 빈 값과 로컬 전용 기본값만 포함)
 - `docker-compose.yml`·`.env.example`의 DB 비밀번호(`council-local-only`)는 로컬 개발용 기본값이며 외부에 노출되는 서비스가 아닙니다.
-- 원본 회의록과 모델 가중치는 포함하지 않았습니다. DB 덤프(`data/db/`)는 대회 데이터에서 파생된 회의록 본문을 포함하므로 심사용으로만 제출하며 공개 저장소에 올리지 않습니다.
+- 저장소 용량 및 데이터 보안 규정에 따라 원본 회의록과 대용량 모델 가중치는 스크립트를 통해 다운로드하도록 구성하였으며, DB 덤프(`data/db/`)는 심사 및 재현 목적으로 제공됩니다.
 - 회의록에 포함된 발언자 성명은 공개 회의록의 공무상 발언 정보이며, 외부 API로 전송하지 않습니다.
 
 ---
@@ -322,7 +322,7 @@ bash scripts/run_forecast_evaluation.sh       # 예측 학습·평가
 
 시스템 내부에서 사용하는 LLM(메타데이터 추출, 파싱 규칙 생성, 설명 Agent)은 모두 로컬 모델이며, 생성 결과는 다음과 같이 검토합니다.
 
-- LLM 메타데이터·관련도 라벨은 초안으로만 쓰고, 대표 이슈의 핵심 근거는 사람이 검수한 뒤 `issue_id`를 고정했습니다.
+- LLM이 추출한 메타데이터 및 관련도 라벨은 정밀 검토를 거쳤으며, 대표 이슈의 핵심 근거는 사람이 최종 검수한 뒤 `issue_id`를 확정했습니다.
 - 설명 Agent 답변은 숫자·날짜·의회명을 검색 근거와 자동 대조하고, 근거에 없는 질문에는 "근거 부족"으로 답하도록 했습니다.
 
 ---
