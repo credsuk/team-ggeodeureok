@@ -66,6 +66,30 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings.ollama_model, "example-model")
         self.assertEqual(settings.data_version, "example-data")
 
+    def test_model_download_is_enabled_by_default_when_unset(self):
+        from src.core import config
+        from src.core.config import Settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            (project_root / "src").mkdir()
+            with patch.dict(os.environ, {}, clear=True), patch.object(config, "ROOT", project_root):
+                settings = Settings.from_env()
+
+        self.assertTrue(settings.allow_model_download)
+
+    def test_model_download_can_be_disabled_explicitly(self):
+        from src.core import config
+        from src.core.config import Settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            (project_root / "src").mkdir()
+            with patch.dict(os.environ, {"ALLOW_MODEL_DOWNLOAD": "0"}, clear=True), patch.object(config, "ROOT", project_root):
+                settings = Settings.from_env()
+
+        self.assertFalse(settings.allow_model_download)
+
     def test_settings_prefers_env_file_when_both_env_files_exist(self):
         from src.core import config
         from src.core.config import Settings

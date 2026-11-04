@@ -32,7 +32,7 @@
 
    이 루트 파일에는 앱·지도와 Python 전처리/인덱싱 코드가 직접 사용하는 패키지가 포함됩니다. `src/requirements-app.txt`도 같은 목록을 포함하는 호환용 설치 경로입니다.
 
-   로컬 임베딩/재순위 모델 가중치는 기본적으로 자동 다운로드하지 않습니다(`ALLOW_MODEL_DOWNLOAD=0`). 필요한 모델이 Hugging Face 캐시에 없으면 먼저 모델을 준비하거나, 명시적으로 `ALLOW_MODEL_DOWNLOAD=1`을 설정하세요. Cross-Encoder는 기본 CPU 실행으로 두어 Ollama·임베딩 모델과 GPU 메모리를 과도하게 공유하지 않도록 했습니다.
+   로컬 임베딩/재순위 모델 가중치는 캐시에 없으면 첫 사용 시 자동 다운로드합니다(`ALLOW_MODEL_DOWNLOAD=1`, 기본값). 다운로드를 막고 오프라인으로 실행하려면 `ALLOW_MODEL_DOWNLOAD=0`으로 설정하세요. 이 설정은 BAAI/Korean Cross-Encoder뿐 아니라 Hugging Face 임베딩 모델에도 적용되므로, 네트워크와 디스크 공간이 필요할 수 있습니다. Cross-Encoder는 기본 CPU 실행으로 두어 Ollama·임베딩 모델과 GPU 메모리를 과도하게 공유하지 않도록 했습니다.
 
    `CrossEncoder` 첫 검색에서 `ModuleNotFoundError: No module named 'torchvision'`가 나오면 설치된 PyTorch와 같은 릴리스 계열의 TorchVision을 설치해야 합니다. PyTorch 공식 버전 표의 CUDA 13.0 예시는 `torch==2.14.1`, `torchvision==0.29.1` 조합입니다. 현재 확인한 Windows 환경의 설치 버전은 `torchvision 0.29.2`이며, 이는 루트 README의 설치 버전 스냅샷에 기록했습니다. 아래 명령은 공식 호환 조합으로 새 설치할 때의 예시이지, 현재 설치 상태를 나타내지 않습니다. (https://pytorch.org/get-started/previous-versions/). PowerShell에서 아래 명령을 사용하세요.
 

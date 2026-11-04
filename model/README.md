@@ -11,7 +11,7 @@
 
 ## 모델 가중치와 실행 설정
 
-현재 로컬 환경은 `BAAI/bge-reranker-v2-m3`와 `dragonkue/bge-reranker-v2-m3-ko`를 1:1로 사용하도록 설정되어 있습니다. 해당 외부 체크포인트는 저장소 안이 아니라 Windows Hugging Face 캐시에 있으며, 기본 설정은 자동 다운로드를 허용하지 않습니다. 임베딩 모델과 Ollama LLM도 별도의 외부 사전학습 모델입니다.
+현재 로컬 환경은 `BAAI/bge-reranker-v2-m3`와 `dragonkue/bge-reranker-v2-m3-ko`를 1:1로 사용하도록 설정되어 있습니다. 필요한 Hugging Face 가중치가 캐시에 없으면 기본적으로 첫 사용 시 자동 다운로드하며(`ALLOW_MODEL_DOWNLOAD=1`), 오프라인으로 고정하려면 `ALLOW_MODEL_DOWNLOAD=0`으로 설정합니다. 이 옵션은 임베딩 모델을 포함한 Hugging Face 모델에도 적용됩니다. 가중치는 저장소에 포함되지 않습니다. 임베딩 모델과 Ollama LLM도 별도의 외부 사전학습 모델입니다.
 
 Dense/BM25 상대 순위 기여는 `DENSE_RRF_WEIGHT`와 `BM25_RRF_WEIGHT`로 조정하고, Cross-Encoder 목록과 순위 기여는 `RERANKER_MODELS`와 `RERANKER_WEIGHTS`로 설정합니다. 이 값들은 신경망 내부 가중치를 학습하거나 바꾸는 값이 아닙니다. 이 프로젝트에서 특정 가중치 조합이 더 정확하다는 평가는 아직 완료되지 않았습니다.
 

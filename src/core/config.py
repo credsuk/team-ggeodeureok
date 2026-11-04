@@ -156,7 +156,7 @@ class Settings:
             reranker_weights=reranker_weights,
             embedding_device=os.environ.get("EMBEDDING_DEVICE", "cpu"),
             reranker_device=os.environ.get("RERANKER_DEVICE", "cpu"),
-            allow_model_download=os.environ.get("ALLOW_MODEL_DOWNLOAD", "0").strip().lower() in {"1", "true", "yes"},
+            allow_model_download=os.environ.get("ALLOW_MODEL_DOWNLOAD", "1").strip().lower() in {"1", "true", "yes"},
             data_version=os.environ.get("DATA_VERSION", "2024-2025-v1"),
             prompt_version=os.environ.get("PROMPT_VERSION", "local-rag-v8"),
             cache_similarity=float(os.environ.get("CACHE_SIMILARITY", "0.94")),

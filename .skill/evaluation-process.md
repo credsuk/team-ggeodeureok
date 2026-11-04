@@ -13,7 +13,7 @@
 
 ### Latest recorded implementation verification (2026-11-03)
 
-The latest recorded Windows `mini-gpu` full test suite contains 92 passing tests; `python -m compileall -q src model scripts` also passed. A read-only 5-candidate Chroma/BM25/embedding/single-Cross-Encoder smoke took about 213 seconds including initialization. A 300-candidate attempt exceeded 420 seconds and was stopped. A dual-Cross-Encoder CPU compatibility smoke on two synthetic Korean evidence items returned finite fused scores in about 38.8 seconds including model loading. These are code-compatibility and smoke checks only, not relevance results or representative latency. No live Ollama answer, fresh full Streamlit browser flow, human-judged ranking comparison, or forecast backtest has been completed.
+The latest recorded Windows `mini-gpu` full test suite contains 94 passing tests; `python -m compileall -q src model scripts` also passed. A read-only 5-candidate Chroma/BM25/embedding/single-Cross-Encoder smoke took about 213 seconds including initialization. A 300-candidate attempt exceeded 420 seconds and was stopped. A dual-Cross-Encoder CPU compatibility smoke on two synthetic Korean evidence items returned finite fused scores in about 38.8 seconds including model loading. These are code-compatibility and smoke checks only, not relevance results or representative latency. No live Ollama answer, fresh full Streamlit browser flow, human-judged ranking comparison, or forecast backtest has been completed.
 
 ### 2026-11-03 — Human-reviewed reranker pilot pack
 
