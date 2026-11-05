@@ -38,7 +38,7 @@
 | 재순위 | `BAAI/bge-reranker-v2-m3` |
 | 이슈 군집화 | 코사인 유사도 그래프 + Union-Find |
 | 예측 | 활동률 기준선 + Poisson Regression |
-| 설명 Agent | 로컬 Ollama `qwen3:8b` |
+| 설명 Agent | 로컬 Ollama `exaone3.5:7.8b` |
 | 외부 참고 보강 | 법제처 자치법규·열린국회정보·KOSIS (선택, 예측 입력 제외) |
 | 화면 | Streamlit + PyDeck |
 
@@ -68,7 +68,7 @@ flowchart TD
 대회 제공 회의록을 OpenAI·Anthropic 같은 외부 LLM API로 전송하지 않습니다.
 
 - Hugging Face 모델은 **모델 파일만 다운로드**한 뒤 로컬에서 실행합니다.
-- Ollama의 `qwen3:8b`도 로컬 PC에서 실행합니다.
+- Ollama의 `exaone3.5:7.8b`도 로컬 PC에서 실행합니다.
 - 회의록 원문·벡터·DB는 Git에 올리지 않습니다.
 - 공식 이슈 탐지·군집화·예측은 제공 데이터 기간을 넘는 외부 정보를 사용하지 않습니다.
 - 선택 기능인 법제처·열린국회정보·KOSIS 조회에는 검증된 짧은 정책어 또는 통계표 ID만 전송하며, 질문 원문·회의록 원문·발화자 정보는 보내지 않습니다.
@@ -459,7 +459,7 @@ $$RMSE=\sqrt{MSE}$$
 → pgvector + BM25 + RRF + BGE
 → 회의록 원문·날짜·회의록명 확보
 → 타임라인·예측 결합
-→ qwen3:8b가 근거 기반 답변 작성
+→ exaone3.5:7.8b가 근거 기반 답변 작성
 ```
 
 Qwen은 검색 결과가 없는 내용을 사실처럼 만들면 안 됩니다. 답변에는 회의록명·일자·본문을 포함하고, Ollama가 실행되지 않으면 규칙 기반 질문 해석과 검색 근거 요약으로 동작합니다. 질문 파이프라인은 `질문 해석 → 정책어·지역 검증 → 의도별 도구 실행 → 근거 기반 답변 → 숫자·의회명 검증` 순서입니다. 화면 좌측 하단의 로봇 버튼을 누르면 대화창이 열립니다.
@@ -584,7 +584,7 @@ COUNCIL_PG_TABLE=council_arctic_raw_v1
 COUNCIL_RETRIEVAL_MODE=hybrid
 COUNCIL_BM25_INDEX=data/bm25/arctic_raw_v1/bm25.sqlite3
 OLLAMA_URL=http://127.0.0.1:11434
-COUNCIL_AGENT_MODEL=qwen3:8b
+COUNCIL_AGENT_MODEL=exaone3.5:7.8b
 COUNCIL_FOLLOWUP_MODE=backtest
 COUNCIL_MINUTES_CUTOFF=2025-12-31
 COUNCIL_EXTERNAL_CACHE=data/external/cache
@@ -743,3 +743,8 @@ __pycache__/
 - 원칙: 로컬 실행, 원문 근거, 시간 누출 방지, 재현 가능한 ID와 실험 기록
 
 세부 실험은 [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md), 활성 경로는 [`docs/ACTIVE_PIPELINE.md`](docs/ACTIVE_PIPELINE.md), 예측 평가는 [`docs/FORECAST_EVALUATION.md`](docs/FORECAST_EVALUATION.md)를 참고합니다.
+
+
+### 최종 로컬 LLM과 실험 이력
+
+최종 실행 기본 모델은 LG AI Research의 `exaone3.5:7.8b`입니다. 외부 상용 LLM API로 회의록 원문을 전송하지 않습니다. 초기 검색 관련성 자동 라벨 실험에는 `qwen3:8b`가 사용되었으며, 재현성을 위해 `config/experiment_registry.json`의 과거 기록은 수정하지 않습니다. 최종 제출 전 EXAONE으로 구조화 출력 회귀시험을 별도로 수행합니다.

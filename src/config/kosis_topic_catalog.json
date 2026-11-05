@@ -1,0 +1,4790 @@
+{
+ "_설명": "KOSIS 주제별 국내통계(vwCd=MT_ZTITLE) 30개 분류를 기준으로 한 통계 목록 지도. 질문·이슈 분야를 주제로 먼저 좁힌 뒤 그 주제의 통계표 중에서 kosis_indicators.json에 올릴 지표를 고르는 데 쓴다(런타임 조회에는 쓰지 않음). policy_keywords·indicator_ids는 사람이 관리하고, list_id·children·table_count·sido_table_count는 src/kosis_topic_catalog.py --crawl이 KOSIS 통계목록 API로 채운다(다시 실행해도 사람이 관리하는 필드는 유지). sido_hint=true는 표 이름에 시도/지역별 표기가 있는 표로, 실제로 17개 시도 값이 나오는지는 regional_stats.py로 확인해야 한다.",
+ "source": {
+  "name": "KOSIS 국가통계포털 주제별 통계",
+  "url": "https://kosis.kr/statisticsList/statisticsListIndex.do?vwcd=MT_ZTITLE&menuId=M_01_01",
+  "vw_cd": "MT_ZTITLE",
+  "crawled_at": null
+ },
+ "e_local": {
+  "_설명": "e-지방지표(주제별, vwCd=MT_GTITLE01)는 시도·시군구 비교용으로 KOSIS가 정리한 지표 묶음이라 지표 후보를 고를 때 가장 먼저 본다. tables는 --crawl-elocal이 채우고, 각 표의 topic은 topic_manual(사람이 지정) → topic_rules(표 이름에 words 중 하나가 있으면 그 주제, 위에서부터 먼저 걸린 규칙) → theme_topic_map(e-지방지표 12개 주제의 기본 주제) 순서로 정한다. theme_topic_map·topic_rules·topic_manual은 사람이 관리하며, 규칙을 고친 뒤에는 --assign으로 다시 연결한다. region_scope는 표 이름 끝 괄호로 추정한 지역 범위(sido=시도 포함, sigungu_only=시군구만, partial=9도 등 일부)로, 시도 비교에 쓸 후보는 sido만 본다.",
+  "name": "KOSIS e-지방지표(주제별)",
+  "url": "https://kosis.kr/statisticsList/statisticsListIndex.do?vwcd=MT_GTITLE01&menuId=M_01_02",
+  "vw_cd": "MT_GTITLE01",
+  "crawled_at": "2026-10-27T15:38:20",
+  "theme_topic_map": {
+   "인구": "인구",
+   "가족": "사회일반",
+   "건강": "보건",
+   "교육": "교육ㆍ훈련",
+   "소득과 소비": "소득ㆍ소비ㆍ자산",
+   "고용과 노동": "노동",
+   "주거와 교통": "주거",
+   "문화와 여가": "문화ㆍ여가",
+   "성장과 안정": "경제일반ㆍ경기",
+   "안전": "범죄ㆍ안전",
+   "환경": "환경",
+   "사회통합": "복지"
+  },
+  "topic_rules": [
+   {
+    "topic": "범죄ㆍ안전",
+    "words": [
+     "교통사고",
+     "재난재해"
+    ]
+   },
+   {
+    "topic": "보건",
+    "words": [
+     "자살률",
+     "요양기관",
+     "진료",
+     "건강보험",
+     "의료"
+    ]
+   },
+   {
+    "topic": "정부ㆍ재정",
+    "words": [
+     "재정",
+     "지방세",
+     "세입",
+     "세출",
+     "예산",
+     "결산비중",
+     "지방채",
+     "지방자치단체공무원",
+     "지방자치단체 공무원"
+    ]
+   },
+   {
+    "topic": "복지",
+    "words": [
+     "사회복지",
+     "보육"
+    ]
+   },
+   {
+    "topic": "국민계정",
+    "words": [
+     "GRDP",
+     "지역내총생산",
+     "지역총소득",
+     "개인소득",
+     "가계총처분가능소득"
+    ]
+   },
+   {
+    "topic": "임금",
+    "words": [
+     "월평균 임금",
+     "임금상승률",
+     "근로시간"
+    ]
+   },
+   {
+    "topic": "물가",
+    "words": [
+     "물가"
+    ]
+   },
+   {
+    "topic": "금융",
+    "words": [
+     "예금",
+     "대출",
+     "금융",
+     "부도"
+    ]
+   },
+   {
+    "topic": "무역ㆍ국제수지",
+    "words": [
+     "수출",
+     "수입"
+    ]
+   },
+   {
+    "topic": "에너지",
+    "words": [
+     "에너지",
+     "전력",
+     "발전량",
+     "석유",
+     "도시가스"
+    ]
+   },
+   {
+    "topic": "농림",
+    "words": [
+     "농가",
+     "경지",
+     "농업",
+     "농산물",
+     "임야",
+     "산림",
+     "축산"
+    ]
+   },
+   {
+    "topic": "수산",
+    "words": [
+     "어가",
+     "어업",
+     "수산"
+    ]
+   },
+   {
+    "topic": "광업ㆍ제조업",
+    "words": [
+     "제조업",
+     "광업",
+     "광공업"
+    ]
+   },
+   {
+    "topic": "도소매ㆍ서비스",
+    "words": [
+     "도소매",
+     "서비스업",
+     "소매판매",
+     "소매점",
+     "판매액"
+    ]
+   },
+   {
+    "topic": "교통ㆍ물류",
+    "words": [
+     "운수업",
+     "자동차",
+     "도로",
+     "주차",
+     "대중교통",
+     "교통문화"
+    ]
+   },
+   {
+    "topic": "기업경영",
+    "words": [
+     "사업체",
+     "기업",
+     "창업"
+    ]
+   },
+   {
+    "topic": "건설",
+    "words": [
+     "건축",
+     "착공",
+     "건설"
+    ]
+   },
+   {
+    "topic": "국토이용",
+    "words": [
+     "도시지역면적",
+     "개발제한구역",
+     "녹지율",
+     "공원",
+     "토지",
+     "지가"
+    ]
+   },
+   {
+    "topic": "정보통신",
+    "words": [
+     "인터넷",
+     "정보화",
+     "디지털"
+    ]
+   },
+   {
+    "topic": "과학ㆍ기술",
+    "words": [
+     "특허",
+     "연구개발"
+    ]
+   },
+   {
+    "topic": "인구",
+    "words": [
+     "가구수"
+    ]
+   }
+  ],
+  "tables": [
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21161",
+    "tbl_nm": "1인가구비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-21",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSFA139R",
+    "tbl_nm": "가족관계 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1BB0002",
+    "tbl_nm": "다문화 혼인건수(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL12701",
+    "tbl_nm": "독거노인가구비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-21",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSFA021R",
+    "tbl_nm": "부모 생활비 마련 방법(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSWE011R",
+    "tbl_nm": "생활여건의변화(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1NW1037",
+    "tbl_nm": "신혼부부수(시도/시/군/구)",
+    "stat_id": "2016028",
+    "updated": "2025-12-24",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20951",
+    "tbl_nm": "유아 천명당 보육시설수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-29",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B85033",
+    "tbl_nm": "이혼건수(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B8000I_01",
+    "tbl_nm": "조이혼율(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-09-22",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B8000I_02",
+    "tbl_nm": "조혼인율(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-09-22",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B83A35",
+    "tbl_nm": "혼인건수(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B83A23",
+    "tbl_nm": "혼인형태(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "가족"
+    ],
+    "e_paths": [
+     "가족"
+    ],
+    "topic": "사회일반",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21021E",
+    "tbl_nm": "EQ-5D(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2020-07-10",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202102E",
+    "tbl_nm": "건강생활실천율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL11001E",
+    "tbl_nm": "결핵신고 신환자수(시도)",
+    "stat_id": "2001018",
+    "updated": "2026-09-18",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20291E",
+    "tbl_nm": "고위험음주율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL0301E",
+    "tbl_nm": "기대여명(시도)",
+    "stat_id": "1994042",
+    "updated": "2024-12-04",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202104E",
+    "tbl_nm": "미충족의료율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202002E",
+    "tbl_nm": "비만유병률(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2020-07-10",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21041E",
+    "tbl_nm": "스트레스인지율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20991E",
+    "tbl_nm": "음주율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL8101E",
+    "tbl_nm": "의료기관 수술인원(시도)",
+    "stat_id": "2007271",
+    "updated": "2026-01-27",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSHE109R",
+    "tbl_nm": "의료서비스 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20981",
+    "tbl_nm": "인구 천명당 의료기관 종사 의사수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-03-31",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20971",
+    "tbl_nm": "인구 천명당 의료기관병상수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-03-31",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202103E",
+    "tbl_nm": "인플루엔자 예방접종률(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21011E",
+    "tbl_nm": "주관적 건강수준인지율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21001E",
+    "tbl_nm": "흡연율(시도/시/군/구)",
+    "stat_id": "2008057",
+    "updated": "2026-01-14",
+    "e_themes": [
+     "건강"
+    ],
+    "e_paths": [
+     "건강"
+    ],
+    "topic": "보건",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES4H09S",
+    "tbl_nm": "경력단절여성인구(시도)",
+    "stat_id": "2006081",
+    "updated": "2024-11-19",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A02S_01",
+    "tbl_nm": "경제활동인구(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7014S_01",
+    "tbl_nm": "경제활동인구(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A02S_02",
+    "tbl_nm": "경제활동참가율(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7014S_02",
+    "tbl_nm": "경제활동참가율(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A02S_03",
+    "tbl_nm": "고용률(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7014S_03",
+    "tbl_nm": "고용률(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20561",
+    "tbl_nm": "고용보험 신규취득자수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-12",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL1101",
+    "tbl_nm": "구인배수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15007E",
+    "tbl_nm": "구직급여 신청자수(시도)",
+    "stat_id": "2015008",
+    "updated": "2026-08-18",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15005E_2",
+    "tbl_nm": "근로시간(시도)",
+    "stat_id": "1968001",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "임금",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSLA0812R",
+    "tbl_nm": "근로여건만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15002",
+    "tbl_nm": "비정규직근로자 비율(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-24",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15004",
+    "tbl_nm": "상용직 비중(시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-27",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15003",
+    "tbl_nm": "상용직 비중(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A01S",
+    "tbl_nm": "실업률(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7104S",
+    "tbl_nm": "실업률(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A02S_05",
+    "tbl_nm": "실업자수(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7088S",
+    "tbl_nm": "실업자수(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15006",
+    "tbl_nm": "월평균 임금 및 임금상승률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-24",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "임금",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A03_A01S",
+    "tbl_nm": "청년고용률(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7015S",
+    "tbl_nm": "청년고용률(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20531E",
+    "tbl_nm": "청년실업률(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A02S_04",
+    "tbl_nm": "취업자수(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1DA7030S",
+    "tbl_nm": "취업자수(시도)",
+    "stat_id": "1962002",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20541",
+    "tbl_nm": "취업자증감(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES3A11S",
+    "tbl_nm": "타지역 통근 취업자(시/군/구)",
+    "stat_id": "2006081",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "고용과 노동"
+    ],
+    "e_paths": [
+     "고용과 노동"
+    ],
+    "topic": "노동",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21171",
+    "tbl_nm": "교원 1인당 학생수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL8901",
+    "tbl_nm": "대학교 교원수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21181",
+    "tbl_nm": "대학교 수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL8801",
+    "tbl_nm": "대학교 학생수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21221",
+    "tbl_nm": "유치원 교원수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21201",
+    "tbl_nm": "유치원 수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21211",
+    "tbl_nm": "유치원 원아수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21191",
+    "tbl_nm": "인구 천명당 사설학원수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21251",
+    "tbl_nm": "초등학교 교원수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21231",
+    "tbl_nm": "초등학교 수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21241",
+    "tbl_nm": "초등학교 학생수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSED064R",
+    "tbl_nm": "학교교육의 효과(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15001",
+    "tbl_nm": "학급당 학생수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSED019R",
+    "tbl_nm": "학생의 학교생활만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "교육"
+    ],
+    "e_paths": [
+     "교육"
+    ],
+    "topic": "교육ㆍ훈련",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL10901",
+    "tbl_nm": "국가유산 현황(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-03-23",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSCL050R",
+    "tbl_nm": "국내관광여행횟수(시도)",
+    "stat_id": "1977013",
+    "updated": "2026-07-29",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202110E",
+    "tbl_nm": "도서관 현황(시도)",
+    "stat_id": "2008050",
+    "updated": "2025-11-24",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSCL030R",
+    "tbl_nm": "문화예술 및 스포츠관람현황(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-13",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSCL091R",
+    "tbl_nm": "여가활용 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSCL093R",
+    "tbl_nm": "여가활용 불만족 이유(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20931",
+    "tbl_nm": "인구 십만명당 문화기반시설수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-30",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL2401",
+    "tbl_nm": "인구 십만명당 체육시설수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-04-17",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21281",
+    "tbl_nm": "인구 천명당 도시공원조성면적(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-01",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202101E",
+    "tbl_nm": "인터넷이용률(시도)",
+    "stat_id": "2003002",
+    "updated": "2026-03-04",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "정보통신",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSCL060R",
+    "tbl_nm": "해외여행경험및횟수(시도)",
+    "stat_id": "1977013",
+    "updated": "2026-07-29",
+    "e_themes": [
+     "문화와 여가"
+    ],
+    "e_paths": [
+     "문화와 여가"
+    ],
+    "topic": "문화ㆍ여가",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202114E",
+    "tbl_nm": "건강보험적용인구현황(시도/시/군/구)",
+    "stat_id": "1996019",
+    "updated": "2026-02-04",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13801E",
+    "tbl_nm": "국민기초생활보장 수급자수(시도)",
+    "stat_id": "1977009",
+    "updated": "2026-09-15",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSP063R",
+    "tbl_nm": "기부율(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20961",
+    "tbl_nm": "노인 천명당 노인여가복지시설수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-16",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202003E",
+    "tbl_nm": "등록장애인수(시도/시/군/구)",
+    "stat_id": "2006061",
+    "updated": "2026-08-24",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13002",
+    "tbl_nm": "보건 및 사회복지 사업체비율(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13001",
+    "tbl_nm": "보건 및 사회복지 사업체비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13102",
+    "tbl_nm": "보건 및 사회복지 종사자비율(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13101",
+    "tbl_nm": "보건 및 사회복지 종사자비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSP048R",
+    "tbl_nm": "사회단체 참여율(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20271",
+    "tbl_nm": "사회복지시설 종사자수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2024-01-12",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20261",
+    "tbl_nm": "사회복지전담 공무원현황(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-16",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSP041R",
+    "tbl_nm": "사회적 관계망(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSP020R",
+    "tbl_nm": "삶의 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL8001E",
+    "tbl_nm": "요양기관수(시도/시/군/구)",
+    "stat_id": "1996019",
+    "updated": "2023-11-17",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20941",
+    "tbl_nm": "인구 십만명당 사회복지시설수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-20",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL2201",
+    "tbl_nm": "인구 천명당 지방자치단체 공무원현원(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-23",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21121E",
+    "tbl_nm": "인구십만명당 자살률(시도/시/군/구)",
+    "stat_id": "1999038",
+    "updated": "2026-09-22",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20912",
+    "tbl_nm": "일반회계중 사회복지결산비중(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-12",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20902",
+    "tbl_nm": "일반회계중 일반공공행정결산비중(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-12",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ES4G07S",
+    "tbl_nm": "임금근로자의 사회보험 가입률(시도)",
+    "stat_id": "2006081",
+    "updated": "2019-07-01",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSP191R",
+    "tbl_nm": "자원봉사활동 참여율(시도)",
+    "stat_id": "1977013",
+    "updated": "2026-01-06",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "복지",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL10801",
+    "tbl_nm": "재난재해관리기금현황(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-23",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL2101E",
+    "tbl_nm": "지방자치단체공무원 현원(시도)",
+    "stat_id": "2008067",
+    "updated": "2026-07-14",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202115E",
+    "tbl_nm": "진료형태별 진료현황(시도/시/군/구)",
+    "stat_id": "1996019",
+    "updated": "2026-02-04",
+    "e_themes": [
+     "사회통합"
+    ],
+    "e_paths": [
+     "사회통합"
+    ],
+    "topic": "보건",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1C96_02",
+    "tbl_nm": "1인당 GRDP(시도)",
+    "stat_id": "1989005",
+    "updated": "2025-12-23",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "국민계정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1C65_03E",
+    "tbl_nm": "GRDP(시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-12-26",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "국민계정",
+    "topic_source": "rule",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1C91",
+    "tbl_nm": "GRDP(시도)",
+    "stat_id": "1989005",
+    "updated": "2025-12-23",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "국민계정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1JC1501",
+    "tbl_nm": "가구수(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-07-28",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "인구",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20571",
+    "tbl_nm": "경제성장률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2025-12-24",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "경제일반ㆍ경기",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1F02001",
+    "tbl_nm": "광공업생산지수(시도)",
+    "stat_id": "1970002",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1EA1045",
+    "tbl_nm": "농가수(시도/시/군/구)",
+    "stat_id": "1968004",
+    "updated": "2025-04-17",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1K41005_01",
+    "tbl_nm": "대형소매점판매액(시도)",
+    "stat_id": "1999001",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6102",
+    "tbl_nm": "도소매업 사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6101",
+    "tbl_nm": "도소매업 사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6202",
+    "tbl_nm": "도소매업 종사자수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6201",
+    "tbl_nm": "도소매업 종사자수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1K41005_02",
+    "tbl_nm": "백화점판매액(시도)",
+    "stat_id": "1999001",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20832",
+    "tbl_nm": "사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "기업경영",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20831",
+    "tbl_nm": "사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2024-02-14",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "기업경영",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6302",
+    "tbl_nm": "서비스업 사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6301",
+    "tbl_nm": "서비스업 사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2023-10-13",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6402",
+    "tbl_nm": "서비스업 종사자수(등록기반)(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6401",
+    "tbl_nm": "서비스업 종사자수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2023-10-13",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15010",
+    "tbl_nm": "서비스업생산 증감률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "도소매ㆍ서비스",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL7001",
+    "tbl_nm": "수입액(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-18",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "무역ㆍ국제수지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6901",
+    "tbl_nm": "수출액(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-18",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "무역ㆍ국제수지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ZB7001",
+    "tbl_nm": "어가수(시도)",
+    "stat_id": "1968004",
+    "updated": "2025-04-17",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "수산",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL7101E",
+    "tbl_nm": "어음부도율(시도)",
+    "stat_id": "2006012",
+    "updated": "2026-10-26",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "금융",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5902",
+    "tbl_nm": "운수업 사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-28",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5901",
+    "tbl_nm": "운수업 사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6002",
+    "tbl_nm": "운수업 종사자수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-28",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6001",
+    "tbl_nm": "운수업 종사자수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20131",
+    "tbl_nm": "유기·무항생제축산물인증현황(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20842",
+    "tbl_nm": "인구 천명당 사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "기업경영",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20841",
+    "tbl_nm": "인구 천명당 사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2024-02-14",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "기업경영",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20852",
+    "tbl_nm": "인구 천명당 종사자수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "경제일반ㆍ경기",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20851",
+    "tbl_nm": "인구 천명당 종사자수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2023-10-13",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "경제일반ㆍ경기",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20921",
+    "tbl_nm": "재정자립도(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-12",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20891",
+    "tbl_nm": "재정자주도(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-12",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5702",
+    "tbl_nm": "제조업 사업체수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5701",
+    "tbl_nm": "제조업 사업체수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5802",
+    "tbl_nm": "제조업 종사자수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL5801",
+    "tbl_nm": "제조업 종사자수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-10-29",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15009",
+    "tbl_nm": "제조업생산 증감률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "광업ㆍ제조업",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15014",
+    "tbl_nm": "종사자수(등록기반)(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "경제일반ㆍ경기",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15012",
+    "tbl_nm": "종사자수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2024-02-14",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "경제일반ㆍ경기",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15011E",
+    "tbl_nm": "지방세(시도)",
+    "stat_id": "1986014",
+    "updated": "2025-11-26",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "정부ㆍ재정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20551E_1",
+    "tbl_nm": "창업기업수(시도)",
+    "stat_id": "2006002",
+    "updated": "2026-03-10",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "기업경영",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20121",
+    "tbl_nm": "친환경농산물인증현황(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-30",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202109E",
+    "tbl_nm": "특허출원건수(시도)",
+    "stat_id": "1976032",
+    "updated": "2026-09-03",
+    "e_themes": [
+     "성장과 안정"
+    ],
+    "e_paths": [
+     "성장과 안정"
+    ],
+    "topic": "과학ㆍ기술",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1C96_04",
+    "tbl_nm": "1인당 가계총처분가능소득(시도)",
+    "stat_id": "1989005",
+    "updated": "2025-12-23",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "국민계정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1C96_03",
+    "tbl_nm": "1인당 지역총소득(시도)",
+    "stat_id": "1989005",
+    "updated": "2026-03-20",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "국민계정",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1HD_AAA01_02",
+    "tbl_nm": "가구 자산 및 부채(지역별): 2017년 이후(시도)",
+    "stat_id": "2006030",
+    "updated": "2025-12-04",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "소득ㆍ소비ㆍ자산",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1HD_AAA01_01",
+    "tbl_nm": "가구소득(지역별): 2017년 이후(시도)",
+    "stat_id": "2006030",
+    "updated": "2025-12-04",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "소득ㆍ소비ㆍ자산",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1EA1611",
+    "tbl_nm": "농가부채(9도)",
+    "stat_id": "1962007",
+    "updated": "2026-05-22",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "partial"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1EA1501",
+    "tbl_nm": "농업소득(9도)",
+    "stat_id": "1962007",
+    "updated": "2026-05-22",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "partial"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSIC050R",
+    "tbl_nm": "소득만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "소득ㆍ소비ㆍ자산",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSIC060R",
+    "tbl_nm": "소비생활 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "소득ㆍ소비ㆍ자산",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20581",
+    "tbl_nm": "소비자물가 등락률(시도/시)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-02",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "물가",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1J22003",
+    "tbl_nm": "소비자물가지수(시도)",
+    "stat_id": "1964001",
+    "updated": "2026-10-02",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "물가",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6801E",
+    "tbl_nm": "예금은행대출금액(시도)",
+    "stat_id": "1976015",
+    "updated": "2026-10-26",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "금융",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL6701E",
+    "tbl_nm": "예금은행예금액(시도)",
+    "stat_id": "1976015",
+    "updated": "2026-10-26",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "금융",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSIC010R",
+    "tbl_nm": "주관적소득수준(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-11-11",
+    "e_themes": [
+     "소득과 소비"
+    ],
+    "e_paths": [
+     "소득과 소비"
+    ],
+    "topic": "소득ㆍ소비ㆍ자산",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21091",
+    "tbl_nm": "119안전센터 1개센터당 담당주민수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-19",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL15013",
+    "tbl_nm": "경찰공무원 1인당 담당주민수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2025-11-17",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21101",
+    "tbl_nm": "구조·구급대원 1인당 담당주민수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-19",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202108",
+    "tbl_nm": "노인 교통사고건수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-29",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13901",
+    "tbl_nm": "뺑소니교통사고율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-03",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSA010R",
+    "tbl_nm": "사회안전에 대한 인식(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-08-20",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL3401",
+    "tbl_nm": "소년 천명당 소년범죄검거건수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2025-11-17",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21061",
+    "tbl_nm": "소방공무원 1인당 담당주민수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-19",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21071",
+    "tbl_nm": "소방서 1개서당 담당주민수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-19",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21111",
+    "tbl_nm": "소방안전교육 이수율(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-19",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL10005",
+    "tbl_nm": "아동 십만명당 안전사고사망률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSSA132R",
+    "tbl_nm": "야간 보행에 대한 안전도 및 야간 보행이 불안한 이유(시도)",
+    "stat_id": "1977013",
+    "updated": "2024-11-12",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202107",
+    "tbl_nm": "어린이 교통사고건수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-30",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL3001",
+    "tbl_nm": "인구 천명당 범죄발생건수(시도)",
+    "stat_id": "9B08007",
+    "updated": "2025-11-17",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202106E",
+    "tbl_nm": "자연재해 피해현황(시도)",
+    "stat_id": "2004029",
+    "updated": "2026-01-26",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20361",
+    "tbl_nm": "자연재해위험 개선지구지정현황(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-16",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21081",
+    "tbl_nm": "주민 만명당 화재발생건수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-28",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20321",
+    "tbl_nm": "중요범죄 발생 및 검거 현황(시도)",
+    "stat_id": "9B08007",
+    "updated": "2025-11-17",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20341",
+    "tbl_nm": "지역안전등급현황(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-12-26",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL8601",
+    "tbl_nm": "화재발생건수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-28",
+    "e_themes": [
+     "안전"
+    ],
+    "e_paths": [
+     "안전"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20631",
+    "tbl_nm": "고령인구비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-12",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20701",
+    "tbl_nm": "남녀성비(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-12",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL12501E",
+    "tbl_nm": "노령화지수(시도)",
+    "stat_id": "1994044",
+    "updated": "2024-05-28",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1EA1011_01",
+    "tbl_nm": "농가인구(시도/시/군/구)",
+    "stat_id": "1968004",
+    "updated": "2025-04-17",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21261",
+    "tbl_nm": "등록외국인 현황(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-22",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B80A18",
+    "tbl_nm": "사망률(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-09-22",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B82A01",
+    "tbl_nm": "사망자수(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-09-22",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B26001_A021",
+    "tbl_nm": "순이동인구(시도/시/군/구)",
+    "stat_id": "1976003",
+    "updated": "2026-09-23",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1ZB7024",
+    "tbl_nm": "어가인구(시도)",
+    "stat_id": "1968004",
+    "updated": "2025-04-17",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "수산",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21271",
+    "tbl_nm": "인구 천명당 외국인수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-22",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL12001E",
+    "tbl_nm": "인구감소지역 생활인구: 성별(시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-31",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL12002E",
+    "tbl_nm": "인구감소지역 생활인구: 연령별(시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-31",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20621",
+    "tbl_nm": "인구증가율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-22",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20632",
+    "tbl_nm": "인구총조사 고령인구비율(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-08-21",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20622",
+    "tbl_nm": "인구총조사 연평균 인구증감률(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-08-21",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1IN1503_01",
+    "tbl_nm": "인구총조사 인구(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-07-28",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20643",
+    "tbl_nm": "인구총조사 청년인구비율(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-08-21",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B26001_A022",
+    "tbl_nm": "전입인구(시도/시/군/구)",
+    "stat_id": "1976003",
+    "updated": "2026-09-23",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B26001_A023",
+    "tbl_nm": "전출인구(시도/시/군/구)",
+    "stat_id": "1976003",
+    "updated": "2026-09-23",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20651E",
+    "tbl_nm": "주민등록인구(시도/시/군/구)",
+    "stat_id": "2008001",
+    "updated": "2026-10-02",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20642",
+    "tbl_nm": "청년순이동률(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-02-19",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1BPB002E",
+    "tbl_nm": "추계인구(시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-27",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sigungu_only"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1BPB001E",
+    "tbl_nm": "추계인구(시도)",
+    "stat_id": "1994044",
+    "updated": "2024-05-28",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B81A01",
+    "tbl_nm": "출생아수(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B83A10",
+    "tbl_nm": "평균 재혼연령(시도)",
+    "stat_id": "1962004",
+    "updated": "2026-03-19",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B83A09",
+    "tbl_nm": "평균 초혼연령(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-08-26",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1IN1503_02",
+    "tbl_nm": "평균연령(시도/시/군/구)",
+    "stat_id": "1962001",
+    "updated": "2026-07-28",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1B81A17",
+    "tbl_nm": "합계출산율(시도/시/군/구)",
+    "stat_id": "1962004",
+    "updated": "2026-09-15",
+    "e_themes": [
+     "인구"
+    ],
+    "e_paths": [
+     "인구"
+    ],
+    "topic": "인구",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20421E",
+    "tbl_nm": "1인당 도시지역면적 현황(시도/시/군/구)",
+    "stat_id": "2007330",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20731",
+    "tbl_nm": "1인당 자동차 등록대수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-02-06",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL7402E",
+    "tbl_nm": "건축착공면적(시도)",
+    "stat_id": "1975056",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "건설",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL7701",
+    "tbl_nm": "건축허가면적증감률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-09-30",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "건설",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20331",
+    "tbl_nm": "교통문화지수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-04-17",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202004",
+    "tbl_nm": "노후주택비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-31",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20721",
+    "tbl_nm": "도로포장률(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-08-20",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "교통ㆍ물류",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21291E",
+    "tbl_nm": "도시지역면적(시도/시/군/구)",
+    "stat_id": "2007330",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202005",
+    "tbl_nm": "미거주주택(빈집)비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-07-31",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202004E",
+    "tbl_nm": "미분양주택현황(시도/시/군/구)",
+    "stat_id": "1998033",
+    "updated": "2026-10-06",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20162E",
+    "tbl_nm": "아파트매매가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20192E",
+    "tbl_nm": "아파트월세가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20182E",
+    "tbl_nm": "아파트월세통합가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20172E",
+    "tbl_nm": "아파트전세가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL14001",
+    "tbl_nm": "음주운전교통사고비율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-29",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202111",
+    "tbl_nm": "일반가구의 주택소유율(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2025-11-17",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21051",
+    "tbl_nm": "자동차 천대당 교통사고발생건수(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-05-29",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "범죄ㆍ안전",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL7501E",
+    "tbl_nm": "주택건설 인허가실적",
+    "stat_id": "2002017",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "건설",
+    "topic_source": "rule",
+    "region_scope": "unknown"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL1701",
+    "tbl_nm": "주택매매가격변동률(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-10-16",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13502E",
+    "tbl_nm": "주택매매가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13401E",
+    "tbl_nm": "주택보급률(시도)",
+    "stat_id": "2006001",
+    "updated": "2026-01-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1JU1501",
+    "tbl_nm": "주택수(시도/시/군/구)",
+    "stat_id": "1962005",
+    "updated": "2026-08-04",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20152E",
+    "tbl_nm": "주택월세가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20142E",
+    "tbl_nm": "주택월세통합가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13602E",
+    "tbl_nm": "주택전세가격지수(시도/시/군/구)",
+    "stat_id": "1985011",
+    "updated": "2026-03-03",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "주거",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20881E",
+    "tbl_nm": "지가변동률(시도/시/군/구)",
+    "stat_id": "1984005",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20201E",
+    "tbl_nm": "토지거래면적(시도/시/군/구)",
+    "stat_id": "2007409",
+    "updated": "2026-02-12",
+    "e_themes": [
+     "주거와 교통"
+    ],
+    "e_paths": [
+     "주거와 교통"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL9901",
+    "tbl_nm": "강수량(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-29",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL13201",
+    "tbl_nm": "개발제한구역(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-06-17",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL9801",
+    "tbl_nm": "기온(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-29",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202105E",
+    "tbl_nm": "녹지율(시도/시/군/구)",
+    "stat_id": "2007330",
+    "updated": "2026-10-07",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "국토이용",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSEN015R",
+    "tbl_nm": "녹지환경 만족도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-08-20",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1EB002",
+    "tbl_nm": "논경지면적(시도/시/군)",
+    "stat_id": "1999011",
+    "updated": "2026-02-27",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "농림",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20061",
+    "tbl_nm": "도시가스 보급률(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-03-31",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "에너지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "INH_1SSEN053R",
+    "tbl_nm": "미세먼지 인식도(시도)",
+    "stat_id": "1977013",
+    "updated": "2025-08-20",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20741",
+    "tbl_nm": "상수도보급률(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-28",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21311",
+    "tbl_nm": "생활계폐기물 재활용률(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-31",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202112E",
+    "tbl_nm": "신재생에너지원별(고유단위) 생산량(시도)",
+    "stat_id": "2001021",
+    "updated": "2026-06-10",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "에너지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL202113E",
+    "tbl_nm": "신재생에너지원별(열량) 생산량(시도)",
+    "stat_id": "2001021",
+    "updated": "2026-06-10",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "에너지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL4801E",
+    "tbl_nm": "전력판매량(시도)",
+    "stat_id": "1976025",
+    "updated": "2026-07-08",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "에너지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21321",
+    "tbl_nm": "주민 1인당 생활계폐기물배출량(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-31",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20391",
+    "tbl_nm": "최종에너지소비량(시도)",
+    "stat_id": "9B08007",
+    "updated": "2026-03-31",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "에너지",
+    "topic_source": "rule",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL21301E",
+    "tbl_nm": "폐수배출업소수(시도/시/군/구)",
+    "stat_id": "1981003",
+    "updated": "2026-10-26",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   },
+   {
+    "org_id": "101",
+    "tbl_id": "DT_1YL20751",
+    "tbl_nm": "하수도보급률(시도/시/군/구)",
+    "stat_id": "9B08007",
+    "updated": "2026-01-28",
+    "e_themes": [
+     "환경"
+    ],
+    "e_paths": [
+     "환경"
+    ],
+    "topic": "환경",
+    "topic_source": "theme",
+    "region_scope": "sido"
+   }
+  ]
+ },
+ "topics": [
+  {
+   "name": "인구",
+   "list_id": null,
+   "policy_keywords": [
+    "인구",
+    "저출생",
+    "출산",
+    "고령화",
+    "지방소멸",
+    "인구감소",
+    "청년 유출",
+    "귀농",
+    "귀촌",
+    "외국인주민"
+   ],
+   "indicator_ids": [
+    "population",
+    "pop_change",
+    "aged_ratio",
+    "tfr",
+    "births"
+   ],
+   "children": []
+  },
+  {
+   "name": "사회일반",
+   "list_id": null,
+   "policy_keywords": [
+    "사회조사",
+    "가족",
+    "다문화",
+    "1인가구",
+    "사회적 관계",
+    "자원봉사",
+    "주민참여"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "범죄ㆍ안전",
+   "list_id": null,
+   "policy_keywords": [
+    "범죄",
+    "안전",
+    "교통사고",
+    "화재",
+    "재난",
+    "재해",
+    "어린이보호구역",
+    "가정폭력",
+    "성폭력",
+    "학교폭력"
+   ],
+   "indicator_ids": [
+    "traffic_acc",
+    "traffic_death",
+    "fire"
+   ],
+   "children": []
+  },
+  {
+   "name": "노동",
+   "list_id": null,
+   "policy_keywords": [
+    "고용",
+    "실업",
+    "일자리",
+    "청년 일자리",
+    "노인 일자리",
+    "산업재해",
+    "비정규직",
+    "장애인 고용",
+    "경력단절"
+   ],
+   "indicator_ids": [
+    "unemployment"
+   ],
+   "children": []
+  },
+  {
+   "name": "소득ㆍ소비ㆍ자산",
+   "list_id": null,
+   "policy_keywords": [
+    "소득",
+    "가계부채",
+    "빈곤",
+    "자산",
+    "소비",
+    "기본소득",
+    "지역화폐"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "보건",
+   "list_id": null,
+   "policy_keywords": [
+    "건강",
+    "의료",
+    "공공의료",
+    "응급의료",
+    "정신건강",
+    "자살",
+    "감염병",
+    "치매",
+    "흡연",
+    "비만"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "복지",
+   "list_id": null,
+   "policy_keywords": [
+    "복지",
+    "기초생활",
+    "노인복지",
+    "장애인",
+    "아동",
+    "돌봄",
+    "고독사",
+    "학대",
+    "한부모",
+    "보육"
+   ],
+   "indicator_ids": [
+    "basic_living"
+   ],
+   "children": []
+  },
+  {
+   "name": "교육ㆍ훈련",
+   "list_id": null,
+   "policy_keywords": [
+    "교육",
+    "학교",
+    "교원",
+    "사교육",
+    "급식",
+    "평생교육",
+    "직업훈련",
+    "특수교육",
+    "학생 건강"
+   ],
+   "indicator_ids": [
+    "teachers_ratio"
+   ],
+   "children": []
+  },
+  {
+   "name": "문화ㆍ여가",
+   "list_id": null,
+   "policy_keywords": [
+    "문화",
+    "예술",
+    "체육",
+    "관광",
+    "도서관",
+    "여가",
+    "축제",
+    "생활체육"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "주거",
+   "list_id": null,
+   "policy_keywords": [
+    "주거",
+    "주택",
+    "전세",
+    "월세",
+    "임대주택",
+    "청년주택",
+    "빈집",
+    "주거취약",
+    "전세사기"
+   ],
+   "indicator_ids": [
+    "jeonse_index"
+   ],
+   "children": []
+  },
+  {
+   "name": "국토이용",
+   "list_id": null,
+   "policy_keywords": [
+    "토지",
+    "도시계획",
+    "개발제한구역",
+    "도시재생",
+    "공원",
+    "지적"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "경제일반ㆍ경기",
+   "list_id": null,
+   "policy_keywords": [
+    "경기",
+    "지역경제",
+    "경제동향"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "기업경영",
+   "list_id": null,
+   "policy_keywords": [
+    "기업",
+    "소상공인",
+    "중소기업",
+    "창업",
+    "사회적기업",
+    "협동조합",
+    "벤처"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "농림",
+   "list_id": null,
+   "policy_keywords": [
+    "농업",
+    "농촌",
+    "농가",
+    "임업",
+    "산림",
+    "축산",
+    "먹거리",
+    "반려동물"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "수산",
+   "list_id": null,
+   "policy_keywords": [
+    "수산",
+    "어업",
+    "어촌",
+    "양식",
+    "귀어"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "광업ㆍ제조업",
+   "list_id": null,
+   "policy_keywords": [
+    "제조업",
+    "산업단지",
+    "공장"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "건설",
+   "list_id": null,
+   "policy_keywords": [
+    "건설",
+    "건축",
+    "건축허가",
+    "공사"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "교통ㆍ물류",
+   "list_id": null,
+   "policy_keywords": [
+    "교통",
+    "대중교통",
+    "버스",
+    "택시",
+    "주차",
+    "자전거",
+    "도로",
+    "철도",
+    "물류",
+    "고령운전"
+   ],
+   "indicator_ids": [
+    "traffic_acc",
+    "traffic_death"
+   ],
+   "children": []
+  },
+  {
+   "name": "정보통신",
+   "list_id": null,
+   "policy_keywords": [
+    "디지털",
+    "정보격차",
+    "인터넷",
+    "스마트폰",
+    "인공지능",
+    "디지털 포용"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "과학ㆍ기술",
+   "list_id": null,
+   "policy_keywords": [
+    "연구개발",
+    "과학기술",
+    "R&D"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "도소매ㆍ서비스",
+   "list_id": null,
+   "policy_keywords": [
+    "전통시장",
+    "상권",
+    "골목상권",
+    "유통",
+    "프랜차이즈",
+    "온라인쇼핑"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "임금",
+   "list_id": null,
+   "policy_keywords": [
+    "임금",
+    "생활임금",
+    "최저임금",
+    "근로시간"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "물가",
+   "list_id": null,
+   "policy_keywords": [
+    "물가",
+    "공공요금",
+    "생활물가"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "국민계정",
+   "list_id": null,
+   "policy_keywords": [
+    "지역내총생산",
+    "GRDP",
+    "지역소득"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "정부ㆍ재정",
+   "list_id": null,
+   "policy_keywords": [
+    "재정",
+    "재정자립도",
+    "지방세",
+    "예산",
+    "지방채",
+    "공무원"
+   ],
+   "indicator_ids": [
+    "fiscal_indep",
+    "fiscal_auto"
+   ],
+   "children": []
+  },
+  {
+   "name": "금융",
+   "list_id": null,
+   "policy_keywords": [
+    "금융",
+    "대출",
+    "서민금융"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "무역ㆍ국제수지",
+   "list_id": null,
+   "policy_keywords": [
+    "수출",
+    "수입",
+    "무역"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "환경",
+   "list_id": null,
+   "policy_keywords": [
+    "환경",
+    "탄소중립",
+    "온실가스",
+    "미세먼지",
+    "대기오염",
+    "폐기물",
+    "재활용",
+    "상수도",
+    "하수도",
+    "수질"
+   ],
+   "indicator_ids": [
+    "ghg"
+   ],
+   "children": []
+  },
+  {
+   "name": "에너지",
+   "list_id": null,
+   "policy_keywords": [
+    "에너지",
+    "재생에너지",
+    "태양광",
+    "전력",
+    "에너지 전환"
+   ],
+   "indicator_ids": [],
+   "children": []
+  },
+  {
+   "name": "지역통계",
+   "list_id": null,
+   "policy_keywords": [
+    "지역",
+    "시도",
+    "지방자치",
+    "균형발전"
+   ],
+   "indicator_ids": [],
+   "children": []
+  }
+ ]
+}

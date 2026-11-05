@@ -10,7 +10,7 @@ class LauncherTests(unittest.TestCase):
     def test_env_file_loads_values_without_overwriting_shell_environment(self):
         with tempfile.TemporaryDirectory() as directory:
             env_file = Path(directory) / ".env"
-            env_file.write_text('MODEL="qwen3:8b"\nEXTRA=value # comment\n', encoding="utf-8")
+            env_file.write_text('MODEL="exaone3.5:7.8b"\nEXTRA=value # comment\n', encoding="utf-8")
             environment = {"MODEL": "shell-model"}
 
             loaded = launcher.load_env_file(env_file, environment)

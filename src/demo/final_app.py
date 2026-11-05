@@ -511,6 +511,13 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
             f"외부 조회 오류 ({error.get('source')} · {error.get('keyword')}): "
             f"{error.get('error')}"
         )
+    for merge in followup.get("council_merges") or []:
+        if merge.get("applied"):
+            st.info(
+                f"{'·'.join(merge['members'])}는 {merge['effective_date']}부터 "
+                f"{merge['council']}로 통합되어 후속 흐름·후보에서 하나로 표시합니다. "
+                "회의록 관측(2024~2025)은 전신 의회 기록을 합산했습니다."
+            )
 
     top = view.get("top_candidates") or []
     cols = st.columns(4)
@@ -568,6 +575,12 @@ def render_external_followup(followup: dict[str, Any] | None) -> None:
             flows["단계"] = flows["stage"].map(
                 lambda value: FOLLOWUP_STAGE_LABELS.get(value, value)
             )
+            if "merged_from" in flows:
+                flows["council"] = [
+                    f"{council} ({'+'.join(members)})"
+                    if isinstance(members, list) and members else council
+                    for council, members in zip(flows["council"], flows["merged_from"])
+                ]
             st.dataframe(
                 flows[[
                     "council", "단계", "minutes_first_observation",
@@ -747,7 +760,7 @@ def render_agent_chat(
 ) -> None:
     """질문 해석·근거 계산·답변 검증을 포함한 로컬 Agent 챗봇."""
     agent_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-    agent_model = os.environ.get("COUNCIL_AGENT_MODEL", "qwen3:8b")
+    agent_model = os.environ.get("COUNCIL_AGENT_MODEL", "exaone3.5:7.8b")
     ollama_status = load_ollama_status(agent_url, agent_model)
     status_left, status_right = st.columns([1, 2])
     if ollama_status["reachable"] and ollama_status["model_available"]:
@@ -926,7 +939,7 @@ with st.sidebar:
     st.caption("2024~2025 광역 지방의회 회의록")
     st.markdown("<span class='badge'>LOCAL ONLY</span><span class='badge'>REPRESENTATIVE TOP 10</span>", unsafe_allow_html=True)
     st.divider()
-    st.caption("Arctic Dense + BM25 · RRF · BGE reranker · 검수 군집 · 시간순 예측 · Qwen Agent")
+    st.caption("Arctic Dense + BM25 · RRF · BGE reranker · 검수 군집 · 시간순 예측 · EXAONE Agent")
 
 payload = payload_by_id[selected_id]
 issue = payload["issue"]
