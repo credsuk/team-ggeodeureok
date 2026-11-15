@@ -47,12 +47,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--comparison", action="store_true", help="비교 실험용 모델도 내려받기")
     parser.add_argument("--ollama", action="store_true", help="ollama pull 실행")
+    parser.add_argument("--hf-only", action="store_true",
+                        help="Hugging Face 모델만 내려받고 Ollama 안내는 출력하지 않음 (노트북 07 1-1 셀에서 사용)")
     args = parser.parse_args()
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     for model_id, revision, purpose in REQUIRED + (COMPARISON if args.comparison else []):
         print(f"[HF] {model_id} ({purpose}) → {CACHE_DIR}")
         snapshot_download(model_id, revision=revision, cache_dir=CACHE_DIR)
+    if args.hf_only:
+        print("Hugging Face 모델 다운로드 완료")
+        return
 
     ollama_models = OLLAMA_MODELS + (OLLAMA_COMPARISON if args.comparison else [])
     if args.ollama:

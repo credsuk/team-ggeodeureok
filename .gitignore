@@ -25,8 +25,5 @@ exports/
 
 __pycache__/
 .ipynb_checkpoints/
-
-# 공개 저장소에는 회의록 원문 발췌가 든 파일을 올리지 않음 (심사 제출본에만 포함)
-data/llm_compare/evidence_top6.json
-data/llm_compare/answers.md
-data/llm_compare/results.jsonl
+/.vscode
+/demo/**
