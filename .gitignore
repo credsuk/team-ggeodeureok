@@ -27,3 +27,4 @@ __pycache__/
 .ipynb_checkpoints/
 /.vscode
 /demo/**
+.env.furi
